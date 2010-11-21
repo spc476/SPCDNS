@@ -97,6 +97,36 @@ int send_request(
 
 /**********************************************************************/
 
+void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
+{
+  printf("%s\n",tag);
+  for (size_t i = 0 ; i < cnt ; i++)
+  {
+    printf(
+    	"\t%s %s %s\n",
+    	pquest[i].name,
+    	c_dns_rec_names[pquest[i].type],
+    	c_dns_class_names[pquest[i].class]
+    );
+  }
+}
+
+void print_answer(const char *tag,dns_answer_t *pquest,size_t cnt)
+{
+  printf("%s\n",tag);
+  
+  for (size_t i = 0 ; i < cnt ; i++)
+  {
+    printf(
+    	"\t%s %s %s %lu\n",
+    	pquest[i].generic.name,
+    	c_dns_rec_names[pquest[i].generic.type],
+    	c_dns_class_names[pquest[i].generic.class],
+    	(unsigned long)pquest[i].generic.ttl
+    );
+  }
+}
+
 int main(int argc,char *argv[])
 {
   if (argc == 1)
@@ -151,6 +181,15 @@ int main(int argc,char *argv[])
   
   printf("\nINCOMING:\n\n");
   dump_memory(stdout,inbuffer,insize,0);
+  
+  dns_query_t result;
+  
+  dns_decode(&result,inbuffer,insize);
+  
+  print_question("QUESTIONS"   ,result.questions   ,result.qdcount);
+  print_answer  ("ANSWERS"     ,result.answers     ,result.ancount);
+  print_answer  ("NAMESERVERS" ,result.nameservers ,result.nscount);
+  print_answer  ("ADDITIONAL"  ,result.additional  ,result.arcount);
 
   return EXIT_SUCCESS;
 }

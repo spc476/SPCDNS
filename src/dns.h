@@ -3,6 +3,8 @@
 #define DNS_H
 
 #define MAX_DNS_QUERY_SIZE	512
+#define MAX_DOMAIN_SEGMENT	 64
+#define MAX_STRING_LEN		256
 
 enum dns_type
 {
@@ -66,6 +68,32 @@ typedef struct dns_generic_t
   TTL             ttl;
 } dns_generic_t;
 
+typedef struct dns_a_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  in_addr_t       address;
+} dns_a_t;
+
+typedef struct dns_ns_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *nsdname;
+} dns_ns_t;
+
+typedef struct dns_txt_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *txt;
+} dns_txt_t;
 
 typedef struct dns_mx_rec_t
 {
@@ -87,6 +115,9 @@ typedef union dns_answer_t
 {
   struct dns_generic_t generic;
   struct dns_mx_t      mx;
+  struct dns_a_t       a;
+  struct dns_ns_t      ns;
+  struct dns_txt_t     txt;
 } dns_answer_t;
 
 typedef struct dns_query_t
@@ -99,14 +130,14 @@ typedef struct dns_query_t
   bool            rd;
   bool            ra;
   enum dns_rcode  rcode;
-  int             qdcount;
-  int             ancount;
-  int             nscount;
-  int             arcount;
+  size_t          qdcount;
+  size_t          ancount;
+  size_t          nscount;
+  size_t          arcount;
   dns_question_t *questions;
   dns_answer_t   *answers;
   dns_answer_t   *nameservers;
-  dns_answer_t   *addtional;
+  dns_answer_t   *additional;
 } dns_query_t;
 
 /**********************************************************************/
