@@ -502,7 +502,7 @@ int dns_decode(
     decode_answer(&response->nameservers[i],&packet,&parse);
   
   for (size_t i = 0 ; i < response->arcount ; i++)
-    decode_answer(&response->nameservers[i],&packet,&parse);
+    decode_answer(&response->additional[i],&packet,&parse);
     
   return 1;
 }

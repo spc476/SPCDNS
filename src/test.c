@@ -105,8 +105,8 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
     printf(
     	"\t%s %s %s\n",
     	pquest[i].name,
-    	c_dns_rec_names[pquest[i].type],
-    	c_dns_class_names[pquest[i].class]
+    	c_dns_class_names[pquest[i].class],
+    	c_dns_rec_names[pquest[i].type]
     );
   }
 }
@@ -118,11 +118,11 @@ void print_answer(const char *tag,dns_answer_t *pquest,size_t cnt)
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
-    	"\t%s %s %s %lu\n",
+    	"\t%s %lu %s %s\n",
     	pquest[i].generic.name,
-    	c_dns_rec_names[pquest[i].generic.type],
+    	(unsigned long)pquest[i].generic.ttl,
     	c_dns_class_names[pquest[i].generic.class],
-    	(unsigned long)pquest[i].generic.ttl
+    	c_dns_rec_names[pquest[i].generic.type]
     );
   }
 }
