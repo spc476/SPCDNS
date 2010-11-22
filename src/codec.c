@@ -418,7 +418,9 @@ static inline int decode_rr_a(
   assert(parse->size  >  0);
   
   if (len != 4) return RCODE_A_BAD_ADDR;
-  pa->address = read_uint32(parse);
+  memcpy(&pa->address,parse->ptr,4);
+  parse->ptr  += 4;
+  parse->size -= 4;
   return RCODE_OKAY;
 }
 
