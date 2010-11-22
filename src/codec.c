@@ -10,6 +10,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <syslog.h>
 
 #include "dns.h"
 
@@ -38,9 +39,7 @@ struct dns_header
 static inline uint16_t read_uint16		(block_t *const)                                  					__attribute__ ((nonnull));
 static inline uint32_t read_uint32              (block_t *const)									__attribute__ ((nonnull));
 static        block_t  dns_encode_domain	(block_t,const dns_question_t *const restrict)    					__attribute__ ((nonnull(2)));
-static inline void     copy_uncompress		(block_t *const restrict,block_t *const restrict) 					__attribute__ ((nonnull));
-static inline void     copy_compress		(const block_t *const restrict,block_t *const restrict,block_t *const restrict) 	__attribute__ ((nonnull));
-static        void     extract_dname		(const block_t *const restrict,block_t *const restrict,block_t *const restrict)		__attribute__ ((nonnull));
+static        int      read_domain		(const block_t *const restrict,block_t *const restrict,block_t *const restrict)		__attribute__ ((nonnull));
 static        void     decode_question		(dns_question_t *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
 static        void     decode_answer            (dns_answer_t   *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
 
@@ -48,7 +47,7 @@ static block_t dns_encode_domain(block_t data,const dns_question_t *const restri
 
 /***********************************************************************/
 
-const char *const c_dns_rec_names[] =
+const char *const c_dns_type_names[] =
 {
   "UNKN",
   "A",
@@ -119,9 +118,29 @@ const char *const c_dns_result_names[] =
     }
     return 1;
   }
+#else
+#  define check_query(q)
 #endif
 
 /*********************************************************************/
+
+#ifndef NDEBUG
+# include <stdio.h>
+# include <cgilib6/util.h>
+  void quick_dump(const char *tag,void *data,size_t len)
+  {
+    assert(tag != NULL);
+    assert(data != NULL);
+    assert(len  >  0);
+    
+    printf("\n%s\n",tag);
+    dump_memory(stdout,data,len,0);
+  }
+#else
+#  define quick_dump(t,d,l,o)
+#endif
+
+/******************************************************************/
 
 static inline uint16_t read_uint16(block_t *const parse)
 {
@@ -199,9 +218,10 @@ int dns_encode(
     if (data.err) return data.err;
   }
   
-  /*----------------------------
-  ; XXX - save answers for later
-  ;-----------------------------*/
+  /*------------------------------------------------------------
+  ; at some point we may want to encode answers, nameservers,
+  ; and additional records, but for now, we skip 'em
+  ;-----------------------------------------------------------*/
   
   *plen = (size_t)(data.ptr - buffer);
   return RCODE_OKAY;
@@ -283,110 +303,67 @@ static block_t dns_encode_domain(
 
 /***********************************************************************/
 
-static inline void copy_uncompress(
-	block_t *const restrict parse,
-	block_t *const restrict dest
-)
-{
-  assert(parse       != NULL);
-  assert(dest        != NULL);  
-  assert(parse->ptr  != NULL);
-  assert(parse->size >  1);
-  assert(dest->ptr   != NULL);
-  assert(dest->size  >  1);
-  assert(*parse->ptr <  192);
-  
-  parse->size--;
-  assert(parse->size > 0);
-  
-  size_t len = *parse->ptr++;
-  
-  assert(parse->size >= len);
-  assert(dest->size  >= len);
-  
-  memcpy(dest->ptr,parse->ptr,len);
-  dest->ptr   += len;
-  dest->size  -= len;
-  parse->ptr  += len;
-  parse->size -= len;
-  
-  assert(dest->size > 0);
-  
-  *(dest->ptr) = '.';
-  dest->ptr++;
-  dest->size--;
-}
-
-/*****************************************************************/
-
-static inline void copy_compress(
+static int read_domain(
 	const block_t *const restrict packet,
-	      block_t *const restrict parse,
+	      block_t *const restrict pparse,
 	      block_t *const restrict dest
 )
 {
+  block_t *parse = pparse;
+  block_t  tmp;
+  size_t   len;
+  
   assert(packet       != NULL);
   assert(packet->ptr  != NULL);
   assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  2);
-  assert(*parse->ptr  >= 192);
-  assert(dest         != NULL);
-  assert(dest->ptr    != NULL);
-  assert(dest->size   >  1);
-  
-  block_t tmp;
-  size_t  len;
-  
-  len = read_uint16(parse) & 0x3FFF;
-  assert(len < packet->size);
-  
-  tmp.ptr      = &packet->ptr[len];
-  tmp.size     = packet->size - (size_t)(tmp.ptr - packet->ptr);
-  
-  extract_dname(packet,&tmp,dest);
-}
-
-/***********************************************************************/
-
-static void extract_dname(
-	const block_t *const restrict packet,
-	      block_t *const restrict parse,
-	      block_t *const restrict dest
-)
-{
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  0);
+  assert(pparse       != NULL);
+  assert(pparse->ptr  != NULL);
+  assert(pparse->size >  0);
   assert(dest         != NULL);
   assert(dest->ptr    != NULL);
   assert(dest->size   >  0);
-  
-  while(*parse->ptr)
-  {
-    if (*parse->ptr < 192)
-      copy_uncompress(parse,dest);
-    else
-    {
-      copy_compress(packet,parse,dest);
-      assert(dest->size > 0);
-      *dest->ptr++ = '\0';
-      dest->size--;
-      return;
-    }
-  }
-  
-  assert(parse->size > 1);
-  assert(dest->size >= 1);
 
+  do
+  {
+    if (*parse->ptr < 64)
+    {
+      len = *parse->ptr;
+      
+      if (parse->size < len + 1)
+        return RCODE_FORMAT_ERROR;
+
+      memcpy(dest->ptr,&parse->ptr[1],len);
+      parse->ptr   += (len + 1);
+      parse->size  -= (len + 1);
+      dest->size   -= (len + 1);
+      dest->ptr    += len;
+      *dest->ptr++  = '.';
+    }
+    else if (*parse->ptr >= 192)
+    {
+      if (parse->size < 2)
+        return RCODE_FORMAT_ERROR;
+      
+      len = read_uint16(parse) & 0x3FFF;
+      
+      if (len >= packet->size)
+        return RCODE_FORMAT_ERROR;
+      
+      tmp.ptr = &packet->ptr[len];
+      tmp.size = packet->size - (size_t)(tmp.ptr - packet->ptr);
+      parse    = &tmp;
+    }
+    else
+      return RCODE_FORMAT_ERROR;
+
+  } while (*parse->ptr);
+  
   parse->ptr++;
   parse->size--;
   *dest->ptr++ = '\0';
-  dest->size  --;
+  dest->size--;
+  
+  return RCODE_OKAY;
 }
 
 /************************************************************************/
@@ -411,7 +388,7 @@ static void decode_question(
   dest.ptr  = buffer;
   dest.size = sizeof(buffer);
   
-  extract_dname(packet,parse,&dest);
+  read_domain(packet,parse,&dest);
   pquest->name  = strdup((char *)buffer);
   pquest->type  = (enum dns_type)read_uint16(parse);
   pquest->class = (enum dns_class)read_uint16(parse);
@@ -427,7 +404,7 @@ static void decode_answer(
 {
   uint8_t buffer[MAX_STRING_LEN];
   block_t dest;
-
+  
   assert(pans         != NULL);
   assert(packet       != NULL);
   assert(packet->ptr  != NULL);
@@ -439,7 +416,7 @@ static void decode_answer(
   dest.ptr  = buffer;
   dest.size = sizeof(buffer);
   
-  extract_dname(packet,parse,&dest);
+  read_domain(packet,parse,&dest);
   pans->generic.name  = strdup((char *)buffer);
   pans->generic.type  = (enum dns_type)read_uint16(parse);
   pans->generic.class = (enum dns_class)read_uint16(parse);
@@ -447,8 +424,8 @@ static void decode_answer(
 
   /* FIXME - skip rest of packet for now */
   
-  size_t len = read_uint16(parse);
-  parse->ptr += len;
+  size_t len   = read_uint16(parse);
+  parse->ptr  += len;
   parse->size -= len;
 }
 
@@ -468,11 +445,23 @@ int dns_decode(
   assert(buffer   != NULL);
   assert(len      >  0);
   
+  memset(response,0,sizeof(dns_query_t));
+  response->questions   = NULL;
+  response->answers     = NULL;
+  response->nameservers = NULL;
+  response->additional  = NULL;
+  
   packet.ptr  = (uint8_t *)buffer;
   packet.size = len;
   parse.ptr   = (uint8_t *)&buffer[sizeof(struct dns_header)];
   parse.size  = len - sizeof(struct dns_header);
   header      = (struct dns_header *)buffer;
+  
+  if ((header->rcode & 0x70) != 0x00)
+  {
+    response->rcode = RCODE_RETURN_FORMAT_ERROR;
+    return RCODE_RETURN_FORMAT_ERROR;
+  }
   
   response->id      = ntohs(header->id);
   response->opcode  = (header->opcode >> 3) & 0x0F;
@@ -486,11 +475,22 @@ int dns_decode(
   response->ancount = ntohs(header->ancount);
   response->nscount = ntohs(header->nscount);
   response->arcount = ntohs(header->arcount);
-  
+
   response->questions   = malloc(response->qdcount * sizeof(dns_question_t));
-  response->answers     = malloc(response->qdcount * sizeof(dns_answer_t));
+  response->answers     = malloc(response->ancount * sizeof(dns_answer_t));
   response->nameservers = malloc(response->nscount * sizeof(dns_answer_t));
   response->additional  = malloc(response->arcount * sizeof(dns_answer_t));
+  
+  if (
+          (response->qdcount && (response->questions   == NULL))
+       || (response->ancount && (response->answers     == NULL))
+       || (response->nscount && (response->nameservers == NULL))
+       || (response->arcount && (response->additional  == NULL))
+     )
+  {
+    response->rcode = RCODE_NO_MEMORY;
+    return RCODE_NO_MEMORY;
+  }
   
   for (size_t i = 0 ; i < response->qdcount ; i++)
     decode_question(&response->questions[i],&packet,&parse);

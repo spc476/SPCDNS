@@ -18,6 +18,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <syslog.h>
 
 #include <cgilib6/util.h>
 
@@ -106,23 +107,31 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
     	"\t%s %s %s\n",
     	pquest[i].name,
     	c_dns_class_names[pquest[i].class],
-    	c_dns_rec_names[pquest[i].type]
+    	c_dns_type_names[pquest[i].type]
     );
   }
 }
 
-void print_answer(const char *tag,dns_answer_t *pquest,size_t cnt)
+void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
   printf("%s\n",tag);
   
   for (size_t i = 0 ; i < cnt ; i++)
   {
+    syslog(
+  	LOG_DEBUG,
+  	"name: %s type: %02x class: %02x ttl: %08lx",
+  	pans[i].generic.name,
+  	pans[i].generic.type,
+  	pans[i].generic.class,
+  	(unsigned long)(pans[i].generic.ttl)
+    );
     printf(
     	"\t%s %lu %s %s\n",
-    	pquest[i].generic.name,
-    	(unsigned long)pquest[i].generic.ttl,
-    	c_dns_class_names[pquest[i].generic.class],
-    	c_dns_rec_names[pquest[i].generic.type]
+    	pans[i].generic.name,
+    	(unsigned long)pans[i].generic.ttl,
+    	c_dns_class_names[pans[i].generic.class],
+    	c_dns_type_names[pans[i].generic.type]
     );
   }
 }
@@ -185,6 +194,12 @@ int main(int argc,char *argv[])
   dns_query_t result;
   
   dns_decode(&result,inbuffer,insize);
+  
+  syslog(LOG_DEBUG,"id:      %d",result.id);
+  syslog(LOG_DEBUG,"qdcount: %lu",(unsigned long)result.qdcount);
+  syslog(LOG_DEBUG,"ancount: %lu",(unsigned long)result.ancount);
+  syslog(LOG_DEBUG,"nscount: %lu",(unsigned long)result.nscount);
+  syslog(LOG_DEBUG,"arcount: %lu",(unsigned long)result.arcount);
   
   print_question("QUESTIONS"   ,result.questions   ,result.qdcount);
   print_answer  ("ANSWERS"     ,result.answers     ,result.ancount);

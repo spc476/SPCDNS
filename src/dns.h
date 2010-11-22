@@ -48,7 +48,10 @@ enum dns_rcode
   RCODE_SERVER_FAILURE  = 2,
   RCODE_NAME_ERROR      = 3,
   RCODE_NOT_IMPLEMENTED = 4,
-  RCODE_REFUSED         = 5
+  RCODE_REFUSED         = 5,
+
+  RCODE_RETURN_FORMAT_ERROR = 200,
+  RCODE_NO_MEMORY
 };  
 
 typedef uint32_t TTL;
@@ -95,29 +98,23 @@ typedef struct dns_txt_t
   const char     *txt;
 } dns_txt_t;
 
-typedef struct dns_mx_rec_t
-{
-  int         preference;
-  const char *name;
-} dns_mx_rec_t;
-
 typedef struct dns_mx_t
 {
   const char     *name;
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
-  size_t          numrec;
-  dns_mx_rec_t   *recs;
+  int             preference;
+  const char     *domain;
 } dns_mx_t;
 
 typedef union dns_answer_t
 {
-  struct dns_generic_t generic;
-  struct dns_mx_t      mx;
-  struct dns_a_t       a;
-  struct dns_ns_t      ns;
-  struct dns_txt_t     txt;
+  dns_generic_t generic;
+  dns_mx_t      mx;
+  dns_a_t       a;
+  dns_ns_t      ns;
+  dns_txt_t     txt;
 } dns_answer_t;
 
 typedef struct dns_query_t
@@ -142,7 +139,7 @@ typedef struct dns_query_t
 
 /**********************************************************************/
 
-extern const char *const c_dns_rec_names   [];
+extern const char *const c_dns_type_names  [];
 extern const char *const c_dns_class_names [];
 extern const char *const c_dns_op_names    [];
 extern const char *const c_dns_result_names[];
