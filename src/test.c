@@ -118,21 +118,30 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   
   for (size_t i = 0 ; i < cnt ; i++)
   {
-    syslog(
-  	LOG_DEBUG,
-  	"name: %s type: %02x class: %02x ttl: %08lx",
-  	pans[i].generic.name,
-  	pans[i].generic.type,
-  	pans[i].generic.class,
-  	(unsigned long)(pans[i].generic.ttl)
-    );
-    printf(
+    if (
+            (pans[i].generic.type  <  RR_min) 
+         || (pans[i].generic.type  >= RR_max)
+         || (pans[i].generic.class <  CLASS_min)
+         || (pans[i].generic.class >= CLASS_max)
+       )
+    {
+      printf("\t%s %lu %d %d\n",
+      	pans[i].generic.name,
+      	(unsigned long)pans[i].generic.ttl,
+      	pans[i].generic.class,
+      	pans[i].generic.type
+      );
+    }
+    else
+    {
+      printf(
     	"\t%s %lu %s %s\n",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
     	c_dns_class_names[pans[i].generic.class],
     	c_dns_type_names[pans[i].generic.type]
-    );
+      );
+    }
   }
 }
 

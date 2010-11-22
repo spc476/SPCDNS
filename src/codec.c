@@ -397,12 +397,6 @@ static int decode_question(
   pquest->type  = (enum dns_type)read_uint16(parse);
   pquest->class = (enum dns_class)read_uint16(parse);
   
-  if ((pquest->type < RR_min) || (pquest->type >= RR_max))
-    return RCODE_TYPE_ERROR;
-  
-  if ((pquest->type < CLASS_min) || (pquest->class >= CLASS_max))
-    return RCODE_TYPE_ERROR;
-  
   return RCODE_OKAY;
 }
 
@@ -544,12 +538,6 @@ static int decode_answer(
   pans->generic.class = (enum dns_class)read_uint16(parse);
   pans->generic.ttl   = read_uint32(parse);
   
-  if ((pans->generic.type < RR_min) || (pans->generic.type >= RR_max))
-    return RCODE_TYPE_ERROR;
-  
-  if ((pans->generic.class < CLASS_min) || (pans->generic.class >= CLASS_max))
-    return RCODE_CLASS_ERROR;
-
   /* FIXME - skip rest of packet for now */
   
   len = read_uint16(parse);
