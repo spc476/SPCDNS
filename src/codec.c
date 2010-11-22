@@ -10,7 +10,6 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <syslog.h>
 
 #include "dns.h"
 
