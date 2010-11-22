@@ -61,7 +61,9 @@ enum dns_rcode
   RCODE_TYPE_ERROR,
   RCODE_CLASS_ERROR,
   RCODE_UNKNOWN_OPTIONS,
-  
+  RCODE_A_BAD_ADDR,
+  RCODE_NS_BAD_DOMAIN,
+  RCODE_MX_BAD_RECORD,
   RCODE_NO_MEMORY,
   RCODE_max
 };  
@@ -117,7 +119,7 @@ typedef struct dns_mx_t
   enum dns_class  class;
   TTL             ttl;
   int             preference;
-  const char     *domain;
+  const char     *exchange;
 } dns_mx_t;
 
 typedef union dns_answer_t

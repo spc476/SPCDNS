@@ -156,7 +156,7 @@ int main(int argc,char *argv[])
   for (int i = 1 ; i < argc ; i++)
   {
     domains[i - 1].name = argv[i];
-    domains[i - 1].type = RR_MX;
+    domains[i - 1].type = RR_TXT;
     domains[i - 1].class = CLASS_IN;
   }
   
@@ -193,7 +193,12 @@ int main(int argc,char *argv[])
   
   dns_query_t result;
   
-  dns_decode(&result,inbuffer,insize);
+  rc = dns_decode(&result,inbuffer,insize);
+  if (rc != RCODE_OKAY)
+  {
+    fprintf(stderr,"dns_decode() = %d\n",rc);
+    return EXIT_FAILURE;
+  }
   
   syslog(LOG_DEBUG,"id:      %d",result.id);
   syslog(LOG_DEBUG,"qdcount: %lu",(unsigned long)result.qdcount);

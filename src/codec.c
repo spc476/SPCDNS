@@ -35,12 +35,17 @@ struct dns_header
 
 /***********************************************************************/
 
-static inline uint16_t read_uint16		(block_t *const)                                  					__attribute__ ((nonnull));
-static inline uint32_t read_uint32              (block_t *const)									__attribute__ ((nonnull));
-static        block_t  dns_encode_domain	(block_t,const dns_question_t *const restrict)    					__attribute__ ((nonnull(2)));
-static        int      read_domain		(const block_t *const restrict,block_t *const restrict,block_t *const restrict)		__attribute__ ((nonnull));
-static        int      decode_question		(dns_question_t *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
-static        int      decode_answer            (dns_answer_t   *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
+static inline uint16_t read_uint16	(block_t *const)                                  					__attribute__ ((nonnull));
+static inline uint32_t read_uint32	(block_t *const)									__attribute__ ((nonnull));
+static        block_t  dns_encode_domain(block_t,const dns_question_t *const restrict)    					__attribute__ ((nonnull(2)));
+static        int      read_domain	(const block_t *const restrict,block_t *const restrict,block_t *const restrict)		__attribute__ ((nonnull));
+static        int      decode_question	(dns_question_t *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
+static        int      decode_answer    (dns_answer_t   *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
+
+static inline int      decode_rr_a	(dns_a_t   *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
+static inline int      decode_rr_ns     (dns_ns_t  *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
+static inline int      decode_rr_mx     (dns_mx_t  *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
+static inline int      decode_rr_txt    (dns_txt_t *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
 
 static block_t dns_encode_domain(block_t data,const dns_question_t *const restrict);
 
@@ -403,6 +408,113 @@ static int decode_question(
 
 /************************************************************************/
 
+static inline int decode_rr_a(
+	      dns_a_t *const restrict pa,
+	const block_t *const restrict packet,
+	      block_t *const restrict parse,
+	const size_t   len
+)
+{
+  assert(pa           != NULL);
+  assert(packet       != NULL);
+  assert(packet->ptr  != NULL);
+  assert(packet->size >  0);
+  assert(parse        != NULL);
+  assert(parse->ptr   != NULL);
+  assert(parse->size  >  0);
+  
+  if (len != 4) return RCODE_A_BAD_ADDR;
+  pa->address = read_uint32(parse);
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline int decode_rr_ns(
+	      dns_ns_t *const restrict pns,
+	const block_t  *const restrict packet,
+	      block_t  *const restrict parse,
+	const size_t    len __attribute__ ((unused))
+)
+{
+  uint8_t buffer[MAX_STRING_LEN];
+  block_t dest;
+
+  assert(pns          != NULL);
+  assert(packet       != NULL);
+  assert(packet->ptr  != NULL);
+  assert(packet->size >  0);
+  assert(parse        != NULL);
+  assert(parse->ptr   != NULL);
+  assert(parse->size  >  0);
+
+  dest.ptr  = buffer;
+  dest.size = sizeof(buffer);
+  
+  if (read_domain(packet,parse,&dest) != RCODE_OKAY)
+    return RCODE_NS_BAD_DOMAIN;
+  
+  pns->nsdname = strdup((char *)buffer);
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline int decode_rr_mx(
+	      dns_mx_t *const restrict pmx,
+	const block_t  *const restrict packet,
+	      block_t  *const restrict parse,
+	const size_t    len
+)
+{
+  uint8_t buffer[MAX_STRING_LEN];
+  block_t dest;
+  
+  assert(pmx          != NULL);
+  assert(packet       != NULL);
+  assert(packet->ptr  != NULL);
+  assert(packet->size >  0);
+  assert(parse        != NULL);
+  assert(parse->ptr   != NULL);
+  assert(parse->size  >  0);
+  
+  if (len < 5) return RCODE_MX_BAD_RECORD;
+  
+  pmx->preference = read_uint16(parse);
+  dest.ptr        = buffer;
+  dest.size       = sizeof(buffer);
+  
+  if (read_domain(packet,parse,&dest) != RCODE_OKAY)
+    return RCODE_MX_BAD_RECORD;
+  
+  pmx->exchange = strdup((char *)buffer);
+  return RCODE_OKAY;
+}
+
+/**********************************************************************/
+
+static inline int decode_rr_txt(
+	      dns_txt_t *const restrict ptxt,
+	const block_t   *const restrict packet,
+	      block_t   *const restrict parse,
+	const size_t     len
+)
+{
+  assert(ptxt         != NULL);
+  assert(packet       != NULL);
+  assert(packet->ptr  != NULL);
+  assert(packet->size >  0);
+  assert(parse        != NULL);
+  assert(parse->ptr   != NULL);
+  assert(parse->size  >  0);
+
+  parse->ptr += len;
+  parse->size -= len;
+  return RCODE_OKAY;
+}
+
+/**********************************************************************/
+
 static int decode_answer(
 	      dns_answer_t *const restrict pans,
 	const block_t      *const restrict packet,
@@ -411,6 +523,7 @@ static int decode_answer(
 {
   uint8_t        buffer[MAX_STRING_LEN];
   block_t        dest;
+  size_t         len;
   
   assert(pans         != NULL);
   assert(packet       != NULL);
@@ -439,9 +552,32 @@ static int decode_answer(
 
   /* FIXME - skip rest of packet for now */
   
-  size_t len   = read_uint16(parse);
-  parse->ptr  += len;
+  len = read_uint16(parse);
+  
+  switch(pans->generic.type)
+  {
+    case RR_A:     return decode_rr_a  (&pans->a ,packet,parse,len);
+    case RR_NS:    return decode_rr_ns (&pans->ns,packet,parse,len);
+    case RR_MD:    break;
+    case RR_MF:    break;
+    case RR_CNAME: break;
+    case RR_SOA:   break;
+    case RR_MB:    break;
+    case RR_MG:    break;
+    case RR_MR:    break;
+    case RR_NULL:  break;
+    case RR_WKS:   break;
+    case RR_PTR:   break;
+    case RR_HINFO: break;
+    case RR_MINFO: break;
+    case RR_MX:    return decode_rr_mx (&pans->mx ,packet,parse,len);
+    case RR_TXT:   return decode_rr_txt(&pans->txt,packet,parse,len);
+    default:       break;
+  }
+  
+  parse->ptr += len;
   parse->size -= len;
+  
   return RCODE_OKAY;
 }
 
