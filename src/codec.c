@@ -40,8 +40,8 @@ static inline uint16_t read_uint16		(block_t *const)                            
 static inline uint32_t read_uint32              (block_t *const)									__attribute__ ((nonnull));
 static        block_t  dns_encode_domain	(block_t,const dns_question_t *const restrict)    					__attribute__ ((nonnull(2)));
 static        int      read_domain		(const block_t *const restrict,block_t *const restrict,block_t *const restrict)		__attribute__ ((nonnull));
-static        void     decode_question		(dns_question_t *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
-static        void     decode_answer            (dns_answer_t   *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
+static        int      decode_question		(dns_question_t *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
+static        int      decode_answer            (dns_answer_t   *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
 
 static block_t dns_encode_domain(block_t data,const dns_question_t *const restrict);
 
@@ -330,7 +330,7 @@ static int read_domain(
       len = *parse->ptr;
       
       if (parse->size < len + 1)
-        return RCODE_FORMAT_ERROR;
+        return RCODE_DOMAIN_ERROR;
 
       memcpy(dest->ptr,&parse->ptr[1],len);
       parse->ptr   += (len + 1);
@@ -342,19 +342,19 @@ static int read_domain(
     else if (*parse->ptr >= 192)
     {
       if (parse->size < 2)
-        return RCODE_FORMAT_ERROR;
+        return RCODE_DOMAIN_ERROR;
       
       len = read_uint16(parse) & 0x3FFF;
       
       if (len >= packet->size)
-        return RCODE_FORMAT_ERROR;
+        return RCODE_DOMAIN_ERROR;
       
       tmp.ptr = &packet->ptr[len];
       tmp.size = packet->size - (size_t)(tmp.ptr - packet->ptr);
       parse    = &tmp;
     }
     else
-      return RCODE_FORMAT_ERROR;
+      return RCODE_DOMAIN_ERROR;
 
   } while (*parse->ptr);
   
@@ -368,7 +368,7 @@ static int read_domain(
 
 /************************************************************************/
 
-static void decode_question(
+static int decode_question(
 	      dns_question_t *const restrict pquest,
 	const block_t        *const restrict packet,
 	      block_t        *const restrict parse
@@ -392,18 +392,26 @@ static void decode_question(
   pquest->name  = strdup((char *)buffer);
   pquest->type  = (enum dns_type)read_uint16(parse);
   pquest->class = (enum dns_class)read_uint16(parse);
+  
+  if ((pquest->type < RR_min) || (pquest->type >= RR_max))
+    return RCODE_TYPE_ERROR;
+  
+  if ((pquest->type < CLASS_min) || (pquest->class >= CLASS_max))
+    return RCODE_TYPE_ERROR;
+  
+  return RCODE_OKAY;
 }
 
 /************************************************************************/
 
-static void decode_answer(
+static int decode_answer(
 	      dns_answer_t *const restrict pans,
 	const block_t      *const restrict packet,
 	      block_t      *const restrict parse
 )
 {
-  uint8_t buffer[MAX_STRING_LEN];
-  block_t dest;
+  uint8_t        buffer[MAX_STRING_LEN];
+  block_t        dest;
   
   assert(pans         != NULL);
   assert(packet       != NULL);
@@ -416,17 +424,26 @@ static void decode_answer(
   dest.ptr  = buffer;
   dest.size = sizeof(buffer);
   
-  read_domain(packet,parse,&dest);
+  if (read_domain(packet,parse,&dest) != RCODE_OKAY)
+    return RCODE_DOMAIN_ERROR;
+  
   pans->generic.name  = strdup((char *)buffer);
   pans->generic.type  = (enum dns_type)read_uint16(parse);
   pans->generic.class = (enum dns_class)read_uint16(parse);
   pans->generic.ttl   = read_uint32(parse);
+  
+  if ((pans->generic.type < RR_min) || (pans->generic.type >= RR_max))
+    return RCODE_TYPE_ERROR;
+  
+  if ((pans->generic.class < CLASS_min) || (pans->generic.class >= CLASS_max))
+    return RCODE_CLASS_ERROR;
 
   /* FIXME - skip rest of packet for now */
   
   size_t len   = read_uint16(parse);
   parse->ptr  += len;
   parse->size -= len;
+  return RCODE_OKAY;
 }
 
 /***********************************************************************/
@@ -440,6 +457,7 @@ int dns_decode(
   const struct dns_header *header;
   block_t                  packet;
   block_t                  parse;
+  int                      rc;
   
   assert(response != NULL);
   assert(buffer   != NULL);
@@ -458,10 +476,7 @@ int dns_decode(
   header      = (struct dns_header *)buffer;
   
   if ((header->rcode & 0x70) != 0x00)
-  {
-    response->rcode = RCODE_RETURN_FORMAT_ERROR;
-    return RCODE_RETURN_FORMAT_ERROR;
-  }
+    return response->rcode = RCODE_UNKNOWN_OPTIONS;
   
   response->id      = ntohs(header->id);
   response->opcode  = (header->opcode >> 3) & 0x0F;
@@ -493,18 +508,37 @@ int dns_decode(
   }
   
   for (size_t i = 0 ; i < response->qdcount ; i++)
-    decode_question(&response->questions[i],&packet,&parse);
+  {
+    rc = decode_question(&response->questions[i],&packet,&parse);
+    if (rc != RCODE_OKAY)
+    {
+      response->rcode = rc;
+      return rc;
+    }
+  }
 
   for (size_t i = 0 ; i < response->ancount ; i++)
-    decode_answer(&response->answers[i],&packet,&parse);
+  {
+    rc = decode_answer(&response->answers[i],&packet,&parse);
+    if (rc != RCODE_OKAY)
+      return response->rcode = rc;
+  }
   
   for (size_t i = 0 ; i < response->nscount ; i++)
-    decode_answer(&response->nameservers[i],&packet,&parse);
+  {
+    rc = decode_answer(&response->nameservers[i],&packet,&parse);
+    if (rc != RCODE_OKAY)
+      return response->rcode = rc;
+  }
   
   for (size_t i = 0 ; i < response->arcount ; i++)
-    decode_answer(&response->additional[i],&packet,&parse);
-    
-  return 1;
+  {
+    rc = decode_answer(&response->additional[i],&packet,&parse);
+    if (rc != RCODE_OKAY)
+      return response->rcode = rc;
+  }
+  
+  return RCODE_OKAY;
 }
 
 /************************************************************************/

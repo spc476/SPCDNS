@@ -8,6 +8,7 @@
 
 enum dns_type
 {
+  RR_min   =  1,
   RR_A     =  1,	/* IPv4 Address 		*/
   RR_NS    =  2,	/* Name server			*/
   RR_MD    =  3,	/* Mail Destination (obsolete)	*/
@@ -23,35 +24,46 @@ enum dns_type
   RR_HINFO = 13,	/* Host Info			*/
   RR_MINFO = 14,	/* Mailbox/mail list info	*/
   RR_MX    = 15,	/* Mail Exchange		*/
-  RR_TXT   = 16		/* Text				*/
+  RR_TXT   = 16,	/* Text				*/
+  RR_max
 };
 
 enum dns_class
 {
-  CLASS_IN = 1,		/* Internet			*/
-  CLASS_CS = 2,		/* CSNET - obsolete		*/
-  CLASS_CH = 3,		/* CHAOS			*/
-  CLASS_HS = 4		/* Hesiod			*/
+  CLASS_min = 1,
+  CLASS_IN  = 1,	/* Internet			*/
+  CLASS_CS  = 2,	/* CSNET - obsolete		*/
+  CLASS_CH  = 3,	/* CHAOS			*/
+  CLASS_HS  = 4,	/* Hesiod			*/
+  CLASS_max
 };
 
 enum dns_op
 {
+  OP_min    = 0,
   OP_QUERY  = 0,
   OP_IQUERY = 1,
-  OP_STATUS = 2
+  OP_STATUS = 2,
+  OP_max
 };
 
 enum dns_rcode
 {
-  RCODE_OKAY            = 0,
-  RCODE_FORMAT_ERROR    = 1,
-  RCODE_SERVER_FAILURE  = 2,
-  RCODE_NAME_ERROR      = 3,
-  RCODE_NOT_IMPLEMENTED = 4,
-  RCODE_REFUSED         = 5,
+  RCODE_min  = 0,
+  RCODE_OKAY = 0,
+  RCODE_FORMAT_ERROR,
+  RCODE_SERVER_FAILURE,
+  RCODE_NAME_ERROR,
+  RCODE_NOT_IMPLEMENTED,
+  RCODE_REFUSED,
 
-  RCODE_RETURN_FORMAT_ERROR = 200,
-  RCODE_NO_MEMORY
+  RCODE_DOMAIN_ERROR = 200,
+  RCODE_TYPE_ERROR,
+  RCODE_CLASS_ERROR,
+  RCODE_UNKNOWN_OPTIONS,
+  
+  RCODE_NO_MEMORY,
+  RCODE_max
 };  
 
 typedef uint32_t TTL;
