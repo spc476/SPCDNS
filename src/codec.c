@@ -68,6 +68,11 @@ static        int      decode_answer    (idns_context *const restrict,dns_answer
 /***********************************************************************/
 
 #ifndef NDEBUG
+  static int query_okay  (const dns_query_t *const)  __attribute__ ((unused));
+  static int pblock_okay (const block_t *const)      __attribute__ ((unused));
+  static int block_okay  (const block_t)             __attribute__ ((unused));
+  static int context_okay(const idns_context *const) __attribute__ ((unused));
+  
   static int query_okay(const dns_query_t *const query)
   {
     assert(query          != NULL);
@@ -98,7 +103,7 @@ static        int      decode_answer    (idns_context *const restrict,dns_answer
     return 1;
   }
   
-  static inline int block_okay(const block_t block)
+  static int block_okay(const block_t block)
   {
     assert(block.ptr  != NULL);
     assert(block.size >  0);
@@ -121,6 +126,8 @@ static        int      decode_answer    (idns_context *const restrict,dns_answer
 #ifndef NDEBUG
 # include <stdio.h>
 # include <cgilib6/util.h>
+  static void quick_dump(const char *,void *,size_t) __attribute__ ((unused));
+  
   static void quick_dump(const char *tag,void *data,size_t len)
   {
     assert(tag != NULL);
