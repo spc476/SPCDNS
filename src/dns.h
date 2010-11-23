@@ -58,10 +58,21 @@ enum dns_rcode
   RCODE_REFUSED,
 
   RCODE_DOMAIN_ERROR = 200,
+  RCODE_BAD_LENGTH,
   RCODE_UNKNOWN_OPTIONS,
   RCODE_A_BAD_ADDR,
   RCODE_NS_BAD_DOMAIN,
+  RCODE_MB_BAD_DOMAIN,
+  RCODE_MD_BAD_DOMAIN,
+  RCODE_MF_BAD_DOMAIN,
+  RCODE_MR_BAD_DOMAIN,
+  RCODE_MG_BAD_DOMAIN,
   RCODE_MX_BAD_RECORD,
+  RCODE_CNAME_BAD_DOMAIN,
+  RCODE_HINFO_BAD_RECORD,
+  RCODE_MINFO_BAD_RBOX,
+  RCODE_MINFO_BAD_EBOX,
+  RCODE_FORMAT_STRING,
   RCODE_NO_MEMORY,
   RCODE_max
 };  
@@ -92,6 +103,15 @@ typedef struct dns_a_t
   in_addr_t       address;
 } dns_a_t;
 
+typedef struct dns_cname_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *cname;
+} dns_cname_t;
+
 typedef struct dns_ns_t
 {
   const char     *name;
@@ -100,6 +120,51 @@ typedef struct dns_ns_t
   TTL             ttl;
   const char     *nsdname;
 } dns_ns_t;
+
+typedef struct dns_mb_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *madname;
+} dns_mb_t;
+
+typedef struct dns_md_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *madname;
+} dns_md_t;
+
+typedef struct dns_mf_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *madname;
+} dns_mf_t;
+
+typedef struct dns_mg_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *mgmname;
+} dns_mg_t;
+
+typedef struct dns_mr_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *newname;
+} dns_mr_t;
 
 typedef struct dns_txt_t
 {
@@ -120,13 +185,40 @@ typedef struct dns_mx_t
   const char     *exchange;
 } dns_mx_t;
 
+typedef struct dns_hinfo_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *cpu;
+  const char     *os;
+} dns_hinfo_t;
+
+typedef struct dns_minfo_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *rmailbx;
+  const char     *emailbx;
+} dns_minfo_t;
+
 typedef union dns_answer_t
 {
   dns_generic_t generic;
   dns_mx_t      mx;
   dns_a_t       a;
+  dns_cname_t   cname;
   dns_ns_t      ns;
   dns_txt_t     txt;
+  dns_mb_t      mb;
+  dns_md_t      md;
+  dns_mf_t      mf;
+  dns_mg_t      mg;
+  dns_hinfo_t   hinfo;
+  dns_minfo_t   minfo;
 } dns_answer_t;
 
 typedef struct dns_query_t

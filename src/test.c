@@ -100,11 +100,11 @@ int send_request(
 
 void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 {
-  printf("%s\n",tag);
+  printf(";;; %s\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
-    	"\t%s %s %s\n",
+    	"%s %s %s\n",
     	pquest[i].name,
     	c_dns_class_names[pquest[i].class],
     	c_dns_type_names[pquest[i].type]
@@ -114,7 +114,7 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 
 void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
-  printf("%s\n",tag);
+  printf(";;;%s\n",tag);
   
   for (size_t i = 0 ; i < cnt ; i++)
   {
@@ -125,7 +125,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
          || (pans[i].generic.class >= CLASS_max)
        )
     {
-      printf("\t%s %lu %d %d\n",
+      printf(";%s %lu %d %d\n",
       	pans[i].generic.name,
       	(unsigned long)pans[i].generic.ttl,
       	pans[i].generic.class,
@@ -135,12 +135,22 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
     else
     {
       printf(
-    	"\t%s %lu %s %s\n",
+    	"%s %lu %s %s ",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
     	c_dns_class_names[pans[i].generic.class],
     	c_dns_type_names[pans[i].generic.type]
       );
+      
+      switch(pans[i].generic.type)
+      {
+        case RR_NS:
+             printf("%s\n",pans[i].ns.nsdname);
+             break;
+        default:
+             printf("\n");
+             break;
+      }
     }
   }
 }
@@ -165,7 +175,7 @@ int main(int argc,char *argv[])
   for (int i = 1 ; i < argc ; i++)
   {
     domains[i - 1].name = argv[i];
-    domains[i - 1].type = RR_TXT;
+    domains[i - 1].type = RR_MX;
     domains[i - 1].class = CLASS_IN;
   }
   
