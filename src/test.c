@@ -162,6 +162,7 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 
 void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
+  char ipaddr[32];
   char type [16];
   char class[16];
   
@@ -170,12 +171,29 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
-    	"%s %lu %s %s\n",
+    	"%s %lu %s %s ",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
     	class_name(pans[i].generic.class,class,sizeof(class)),
     	type_name (pans[i].generic.type, type, sizeof(type))
     );
+    
+    switch(pans[i].generic.type)
+    {
+      case RR_NS: 
+           printf("%s",pans[i].ns.nsdname);
+           break;
+      case RR_A:
+           inet_ntop(AF_INET,&pans[i].a.address,ipaddr,32);
+           printf("%s",ipaddr);
+           break;
+      case RR_MX:
+           printf("%d %s",pans[i].mx.preference,pans[i].mx.exchange);
+           break;
+      default:
+           break;
+    }
+    printf("\n");
   }
 }
 
