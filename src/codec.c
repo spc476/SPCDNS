@@ -16,6 +16,8 @@
 
 #define MAX_UDP		(  8uL * 1024uL)
 #define MAX_TCP 	(128uL * 1024uL)
+#define MEM_ALIGN	sizeof(uintptr_t)
+#define MEM_MASK	~(sizeof(uintptr_t) - 1uL)
 
 /************************************************************************/
 
@@ -26,7 +28,7 @@ typedef struct block
   enum dns_rcode  err;
 } block_t;
 
-struct dns_header
+struct idns_header
 {
   uint16_t id 		__attribute__ ((packed));
   uint8_t  opcode	__attribute__ ((packed));
@@ -37,81 +39,36 @@ struct dns_header
   uint16_t arcount	__attribute__ ((packed));
 };
 
-/***********************************************************************/
-
-static inline uint16_t read_uint16	(block_t *const)                                  					__attribute__ ((nonnull));
-static inline uint32_t read_uint32	(block_t *const)									__attribute__ ((nonnull));
-static        int      read_domain	(const block_t *const restrict,block_t *const restrict,block_t *const restrict)		__attribute__ ((nonnull));
-
-static        int      clone_string     (dns_answer_t *const restrict,const size_t,block_t *const restrict,const enum dns_rcode)                               __attribute__ ((nonnull(1,3)));
-static        int      clone_domain     (dns_answer_t *const restrict,const size_t,const block_t *const restrict,block_t *const restrict,const enum dns_rcode) __attribute__ ((nonnull(1,3,4)));
-
-static        block_t  dns_encode_domain(block_t,const dns_question_t *const restrict)    					__attribute__ ((nonnull(2)));
-
-static        int      decode_question	(dns_question_t *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
-static        int      decode_answer    (dns_answer_t   *const restrict,const block_t *const restrict,block_t *const restrict)	__attribute__ ((nonnull));
-
-static inline int      decode_rr_a	(dns_a_t     *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
-static inline int      decode_rr_mx     (dns_mx_t    *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
-static inline int      decode_rr_txt    (dns_txt_t   *const restrict,const block_t *const restrict,block_t *const restrict,const size_t) __attribute__ ((nonnull(1,2,3)));
-static inline int      decode_rr_hinfo	(dns_hinfo_t *const restrict,block_t *const restrict)						 __attribute__ ((nonnull));
-static inline int      decode_rr_minfo  (dns_minfo_t *const restrict,const block_t *const restrict,block_t *const restrict)		 __attribute__ ((nonnull));
-
-static block_t dns_encode_domain(block_t data,const dns_question_t *const restrict);
+typedef struct idns_context
+{
+  block_t      packet;
+  block_t      parse;
+  block_t      dest;
+  dns_query_t *response;
+} idns_context;
 
 /***********************************************************************/
 
-const char *const c_dns_type_names[] =
-{
-  "UNKN",
-  "A",
-  "NS",
-  "MD",
-  "MF",
-  "CNAME",
-  "SOA",
-  "MB",
-  "MG",
-  "MR",
-  "NULL",
-  "WKS",
-  "PTR",
-  "HINFO",
-  "MINFO",
-  "MX",
-  "TXT"
-};
+static        bool	 align_memory	(block_t *const)				__attribute__ ((nonnull));
+static        void      *alloc_struct	(block_t *const,const size_t)			__attribute__ ((nonnull(1)));
+static inline uint16_t	 read_uint16	(block_t *const)				__attribute__ ((nonnull));
+static inline uint32_t	 read_uint32	(block_t *const)				__attribute__ ((nonnull));
+static        int        read_domain    (idns_context *const restrict,const char **restrict)	__attribute__ ((nonnull));
 
-const char *const c_dns_class_names[] = 
-{
-  "??",
-  "IN",
-  "CS",
-  "CH",
-  "HS"
-};
+static        block_t  dns_encode_domain(block_t,const dns_question_t *const restrict)	__attribute__ ((nonnull(2)));
 
-const char *const c_dns_op_names[] =
-{
-  "QUERY",
-  "IQUERY",
-  "STATUS"
-};
-
-const char *const c_dns_result_names[] =
-{
-  "Ok",
-  "Format error",
-  "Server failure",
-  "Name error",
-  "Not implemented",
-  "Refused"
-};
+static        int      decode_question	(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nonnull));
+static inline int      decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_mx     (idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_hinfo	(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_minfo	(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
+static        int      decode_answer    (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
 
 /***********************************************************************/
 
 #ifndef NDEBUG
-  int check_query(const dns_query_t *const query)
+  static int query_okay(const dns_query_t *const query)
   {
     assert(query          != NULL);
     assert(query->id      >= 0);
@@ -132,16 +89,39 @@ const char *const c_dns_result_names[] =
     }
     return 1;
   }
-#else
-#  define check_query(q)
+  
+  static int pblock_okay(const block_t *const block)
+  {
+    assert(block       != NULL);
+    assert(block->ptr  != NULL);
+    assert(block->size >  0);
+    return 1;
+  }
+  
+  static inline int block_okay(const block_t block)
+  {
+    assert(block.ptr  != NULL);
+    assert(block.size >  0);
+    return 1;
+  }
+  
+  static int context_okay(const idns_context *const data)
+  {
+    assert(data     != NULL);
+    assert(data->response != NULL);
+    assert(block_okay(data->packet));
+    assert(block_okay(data->parse));
+    assert(block_okay(data->dest));
+    return 1;
+  }
 #endif
 
-/*********************************************************************/
+/*******************************************************************/
 
 #ifndef NDEBUG
 # include <stdio.h>
 # include <cgilib6/util.h>
-  void quick_dump(const char *tag,void *data,size_t len)
+  static void quick_dump(const char *tag,void *data,size_t len)
   {
     assert(tag != NULL);
     assert(data != NULL);
@@ -156,14 +136,57 @@ const char *const c_dns_result_names[] =
 
 /******************************************************************/
 
+static bool align_memory(block_t *const pool)
+{
+  size_t newsize;
+  size_t delta;
+  
+  assert(pblock_okay(pool));
+  
+  if (pool->size < MEM_ALIGN)
+    return false;
+  
+  newsize = pool->size & MEM_MASK;
+  if (newsize == pool->size)
+    return true;
+  
+  assert(newsize < pool->size);
+  delta = (newsize + MEM_ALIGN) - pool->size;
+  assert(delta < pool->size);
+  
+  pool->ptr  += delta;
+  pool->size -= delta;
+  
+  return true;
+}
+
+/*************************************************************************/  
+
+static void *alloc_struct(block_t *const pool,const size_t size)
+{
+  uint8_t *ptr;
+  
+  assert(pblock_okay(pool));
+  
+  if (pool->size == 0)      return NULL;
+  if (!align_memory(pool))  return NULL;
+  if (pool->size < size)    return NULL;
+  
+  ptr         = pool->ptr;
+  pool->ptr  += size;
+  pool->size -= size;
+  return (void *)ptr;
+}
+
+/***********************************************************************/
+
 static inline uint16_t read_uint16(block_t *const parse)
 {
   uint16_t val;
   
-  assert(parse       != NULL);
-  assert(parse->ptr  != NULL);
+  assert(pblock_okay(parse));
   assert(parse->size >= 2);
-
+  
   val = (parse->ptr[0] << 8) 
       | (parse->ptr[1]     );
   parse->ptr  += 2;
@@ -177,8 +200,7 @@ static inline uint32_t read_uint32(block_t *const parse)
 {
   uint32_t val;
   
-  assert(parse       != NULL);
-  assert(parse->ptr  != NULL);
+  assert(pblock_okay(parse));  
   assert(parse->size >= 4);
   
   val = (parse->ptr[0] << 24) 
@@ -192,26 +214,19 @@ static inline uint32_t read_uint32(block_t *const parse)
 
 /********************************************************************/
 
-static int read_domain(
-	const block_t *const restrict packet,
-	      block_t *const restrict pparse,
-	      block_t *const restrict dest
-)
+static int read_domain(idns_context *const restrict data,const char **restrict result)
 {
-  block_t *parse = pparse;
+  block_t *parse = &data->parse;
   block_t  tmp;
   size_t   len;
+  int      loop;	/* loop detection */
   
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(pparse       != NULL);
-  assert(pparse->ptr  != NULL);
-  assert(pparse->size >  0);
-  assert(dest         != NULL);
-  assert(dest->ptr    != NULL);
-  assert(dest->size   >  0);
-
+  assert(context_okay(data));
+  assert(result != NULL);
+  
+  *result = (char *)data->dest.ptr;
+  loop    = 0;
+  
   do
   {
     if (*parse->ptr < 64)
@@ -221,25 +236,28 @@ static int read_domain(
       if (parse->size < len + 1)
         return RCODE_DOMAIN_ERROR;
 
-      memcpy(dest->ptr,&parse->ptr[1],len);
-      parse->ptr   += (len + 1);
-      parse->size  -= (len + 1);
-      dest->size   -= (len + 1);
-      dest->ptr    += len;
-      *dest->ptr++  = '.';
+      memcpy(data->dest.ptr,&parse->ptr[1],len);
+      parse->ptr         += (len + 1);
+      parse->size        -= (len + 1);
+      data->dest.size   -= (len + 1);
+      data->dest.ptr    += len;
+      *data->dest.ptr++  = '.';
     }
     else if (*parse->ptr >= 192)
     {
+      if (++loop == 256)
+        return RCODE_DOMAIN_LOOP;
+      
       if (parse->size < 2)
         return RCODE_DOMAIN_ERROR;
       
       len = read_uint16(parse) & 0x3FFF;
       
-      if (len >= packet->size)
+      if (len >= data->packet.size)
         return RCODE_DOMAIN_ERROR;
       
-      tmp.ptr = &packet->ptr[len];
-      tmp.size = packet->size - (size_t)(tmp.ptr - packet->ptr);
+      tmp.ptr = &data->packet.ptr[len];
+      tmp.size = data->packet.size - (size_t)(tmp.ptr - data->packet.ptr);
       parse    = &tmp;
     }
     else
@@ -249,65 +267,13 @@ static int read_domain(
   
   parse->ptr++;
   parse->size--;
-  *dest->ptr++ = '\0';
-  dest->size--;
+  *data->dest.ptr++ = '\0';
+  data->dest.size--;
   
   return RCODE_OKAY;
 }
 
 /********************************************************************/
-
-static int clone_string(
-	      dns_answer_t *const restrict pans,
-	const size_t                       off,
-	      block_t      *const restrict parse,
-	const enum dns_rcode               err
-)
-{
-  uint8_t *p;
-  size_t   len;
-  
-  len = *parse->ptr;
-  parse->size--;
-  
-  if (len > parse->size)
-    return err;
-  
-  p = malloc(len + 1);
-  if (p == NULL)
-    return RCODE_NO_MEMORY;
-  
-  memcpy(p,parse->ptr,len);
-  parse->ptr  += len;
-  parse->size -= len;
-  *(uint8_t **)((char *)pans + off) = p;
-  return RCODE_OKAY;
-}
-
-/*******************************************************************/
-
-static int clone_domain(
-	      dns_answer_t *const restrict pans,
-	const size_t                       off,
-	const block_t      *const restrict packet,
-	      block_t      *const restrict parse,
-	const enum dns_rcode               err
-)
-{
-  uint8_t  buffer[MAX_STRING_LEN];
-  block_t  dest;
-  
-  dest.ptr = buffer;
-  dest.size = sizeof(buffer);
-  
-  if (read_domain(packet,parse,&dest) != RCODE_OKAY)
-    return err;
-  
-  *(char **)((char*)pans + off) = strdup((char *)buffer);
-  return RCODE_OKAY;
-}
-      
-/***********************************************************************/    
 
 int dns_encode(
 	uint8_t           *const restrict buffer,
@@ -315,15 +281,15 @@ int dns_encode(
 	const dns_query_t *const restrict query
 )
 {
-  struct dns_header *header;
-  block_t data;
+  struct idns_header *header;
+  block_t             data;
   
   assert(buffer != NULL);
   assert(plen   != NULL);
   assert(*plen  >= 12);
-  assert(check_query(query));
+  assert(query  != NULL);
   
-  header = (struct dns_header *)buffer;
+  header = (struct idns_header *)buffer;
   
   header->id      = htons(query->id);
   header->opcode  = query->opcode << 3;
@@ -340,7 +306,7 @@ int dns_encode(
   if (query->ra)     header->rcode  |= 0x80;
   
   data.size = *plen - 12;
-  data.ptr  = &buffer[sizeof(struct dns_header)];
+  data.ptr  = &buffer[sizeof(struct idns_header)];
   data.err  = RCODE_OKAY;
   
   for (size_t i = 0 ; i < query->qdcount ; i++)
@@ -435,29 +401,24 @@ static block_t dns_encode_domain(
 /***********************************************************************/
 
 static int decode_question(
-	      dns_question_t *const restrict pquest,
-	const block_t        *const restrict packet,
-	      block_t        *const restrict parse
+	idns_context   *const restrict data,
+	dns_question_t *const restrict pquest
 )
 {
-  uint8_t buffer[MAX_STRING_LEN];
-  block_t dest;
+  int rc;
   
-  assert(pquest       != NULL);
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  0);
+  assert(context_okay(data));
+  assert(pquest != NULL);
   
-  dest.ptr  = buffer;
-  dest.size = sizeof(buffer);
+  rc = read_domain(data,&pquest->name);
+  if (rc != RCODE_OKAY)
+    return RCODE_QUESTION_BAD;
   
-  read_domain(packet,parse,&dest);
-  pquest->name  = strdup((char *)buffer);
-  pquest->type  = (enum dns_type)read_uint16(parse);
-  pquest->class = (enum dns_class)read_uint16(parse);
+  if (data->parse.size < 4)
+    return RCODE_QUESTION_BAD;
+    
+  pquest->type  = (enum dns_type) read_uint16(&data->parse);
+  pquest->class = (enum dns_class)read_uint16(&data->parse);
   
   return RCODE_OKAY;
 }
@@ -465,163 +426,135 @@ static int decode_question(
 /************************************************************************/
 
 static inline int decode_rr_a(
-	      dns_a_t *const restrict pa,
-	const block_t *const restrict packet,
-	      block_t *const restrict parse,
-	const size_t   len
+	idns_context *const restrict data,
+	dns_a_t      *const restrict pa,
+	const size_t                 len
 )
 {
-  assert(pa           != NULL);
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  0);
-  
+  assert(data != NULL);
+  assert(pa   != NULL);
+
   if (len != 4) return RCODE_A_BAD_ADDR;
-  memcpy(&pa->address,parse->ptr,4);
-  parse->ptr  += 4;
-  parse->size -= 4;
+  memcpy(&pa->address,data->parse.ptr,4);
+  data->parse.ptr  += 4;
+  data->parse.size -= 4;
   return RCODE_OKAY;
 }
 
 /***********************************************************************/
 
 static inline int decode_rr_mx(
-	      dns_mx_t *const restrict pmx,
-	const block_t  *const restrict packet,
-	      block_t  *const restrict parse,
-	const size_t    len
+	idns_context *const restrict data,
+	dns_mx_t     *const restrict pmx,
+	const size_t                 len
 )
 {
-  assert(pmx          != NULL);
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  0);
-  
+  assert(context_okay(data));
+  assert(pmx != NULL);
+
   if (len < 4) return RCODE_MX_BAD_RECORD;
   
-  pmx->preference = read_uint16(parse);
-  return clone_domain((dns_answer_t *)pmx,offsetof(struct dns_mx_t,exchange),packet,parse,RCODE_MX_BAD_RECORD); 
+  pmx->preference = read_uint16(&data->parse);
+  return read_domain(data,&pmx->exchange);
 }
 
 /**********************************************************************/
 
 static inline int decode_rr_txt(
-	      dns_txt_t *const restrict ptxt,
-	const block_t   *const restrict packet,
-	      block_t   *const restrict parse,
-	const size_t     len
+	idns_context *const restrict data,
+	dns_txt_t    *const restrict ptxt,
+	const size_t                 len
 )
 {
-  assert(ptxt         != NULL);
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  0);
+  assert(context_okay(data));
+  assert(ptxt != NULL);
 
-  parse->ptr += len;
-  parse->size -= len;
+  data->parse.ptr  += len;
+  data->parse.size -= len;
   return RCODE_OKAY;
 }
 
 /**********************************************************************/
 
 static inline int decode_rr_hinfo(
-	dns_hinfo_t *const restrict phinfo,
-	block_t     *const restrict parse
+	idns_context *const restrict data,
+	dns_hinfo_t  *const restrict phinfo
 )
 {
   enum dns_rcode rc;
   
-  rc = clone_string((dns_answer_t *)phinfo,offsetof(struct dns_hinfo_t,cpu),parse,RCODE_HINFO_BAD_RECORD);
+  rc = read_domain(data,&phinfo->cpu);
   if (rc != RCODE_OKAY) return rc;
-  rc = clone_string((dns_answer_t *)phinfo,offsetof(struct dns_hinfo_t,os), parse,RCODE_HINFO_BAD_RECORD);
+  rc = read_domain(data,&phinfo->os);
   return rc;
 }
 
 /**********************************************************************/
 
 static inline int decode_rr_minfo(
-	      dns_minfo_t *const restrict pminfo,
-	const block_t     *const restrict packet,
-	      block_t     *const restrict parse
+	idns_context *const restrict data,
+	dns_minfo_t  *const restrict pminfo
 )
 {
   enum dns_rcode rc;
   
-  rc = clone_domain((dns_answer_t *)pminfo,offsetof(struct dns_minfo_t,rmailbx),packet,parse,RCODE_MINFO_BAD_RBOX);
+  rc = read_domain(data,&pminfo->rmailbx);
   if (rc != RCODE_OKAY) return rc;
-  rc = clone_domain((dns_answer_t *)pminfo,offsetof(struct dns_minfo_t,emailbx),packet,parse,RCODE_MINFO_BAD_EBOX);
+  rc = read_domain(data,&pminfo->emailbx);
   return rc;
 }
 
 /*********************************************************************/
 
 static int decode_answer(
-	      dns_answer_t *const restrict pans,
-	const block_t      *const restrict packet,
-	      block_t      *const restrict parse
+		idns_context *const restrict data,
+		dns_answer_t *const restrict pans
 )
 {
-  uint8_t        buffer[MAX_STRING_LEN];
-  block_t        dest;
   size_t         len;
   size_t         rest;
   
-  assert(pans         != NULL);
-  assert(packet       != NULL);
-  assert(packet->ptr  != NULL);
-  assert(packet->size >  0);
-  assert(parse        != NULL);
-  assert(parse->ptr   != NULL);
-  assert(parse->size  >  0);
+  assert(context_okay(data));
+  assert(pans != NULL);
   
-  dest.ptr  = buffer;
-  dest.size = sizeof(buffer);
-  
-  if (read_domain(packet,parse,&dest) != RCODE_OKAY)
+  if (read_domain(data,&pans->generic.name) != RCODE_OKAY)
     return RCODE_DOMAIN_ERROR;
   
-  pans->generic.name  = strdup((char *)buffer);
-  pans->generic.type  = (enum dns_type)read_uint16(parse);
-  pans->generic.class = (enum dns_class)read_uint16(parse);
-  pans->generic.ttl   = read_uint32(parse);
+  if (data->parse.size < 10)
+    return RCODE_ANSWER_BAD;
+    
+  pans->generic.type  = read_uint16(&data->parse);
+  pans->generic.class = read_uint16(&data->parse);
+  pans->generic.ttl   = read_uint32(&data->parse);
   
-  len = read_uint16(parse);
-  rest = packet->size - (parse->ptr - packet->ptr);
+  len  = read_uint16(&data->parse);
+  rest = data->packet.size - (data->parse.ptr - data->packet.ptr);
   if (len > rest) 
     return RCODE_BAD_LENGTH;
- 
+
   switch(pans->generic.type)
   {
-    case RR_A:     return decode_rr_a(&pans->a ,packet,parse,len);
-    case RR_NS:    return clone_domain(pans,offsetof(struct dns_ns_t,nsdname),packet,parse,RCODE_NS_BAD_DOMAIN);
-    case RR_MD:    return clone_domain(pans,offsetof(struct dns_md_t,madname),packet,parse,RCODE_MD_BAD_DOMAIN);
-    case RR_MF:    return clone_domain(pans,offsetof(struct dns_mf_t,madname),packet,parse,RCODE_MF_BAD_DOMAIN);
-    case RR_CNAME: return clone_domain(pans,offsetof(struct dns_cname_t,cname),packet,parse,RCODE_CNAME_BAD_DOMAIN);
+    case RR_A:     return decode_rr_a(data,&pans->a,len);
+    case RR_NS:    return read_domain(data,&pans->ns.nsdname);
+    case RR_MD:    return read_domain(data,&pans->md.madname);
+    case RR_MF:    return read_domain(data,&pans->mf.madname);
+    case RR_CNAME: return read_domain(data,&pans->cname.cname);
     case RR_SOA:   break; /*return decode_rr_soa(&pans->soa,packet,parse,len);*/
-    case RR_MB:    return clone_domain(pans,offsetof(struct dns_mb_t,madname),packet,parse,RCODE_MB_BAD_DOMAIN);
-    case RR_MG:    return clone_domain(pans,offsetof(struct dns_mg_t,mgmname),packet,parse,RCODE_MG_BAD_DOMAIN);
-    case RR_MR:    return clone_domain(pans,offsetof(struct dns_mr_t,newname),packet,parse,RCODE_MR_BAD_DOMAIN);
+    case RR_MB:    return read_domain(data,&pans->mb.madname);
+    case RR_MG:    return read_domain(data,&pans->mg.mgmname);
+    case RR_MR:    return read_domain(data,&pans->mr.newname);
     case RR_NULL:  break;
     case RR_WKS:   break;
     case RR_PTR:   break;
-    case RR_HINFO: return decode_rr_hinfo(&pans->hinfo,parse);
-    case RR_MINFO: return decode_rr_minfo(&pans->minfo,packet,parse);
-    case RR_MX:    return decode_rr_mx (&pans->mx ,packet,parse,len);
-    case RR_TXT:   return decode_rr_txt(&pans->txt,packet,parse,len);
+    case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);
+    case RR_MINFO: return decode_rr_minfo(data,&pans->minfo);
+    case RR_MX:    return decode_rr_mx   (data,&pans->mx ,len);
+    case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
     default:       break;
   }
   
-  parse->ptr  += len;
-  parse->size -= len;
+  data->parse.ptr  += len;
+  data->parse.size -= len;
   
   return RCODE_OKAY;
 }
@@ -629,19 +562,34 @@ static int decode_answer(
 /***********************************************************************/
 
 int dns_decode(
-	      dns_query_t *restrict       response,
-	const uint8_t     *const restrict buffer,
-	const size_t                      len
+	      void    *const restrict presponse,
+	const size_t                  rsize,
+	const uint8_t *const restrict buffer,
+	const size_t                  len
 )
 {
-  const struct dns_header *header;
-  block_t                  packet;
-  block_t                  parse;
-  int                      rc;
+  const struct idns_header *header;
+  dns_query_t              *response;
+  idns_context              context;
+  int                       rc;
+
+  assert(presponse != NULL);
+  assert(rsize     >= 8192);
+  assert(buffer    != NULL);
+  assert(len       >= sizeof(struct idns_header));
   
-  assert(response != NULL);
-  assert(buffer   != NULL);
-  assert(len      >  0);
+  context.packet.ptr  = (uint8_t *)buffer;
+  context.packet.size = len;
+  context.parse.ptr   = (uint8_t *)&buffer[sizeof(struct idns_header)];
+  context.parse.size  = len - sizeof(struct idns_header);
+  context.dest.ptr    = presponse;
+  context.dest.size   = rsize;
+  
+  response         = (dns_query_t *)context.dest.ptr;
+  context.response = alloc_struct(&context.dest,sizeof(dns_query_t));
+  
+  assert(context.response != NULL);
+  assert(context.response == response);
   
   memset(response,0,sizeof(dns_query_t));
   response->questions   = NULL;
@@ -649,14 +597,10 @@ int dns_decode(
   response->nameservers = NULL;
   response->additional  = NULL;
   
-  packet.ptr  = (uint8_t *)buffer;
-  packet.size = len;
-  parse.ptr   = (uint8_t *)&buffer[sizeof(struct dns_header)];
-  parse.size  = len - sizeof(struct dns_header);
-  header      = (struct dns_header *)buffer;
+  header      = (struct idns_header *)buffer;
   
   if ((header->rcode & 0x70) != 0x00)
-    return response->rcode = RCODE_UNKNOWN_OPTIONS;
+    return free(response) , RCODE_UNKNOWN_OPTIONS;
   
   response->id      = ntohs(header->id);
   response->opcode  = (header->opcode >> 3) & 0x0F;
@@ -671,10 +615,10 @@ int dns_decode(
   response->nscount = ntohs(header->nscount);
   response->arcount = ntohs(header->arcount);
 
-  response->questions   = malloc(response->qdcount * sizeof(dns_question_t));
-  response->answers     = malloc(response->ancount * sizeof(dns_answer_t));
-  response->nameservers = malloc(response->nscount * sizeof(dns_answer_t));
-  response->additional  = malloc(response->arcount * sizeof(dns_answer_t));
+  response->questions   = alloc_struct(&context.dest,response->qdcount * sizeof(dns_question_t));
+  response->answers     = alloc_struct(&context.dest,response->ancount * sizeof(dns_answer_t));
+  response->nameservers = alloc_struct(&context.dest,response->nscount * sizeof(dns_answer_t));
+  response->additional  = alloc_struct(&context.dest,response->arcount * sizeof(dns_answer_t));
   
   if (
           (response->qdcount && (response->questions   == NULL))
@@ -683,41 +627,37 @@ int dns_decode(
        || (response->arcount && (response->additional  == NULL))
      )
   {
-    response->rcode = RCODE_NO_MEMORY;
     return RCODE_NO_MEMORY;
   }
   
   for (size_t i = 0 ; i < response->qdcount ; i++)
   {
-    rc = decode_question(&response->questions[i],&packet,&parse);
+    rc = decode_question(&context,&response->questions[i]);
     if (rc != RCODE_OKAY)
-    {
-      response->rcode = rc;
       return rc;
-    }
   }
 
   for (size_t i = 0 ; i < response->ancount ; i++)
   {
-    rc = decode_answer(&response->answers[i],&packet,&parse);
+    rc = decode_answer(&context,&response->answers[i]);
     if (rc != RCODE_OKAY)
-      return response->rcode = rc;
+      return rc;
   }
   
   for (size_t i = 0 ; i < response->nscount ; i++)
   {
-    rc = decode_answer(&response->nameservers[i],&packet,&parse);
+    rc = decode_answer(&context,&response->nameservers[i]);
     if (rc != RCODE_OKAY)
-      return response->rcode = rc;
+      return rc;
   }
   
   for (size_t i = 0 ; i < response->arcount ; i++)
   {
-    rc = decode_answer(&response->additional[i],&packet,&parse);
+    rc = decode_answer(&context,&response->additional[i]);
     if (rc != RCODE_OKAY)
-      return response->rcode = rc;
+      return rc;
   }
-  
+
   return RCODE_OKAY;
 }
 

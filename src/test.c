@@ -98,60 +98,84 @@ int send_request(
 
 /**********************************************************************/
 
+char *type_name(enum dns_type t,char *buf,size_t len)
+{
+  assert(buf != NULL);
+  assert(len >  6);
+  
+  switch(t)
+  {
+    case RR_A:		snprintf(buf,len,"A");		break;
+    case RR_NS:		snprintf(buf,len,"NS");		break;
+    case RR_MD: 	snprintf(buf,len,"MD");		break;
+    case RR_MF: 	snprintf(buf,len,"MF");		break;
+    case RR_CNAME:	snprintf(buf,len,"CNAME"); 	break;
+    case RR_SOA:	snprintf(buf,len,"SOA");	break;
+    case RR_MB:		snprintf(buf,len,"MB");		break;
+    case RR_MG:		snprintf(buf,len,"MG");		break;
+    case RR_MR:		snprintf(buf,len,"MR");		break;
+    case RR_NULL:	snprintf(buf,len,"NULL");	break;
+    case RR_WKS:	snprintf(buf,len,"WKS");	break;
+    case RR_PTR:	snprintf(buf,len,"PTR");	break;
+    case RR_HINFO:	snprintf(buf,len,"HINFO");	break;
+    case RR_MINFO:	snprintf(buf,len,"MINFO");	break;
+    case RR_MX:		snprintf(buf,len,"MX");		break;
+    case RR_TXT:	snprintf(buf,len,"TXT");	break;
+    default:		snprintf(buf,len,"X-%d",t);	break;
+  }
+  return buf;
+}
+
+char *class_name(enum dns_class c,char *buf,size_t len)
+{
+  assert(buf != NULL);
+  assert(len >  6);
+  
+  switch(c)
+  {
+    case CLASS_IN: snprintf(buf,len,"IN");     break;
+    case CLASS_CS: snprintf(buf,len,"CS");     break;
+    case CLASS_CH: snprintf(buf,len,"CH");     break;
+    case CLASS_HS: snprintf(buf,len,"HS");     break;
+    default:       snprintf(buf,len,"X-%d",c); break;
+  }
+  
+  return buf;
+}
+
 void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 {
+  char type [16];
+  char class[16];
+  
   printf(";;; %s\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
     	"%s %s %s\n",
     	pquest[i].name,
-    	c_dns_class_names[pquest[i].class],
-    	c_dns_type_names[pquest[i].type]
+    	class_name(pquest[i].class,class,sizeof(class)),
+    	type_name (pquest[i].type, type, sizeof(type))
     );
   }
 }
 
 void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
+  char type [16];
+  char class[16];
+  
   printf(";;;%s\n",tag);
   
   for (size_t i = 0 ; i < cnt ; i++)
   {
-    if (
-            (pans[i].generic.type  <  RR_min) 
-         || (pans[i].generic.type  >= RR_max)
-         || (pans[i].generic.class <  CLASS_min)
-         || (pans[i].generic.class >= CLASS_max)
-       )
-    {
-      printf(";%s %lu %d %d\n",
-      	pans[i].generic.name,
-      	(unsigned long)pans[i].generic.ttl,
-      	pans[i].generic.class,
-      	pans[i].generic.type
-      );
-    }
-    else
-    {
-      printf(
-    	"%s %lu %s %s ",
+    printf(
+    	"%s %lu %s %s\n",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
-    	c_dns_class_names[pans[i].generic.class],
-    	c_dns_type_names[pans[i].generic.type]
-      );
-      
-      switch(pans[i].generic.type)
-      {
-        case RR_NS:
-             printf("%s\n",pans[i].ns.nsdname);
-             break;
-        default:
-             printf("\n");
-             break;
-      }
-    }
+    	class_name(pans[i].generic.class,class,sizeof(class)),
+    	type_name (pans[i].generic.type, type, sizeof(type))
+    );
   }
 }
 
@@ -210,25 +234,28 @@ int main(int argc,char *argv[])
   printf("\nINCOMING:\n\n");
   dump_memory(stdout,inbuffer,insize,0);
   
-  dns_query_t result;
+  uint8_t      bufresult[8192];
+  dns_query_t *result;
   
-  rc = dns_decode(&result,inbuffer,insize);
+  rc = dns_decode(bufresult,sizeof(bufresult),inbuffer,insize);
   if (rc != RCODE_OKAY)
   {
     fprintf(stderr,"dns_decode() = %d\n",rc);
     return EXIT_FAILURE;
   }
   
-  syslog(LOG_DEBUG,"id:      %d",result.id);
-  syslog(LOG_DEBUG,"qdcount: %lu",(unsigned long)result.qdcount);
-  syslog(LOG_DEBUG,"ancount: %lu",(unsigned long)result.ancount);
-  syslog(LOG_DEBUG,"nscount: %lu",(unsigned long)result.nscount);
-  syslog(LOG_DEBUG,"arcount: %lu",(unsigned long)result.arcount);
+  result = (dns_query_t *)bufresult;
   
-  print_question("QUESTIONS"   ,result.questions   ,result.qdcount);
-  print_answer  ("ANSWERS"     ,result.answers     ,result.ancount);
-  print_answer  ("NAMESERVERS" ,result.nameservers ,result.nscount);
-  print_answer  ("ADDITIONAL"  ,result.additional  ,result.arcount);
+  syslog(LOG_DEBUG,"id:      %d",result->id);
+  syslog(LOG_DEBUG,"qdcount: %lu",(unsigned long)result->qdcount);
+  syslog(LOG_DEBUG,"ancount: %lu",(unsigned long)result->ancount);
+  syslog(LOG_DEBUG,"nscount: %lu",(unsigned long)result->nscount);
+  syslog(LOG_DEBUG,"arcount: %lu",(unsigned long)result->arcount);
+  
+  print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
+  print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
+  print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
+  print_answer  ("ADDITIONAL"  ,result->additional  ,result->arcount);
 
   return EXIT_SUCCESS;
 }

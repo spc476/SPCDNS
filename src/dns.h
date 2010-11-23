@@ -32,9 +32,9 @@ enum dns_class
 {
   CLASS_min = 1,
   CLASS_IN  = 1,	/* Internet			*/
-  CLASS_CS  = 2,	/* CSNET - obsolete		*/
-  CLASS_CH  = 3,	/* CHAOS			*/
-  CLASS_HS  = 4,	/* Hesiod			*/
+  CLASS_CS,		/* CSNET - obsolete		*/
+  CLASS_CH,		/* CHAOS			*/
+  CLASS_HS,		/* Hesiod			*/
   CLASS_max
 };
 
@@ -42,8 +42,8 @@ enum dns_op
 {
   OP_min    = 0,
   OP_QUERY  = 0,
-  OP_IQUERY = 1,
-  OP_STATUS = 2,
+  OP_IQUERY,
+  OP_STATUS,
   OP_max
 };
 
@@ -58,22 +58,15 @@ enum dns_rcode
   RCODE_REFUSED,
 
   RCODE_DOMAIN_ERROR = 200,
-  RCODE_BAD_LENGTH,
-  RCODE_UNKNOWN_OPTIONS,
-  RCODE_A_BAD_ADDR,
-  RCODE_NS_BAD_DOMAIN,
-  RCODE_MB_BAD_DOMAIN,
-  RCODE_MD_BAD_DOMAIN,
-  RCODE_MF_BAD_DOMAIN,
-  RCODE_MR_BAD_DOMAIN,
-  RCODE_MG_BAD_DOMAIN,
+  RCODE_DOMAIN_LOOP,
+  RCODE_QUESTION_BAD,
   RCODE_MX_BAD_RECORD,
-  RCODE_CNAME_BAD_DOMAIN,
-  RCODE_HINFO_BAD_RECORD,
-  RCODE_MINFO_BAD_RBOX,
-  RCODE_MINFO_BAD_EBOX,
-  RCODE_FORMAT_STRING,
+  RCODE_ANSWER_BAD,
+  RCODE_BAD_LENGTH,
+  RCODE_A_BAD_ADDR,
+  RCODE_UNKNOWN_OPTIONS,
   RCODE_NO_MEMORY,
+  
   RCODE_max
 };  
 
@@ -93,6 +86,16 @@ typedef struct dns_generic_t
   enum dns_class  class;
   TTL             ttl;
 } dns_generic_t;
+
+typedef struct dns_x_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  size_t          size;
+  uint8_t        *rawdata;
+} dns_x_t;
 
 typedef struct dns_a_t
 {
@@ -217,8 +220,10 @@ typedef union dns_answer_t
   dns_md_t      md;
   dns_mf_t      mf;
   dns_mg_t      mg;
+  dns_mr_t      mr;
   dns_hinfo_t   hinfo;
   dns_minfo_t   minfo;
+  dns_x_t       x;
 } dns_answer_t;
 
 typedef struct dns_query_t
@@ -243,11 +248,6 @@ typedef struct dns_query_t
 
 /**********************************************************************/
 
-extern const char *const c_dns_type_names  [];
-extern const char *const c_dns_class_names [];
-extern const char *const c_dns_op_names    [];
-extern const char *const c_dns_result_names[];
-
 int	dns_encode	(
 			  uint8_t           *restrict,
 			  size_t            *restrict,
@@ -255,9 +255,10 @@ int	dns_encode	(
 			) __attribute__ ((nonnull));
 
 int	dns_decode	(
-			  dns_query_t *restrict,
+                          void *const restrict,
+                          const size_t,
 			  const uint8_t *const restrict,
 			  const size_t
-			) __attribute__ ((nonnull(1,2)));
+			) __attribute__ ((nonnull(1,3)));
 
 #endif
