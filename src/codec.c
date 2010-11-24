@@ -267,8 +267,6 @@ static int read_string(
   assert(context_okay(data));
   assert(result != NULL);
 
-  quick_dump("NAPTR-STRING:",data->parse.ptr,(*data->parse.ptr) + 1);
- 
   len = *data->parse.ptr;
   
   if (data->dest.size < len + 1)
@@ -317,9 +315,13 @@ static int read_domain(idns_context *const restrict data,const char **restrict r
       if (data->dest.size < len)
         return RCODE_NO_MEMORY;
       
-      memcpy(data->dest.ptr,&parse->ptr[1],len);
-      parse->ptr         += (len + 1);
-      parse->size        -= (len + 1);
+      if (len)
+      {
+        memcpy(data->dest.ptr,&parse->ptr[1],len);
+        parse->ptr         += (len + 1);
+        parse->size        -= (len + 1);
+      }
+
       data->dest.size   -= (len + 1);
       data->dest.ptr    += len;
       *data->dest.ptr++  = '.';
@@ -343,8 +345,7 @@ static int read_domain(idns_context *const restrict data,const char **restrict r
     }
     else
       return RCODE_DOMAIN_ERROR;
-
-  } while (*parse->ptr);
+  } while(*parse->ptr);
   
   parse->ptr++;
   parse->size--;
@@ -640,7 +641,7 @@ static inline int decode_rr_naptr(
   if (rc != RCODE_OKAY) return rc;
   rc = read_string(data,&pnaptr->regexp);
   if (rc != RCODE_OKAY) return rc;
-  return read_string(data,&pnaptr->replacement);
+  return read_domain(data,&pnaptr->replacement);
 }
 
 /********************************************************************/
