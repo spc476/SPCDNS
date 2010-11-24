@@ -152,6 +152,7 @@ char *type_name(enum dns_type t,char *buf,size_t len)
     case RR_MINFO:	snprintf(buf,len,"MINFO");	break;
     case RR_MX:		snprintf(buf,len,"MX");		break;
     case RR_TXT:	snprintf(buf,len,"TXT");	break;
+    case RR_NAPTR:      snprintf(buf,len,"NAPTR");	break;
     case RR_ANY:	snprintf(buf,len,"ANY");	break;
     default:		snprintf(buf,len,"X-%d",t);	break;
   }
@@ -242,6 +243,21 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	(unsigned long)pans[i].soa.minimum
            );
            break;
+      case RR_NAPTR:
+           printf(
+           	"%d %d (\n"
+           	"\t\t\"%s\"\n"
+           	"\t\t\"%s\"\n"
+           	"\t\t\"%s\"\n"
+           	"\t\t\"%s\" )\n",
+           	pans[i].naptr.order,
+           	pans[i].naptr.preference,
+           	pans[i].naptr.flags,
+           	pans[i].naptr.services,
+           	pans[i].naptr.regexp,
+           	pans[i].naptr.replacement
+           );
+           break;
       default:
            break;
     }
@@ -269,7 +285,7 @@ int main(int argc,char *argv[])
   for (int i = 1 ; i < argc ; i++)
   {
     domains[i - 1].name  = argv[i];
-    domains[i - 1].type  = RR_PTR;
+    domains[i - 1].type  = RR_NAPTR;
     domains[i - 1].class = CLASS_IN;
   }
   

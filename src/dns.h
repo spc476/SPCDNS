@@ -9,7 +9,8 @@
 enum dns_type
 {
   RR_min   =  1,
-  RR_A     =  1,	/* IPv4 Address 		*/
+
+  RR_A     =  1,	/* IPv4 Address 		*/ /* RFC-1035 */
   RR_NS    =  2,	/* Name server			*/
   RR_MD    =  3,	/* Mail Destination (obsolete)	*/
   RR_MF    =  4,	/* Mail Forwarder (obsolete)	*/
@@ -25,6 +26,8 @@ enum dns_type
   RR_MINFO = 14,	/* Mailbox/mail list info	*/
   RR_MX    = 15,	/* Mail Exchange		*/
   RR_TXT   = 16,	/* Text				*/
+
+  RR_NAPTR = 35,	/* Naming Authority Pointer	*/ /* RFC-2915 */
   
   RR_ANY   = 255,
   RR_max
@@ -235,6 +238,20 @@ typedef struct dns_minfo_t
   const char     *emailbx;
 } dns_minfo_t;
 
+typedef struct dns_naptr_t	/* RFC-2915 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  int             order;
+  int             preference;
+  const char     *flags;
+  const char     *services;
+  const char     *regexp;
+  const char     *replacement;
+} dns_naptr_t;
+
 typedef union dns_answer_t
 {
   dns_generic_t generic;
@@ -252,6 +269,7 @@ typedef union dns_answer_t
   dns_hinfo_t   hinfo;
   dns_minfo_t   minfo;
   dns_ptr_t     ptr;
+  dns_naptr_t   naptr;
   dns_x_t       x;
 } dns_answer_t;
 

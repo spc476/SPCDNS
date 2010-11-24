@@ -54,7 +54,8 @@ static        void      *alloc_struct	(block_t *const,const size_t)			__attribut
 static inline uint16_t	 read_uint16	(block_t *const)				__attribute__ ((nonnull));
 static inline uint32_t	 read_uint32	(block_t *const)				__attribute__ ((nonnull));
 static        int        read_raw       (idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static        int        read_domain    (idns_context *const restrict,const char **restrict)	__attribute__ ((nonnull));
+static        int        read_string    (idns_context *const restrict,const char **restrict)              __attribute__ ((nonnull(1,2)));
+static        int        read_domain    (idns_context *const restrict,const char **restrict)	          __attribute__ ((nonnull));
 
 static        block_t  dns_encode_domain(block_t,const dns_question_t *const restrict)	__attribute__ ((nonnull(2)));
 
@@ -65,6 +66,7 @@ static inline int      decode_rr_mx     (idns_context *const restrict,dns_mx_t  
 static inline int      decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_hinfo	(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_minfo	(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_naptr  (idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static        int      decode_answer    (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
 
 /***********************************************************************/
@@ -239,6 +241,9 @@ static int read_raw(
     if (len > data->parse.size)
       return RCODE_FORMAT_ERROR;
     
+    if (len > data->dest.size)
+      return RCODE_NO_MEMORY;
+    
     *result = data->dest.ptr;
     memcpy(data->dest.ptr,data->parse.ptr,len);
     data->parse.ptr  += len;
@@ -248,6 +253,41 @@ static int read_raw(
     *result = NULL;
     
   return RCODE_OKAY;
+}
+
+/********************************************************************/
+
+static int read_string(
+	idns_context  *const restrict data,
+	const char   **restrict       result
+)
+{
+  size_t len;
+  
+  assert(context_okay(data));
+  assert(result != NULL);
+
+  quick_dump("NAPTR-STRING:",data->parse.ptr,(*data->parse.ptr) + 1);
+ 
+  len = *data->parse.ptr;
+  
+  if (data->dest.size < len + 1)
+    return RCODE_NO_MEMORY;
+  
+  if (data->parse.size < len + 1)
+    return RCODE_FORMAT_ERROR;
+  
+  *result = (char *)data->dest.ptr;
+  memcpy(data->dest.ptr,&data->parse.ptr[1],len);
+  
+  data->parse.ptr  += (len + 1);
+  data->parse.size -= (len + 1);
+  data->dest.ptr   += len;
+  data->dest.size  -= len;
+  *data->dest.ptr++ = '\0';
+  data->dest.size--;
+  
+  return RCODE_OKAY; 
 }
 
 /********************************************************************/
@@ -274,6 +314,9 @@ static int read_domain(idns_context *const restrict data,const char **restrict r
       if (parse->size < len + 1)
         return RCODE_DOMAIN_ERROR;
 
+      if (data->dest.size < len)
+        return RCODE_NO_MEMORY;
+      
       memcpy(data->dest.ptr,&parse->ptr[1],len);
       parse->ptr         += (len + 1);
       parse->size        -= (len + 1);
@@ -574,6 +617,34 @@ static inline int decode_rr_minfo(
 
 /*********************************************************************/
 
+static inline int decode_rr_naptr(
+	idns_context *const restrict data,
+	dns_naptr_t  *const restrict pnaptr,
+	const size_t                 len
+)
+{
+  enum dns_rcode rc;
+  
+  assert(context_okay(data));
+  assert(pnaptr != NULL);
+  
+  if (len < 4)
+    return RCODE_FORMAT_ERROR;
+  
+  pnaptr->order      = read_uint16(&data->parse);
+  pnaptr->preference = read_uint16(&data->parse);
+  
+  rc = read_string(data,&pnaptr->flags);
+  if (rc != RCODE_OKAY) return rc;
+  rc = read_string(data,&pnaptr->services);
+  if (rc != RCODE_OKAY) return rc;
+  rc = read_string(data,&pnaptr->regexp);
+  if (rc != RCODE_OKAY) return rc;
+  return read_string(data,&pnaptr->replacement);
+}
+
+/********************************************************************/
+
 static int decode_answer(
 		idns_context *const restrict data,
 		dns_answer_t *const restrict pans
@@ -618,6 +689,7 @@ static int decode_answer(
     case RR_MINFO: return decode_rr_minfo(data,&pans->minfo);
     case RR_MX:    return decode_rr_mx   (data,&pans->mx ,len);
     case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
+    case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
     default:       return read_raw       (data,&pans->x.rawdata,len);
   }
   
