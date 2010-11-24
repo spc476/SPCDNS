@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 #include <assert.h>
 
 #include <netdb.h>
@@ -34,7 +35,45 @@ typedef union sockaddr_all
   struct sockaddr_in sin;
 } sockaddr_all;
 
+struct stringint
+{
+  const char *const txt;
+  const int         type;
+};
+
 /***********************************************************************/
+
+const struct stringint c_maps[] = 
+{
+  { "A"		, RR_A		} ,
+  { "AFSDB"	, RR_AFSDB	} ,
+  { "ANY"	, RR_ANY	} ,
+  { "CNAME"	, RR_CNAME	} ,
+  { "HINFO"	, RR_HINFO	} ,
+  { "ISDN"	, RR_ISDN	} ,
+  { "MB"	, RR_MB		} ,
+  { "MD"	, RR_MD		} ,
+  { "MF"	, RR_MF		} ,
+  { "MG"	, RR_MG		} ,
+  { "MINFO"	, RR_MINFO	} ,
+  { "MR"	, RR_MR		} ,
+  { "MX"	, RR_MX		} ,
+  { "NAPTR"	, RR_NAPTR	} ,
+  { "NS"	, RR_NS		} ,
+  { "NULL"	, RR_NULL	} ,
+  { "PTR"	, RR_PTR	} ,
+  { "RP"	, RR_RP		} ,
+  { "RT"	, RR_RT		} ,
+  { "SOA"	, RR_SOA	} ,
+  { "SRV"	, RR_SRV	} ,
+  { "TXT"	, RR_TXT	} ,
+  { "WKS"	, RR_WKS	} ,
+  { "X25"	, RR_X25	} ,
+};
+
+#define MAX_RR	(sizeof(c_maps) / sizeof(struct stringint))
+
+/************************************************************************/
 
 int send_request(
 	uint8_t                       *dest,
@@ -265,6 +304,21 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   }
 }
 
+static enum dns_type get_type(const char *tag)
+{
+  size_t len = strlen(tag);
+  char   buffer[len];
+  
+  for (size_t i = 0 ; i < len + 1 ; i++)
+    buffer[i] = toupper(tag[i]);
+  
+  for (size_t i = 0 ; i < MAX_RR ; i++)
+    if (strcmp(buffer,c_maps[i].txt) == 0)
+      return c_maps[i].type;
+  
+  return RR_A;
+}
+
 int main(int argc,char *argv[])
 {
   if (argc == 1)
@@ -273,28 +327,25 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
-  dns_question_t domains[argc];
+  dns_question_t domains;
   dns_query_t    query;
   uint8_t        buffer[MAX_DNS_QUERY_SIZE];
   size_t         len;
   int            rc;
   
-  memset(domains,0,sizeof(domains));
+  memset(&domains,0,sizeof(domains));
   memset(&query,0,sizeof(query));
   
-  for (int i = 1 ; i < argc ; i++)
-  {
-    domains[i - 1].name  = argv[i];
-    domains[i - 1].type  = RR_NAPTR;
-    domains[i - 1].class = CLASS_IN;
-  }
+  domains.name  = argv[2];
+  domains.type  = get_type(argv[1]);
+  domains.class = CLASS_IN;
   
   query.id        = 1234;
   query.query     = true;
   query.rd        = true;
   query.opcode    = OP_QUERY;
-  query.qdcount   = argc - 1;
-  query.questions = domains;
+  query.qdcount   = 1;
+  query.questions = &domains;
   
   len = sizeof(buffer);
   rc  = dns_encode(buffer,&len,&query);
