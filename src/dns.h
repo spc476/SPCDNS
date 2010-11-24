@@ -27,9 +27,19 @@ enum dns_type
   RR_MX    = 15,	/* Mail Exchange		*/
   RR_TXT   = 16,	/* Text				*/
 
+  RR_RP    = 17,	/* Responsible Person		*/ /* RFC-1183 */
+  RR_AFSDB = 18,	/* Andrew File System DB	*/
+  RR_X25   = 19,	/* X.25 address, route binding  */
+  RR_ISDN  = 20,	/* ISDN address, route binding	*/
+  RR_RT    = 21,	/* Route Through		*/
+
+  RR_SRV   = 33,	/* Service			*/ /* RFC-2782 */
+
   RR_NAPTR = 35,	/* Naming Authority Pointer	*/ /* RFC-2915 */
   
+  RR_QUERY = 128,	/* Query types 			*/
   RR_ANY   = 255,
+  
   RR_max
 };
 
@@ -46,23 +56,40 @@ enum dns_class
 enum dns_op
 {
   OP_min    = 0,
-  OP_QUERY  = 0,
-  OP_IQUERY,
-  OP_STATUS,
+  OP_QUERY  = 0,	/* RFC-1035 */
+  OP_IQUERY,		/* RFC-3425 */ /* obsolete */
+  OP_STATUS,		/* RFC-1035 */
+  
+  OP_NOTIFY  = 4,	/* RFC-1996 */
+  OP_UPDATE,		/* RFC-2136 */
+  
   OP_max
 };
 
 enum dns_rcode
 {
   RCODE_min  = 0,
-  RCODE_OKAY = 0,
+  RCODE_OKAY = 0,		/* RFC-1035 */
   RCODE_FORMAT_ERROR,
   RCODE_SERVER_FAILURE,
   RCODE_NAME_ERROR,
   RCODE_NOT_IMPLEMENTED,
   RCODE_REFUSED,
-
-  RCODE_DOMAIN_ERROR = 200,
+  RCODE_YXDOMAIN,		/* RFC-2136 */
+  RCODE_YXRRSET,
+  RCODE_NXRRSET,
+  RCODE_NOTAUTH,
+  RCODE_NOTZONE,
+  RCODE_BADVERS = 16,		/* RFC-2671 */
+  RCODE_BADSIG  = 16,		/* RFC-2845 */
+  RCODE_BADKEY,
+  RCODE_BADTIME,
+  RCODE_BADNAME,		/* RFC-2930 */
+  RCODE_BADALG,
+  RCODE_BADTRUC,		/* RFC-4635 */
+  
+  RCODE_PRIVATE      = 3841,
+  RCODE_DOMAIN_ERROR = 3841,
   RCODE_DOMAIN_LOOP,
   RCODE_QUESTION_BAD,
   RCODE_MX_BAD_RECORD,
@@ -238,6 +265,67 @@ typedef struct dns_minfo_t
   const char     *emailbx;
 } dns_minfo_t;
 
+typedef struct dns_afsdb_t	/* RFC-1183 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  int             subtype;
+  const char     *hostname;
+} dns_afsdb_t;
+
+typedef struct dns_rp_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *mbox;
+  const char     *domain;
+} dns_rp_t;
+
+typedef struct dns_x25_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *psdnaddress;
+} dns_x25_t;
+
+typedef struct dns_isdn_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *isdnaddress;
+  const char     *sa;
+} dns_isdn_t;
+
+typedef struct dns_rt_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  int             preference;
+  const char     *host;
+} dns_rt_t;
+
+typedef struct dns_srv_t	/* RFC-2782 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  int             priority;
+  int             weight;
+  int             port;
+  const char     *target;
+} dns_srv_t;
+
 typedef struct dns_naptr_t	/* RFC-2915 */
 {
   const char     *name;
@@ -269,6 +357,11 @@ typedef union dns_answer_t
   dns_hinfo_t   hinfo;
   dns_minfo_t   minfo;
   dns_ptr_t     ptr;
+  dns_rp_t      rp;
+  dns_afsdb_t   fsdb;
+  dns_x25_t     x25;
+  dns_isdn_t    isdn;
+  dns_rt_t      rt;
   dns_naptr_t   naptr;
   dns_x_t       x;
 } dns_answer_t;
