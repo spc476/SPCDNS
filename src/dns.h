@@ -25,6 +25,8 @@ enum dns_type
   RR_MINFO = 14,	/* Mailbox/mail list info	*/
   RR_MX    = 15,	/* Mail Exchange		*/
   RR_TXT   = 16,	/* Text				*/
+  
+  RR_ANY   = 255,
   RR_max
 };
 
@@ -64,6 +66,7 @@ enum dns_rcode
   RCODE_ANSWER_BAD,
   RCODE_BAD_LENGTH,
   RCODE_A_BAD_ADDR,
+  RCODE_SOA_BAD_LEN,
   RCODE_UNKNOWN_OPTIONS,
   RCODE_NO_MEMORY,
   
@@ -96,6 +99,21 @@ typedef struct dns_x_t
   size_t          size;
   uint8_t        *rawdata;
 } dns_x_t;
+
+typedef struct dns_soa_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *mname;
+  const char     *rname;
+  uint32_t        serial;
+  uint32_t        refresh;
+  uint32_t        retry;
+  uint32_t        expire;
+  uint32_t        minimum;
+} dns_soa_t;
 
 typedef struct dns_a_t
 {
@@ -169,6 +187,15 @@ typedef struct dns_mr_t
   const char     *newname;
 } dns_mr_t;
 
+typedef struct dns_ptr_t
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *ptr;
+} dns_ptr_t;
+
 typedef struct dns_txt_t
 {
   const char     *name;
@@ -211,6 +238,7 @@ typedef struct dns_minfo_t
 typedef union dns_answer_t
 {
   dns_generic_t generic;
+  dns_soa_t     soa;
   dns_mx_t      mx;
   dns_a_t       a;
   dns_cname_t   cname;
@@ -223,6 +251,7 @@ typedef union dns_answer_t
   dns_mr_t      mr;
   dns_hinfo_t   hinfo;
   dns_minfo_t   minfo;
+  dns_ptr_t     ptr;
   dns_x_t       x;
 } dns_answer_t;
 

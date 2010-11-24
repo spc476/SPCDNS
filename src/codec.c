@@ -53,11 +53,13 @@ static        bool	 align_memory	(block_t *const)				__attribute__ ((nonnull));
 static        void      *alloc_struct	(block_t *const,const size_t)			__attribute__ ((nonnull(1)));
 static inline uint16_t	 read_uint16	(block_t *const)				__attribute__ ((nonnull));
 static inline uint32_t	 read_uint32	(block_t *const)				__attribute__ ((nonnull));
+static        int        read_raw       (idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static        int        read_domain    (idns_context *const restrict,const char **restrict)	__attribute__ ((nonnull));
 
 static        block_t  dns_encode_domain(block_t,const dns_question_t *const restrict)	__attribute__ ((nonnull(2)));
 
 static        int      decode_question	(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nonnull));
+static inline int      decode_rr_soa    (idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_mx     (idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
@@ -68,6 +70,8 @@ static        int      decode_answer    (idns_context *const restrict,dns_answer
 /***********************************************************************/
 
 #ifndef NDEBUG
+# include <syslog.h>
+
   static int query_okay  (const dns_query_t *const)  __attribute__ ((unused));
   static int pblock_okay (const block_t *const)      __attribute__ ((unused));
   static int block_okay  (const block_t)             __attribute__ ((unused));
@@ -221,6 +225,33 @@ static inline uint32_t read_uint32(block_t *const parse)
 
 /********************************************************************/
 
+static int read_raw(
+	idns_context  *const restrict data,
+	uint8_t      **restrict       result,
+	const size_t                  len
+)
+{
+  assert(context_okay(data));
+  assert(result != NULL);
+  
+  if (len > 0)
+  {
+    if (len > data->parse.size)
+      return RCODE_FORMAT_ERROR;
+    
+    *result = data->dest.ptr;
+    memcpy(data->dest.ptr,data->parse.ptr,len);
+    data->parse.ptr  += len;
+    data->parse.size -= len;
+  }
+  else
+    *result = NULL;
+    
+  return RCODE_OKAY;
+}
+
+/********************************************************************/
+
 static int read_domain(idns_context *const restrict data,const char **restrict result)
 {
   block_t *parse = &data->parse;
@@ -349,7 +380,7 @@ static block_t dns_encode_domain(
   assert(data.err         == RCODE_OKAY);
   assert(pquestion        != NULL);
   assert(pquestion->name  != NULL);
-  assert(pquestion->type  <= 16);
+  assert(pquestion->type  <= RR_max);
   assert(pquestion->class >= 1);
   assert(pquestion->class <= 4);
   
@@ -431,6 +462,36 @@ static int decode_question(
 }
 
 /************************************************************************/
+
+static inline int decode_rr_soa(
+	idns_context *const restrict data,
+	dns_soa_t    *const restrict psoa,
+	const size_t                 len
+)
+{
+  enum dns_rcode rc;
+  
+  assert(context_okay(data));
+  assert(psoa != NULL);
+  
+  rc = read_domain(data,&psoa->mname);
+  if (rc != RCODE_OKAY) return rc;
+  rc = read_domain(data,&psoa->rname);
+  if (rc != RCODE_OKAY) return rc;
+  
+  if (len < 20)
+    return RCODE_SOA_BAD_LEN;
+  
+  psoa->serial  = read_uint32(&data->parse);
+  psoa->refresh = read_uint32(&data->parse);
+  psoa->retry   = read_uint32(&data->parse);
+  psoa->expire  = read_uint32(&data->parse);
+  psoa->minimum = read_uint32(&data->parse);
+  
+  return RCODE_OKAY; 
+}
+
+/***********************************************************************/
 
 static inline int decode_rr_a(
 	idns_context *const restrict data,
@@ -541,28 +602,26 @@ static int decode_answer(
 
   switch(pans->generic.type)
   {
-    case RR_A:     return decode_rr_a(data,&pans->a,len);
-    case RR_NS:    return read_domain(data,&pans->ns.nsdname);
-    case RR_MD:    return read_domain(data,&pans->md.madname);
-    case RR_MF:    return read_domain(data,&pans->mf.madname);
-    case RR_CNAME: return read_domain(data,&pans->cname.cname);
-    case RR_SOA:   break; /*return decode_rr_soa(&pans->soa,packet,parse,len);*/
-    case RR_MB:    return read_domain(data,&pans->mb.madname);
-    case RR_MG:    return read_domain(data,&pans->mg.mgmname);
-    case RR_MR:    return read_domain(data,&pans->mr.newname);
-    case RR_NULL:  break;
-    case RR_WKS:   break;
-    case RR_PTR:   break;
+    case RR_A:     return decode_rr_a    (data,&pans->a,len);
+    case RR_NS:    return read_domain    (data,&pans->ns.nsdname);
+    case RR_MD:    return read_domain    (data,&pans->md.madname);
+    case RR_MF:    return read_domain    (data,&pans->mf.madname);
+    case RR_CNAME: return read_domain    (data,&pans->cname.cname);
+    case RR_SOA:   return decode_rr_soa  (data,&pans->soa,len);
+    case RR_MB:    return read_domain    (data,&pans->mb.madname);
+    case RR_MG:    return read_domain    (data,&pans->mg.mgmname);
+    case RR_MR:    return read_domain    (data,&pans->mr.newname);
+    case RR_NULL:  return read_raw       (data,&pans->x.rawdata,len);
+    case RR_WKS:   return read_raw       (data,&pans->x.rawdata,len);
+    case RR_PTR:   return read_domain    (data,&pans->ptr.ptr);
     case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);
     case RR_MINFO: return decode_rr_minfo(data,&pans->minfo);
     case RR_MX:    return decode_rr_mx   (data,&pans->mx ,len);
     case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
-    default:       break;
+    default:       return read_raw       (data,&pans->x.rawdata,len);
   }
   
-  data->parse.ptr  += len;
-  data->parse.size -= len;
-  
+  assert(0);
   return RCODE_OKAY;
 }
 
@@ -664,6 +723,14 @@ int dns_decode(
     if (rc != RCODE_OKAY)
       return rc;
   }
+
+#ifndef NDEBUG  
+  syslog(
+  	LOG_DEBUG,
+  	"used %lu bytes",
+  	(unsigned long)(context.dest.ptr - (uint8_t *)response)
+  );
+#endif
 
   return RCODE_OKAY;
 }

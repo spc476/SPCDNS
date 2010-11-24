@@ -24,6 +24,8 @@
 
 #include "dns.h"
 
+#define DUMP 1
+
 /************************************************************************/
 
 typedef union sockaddr_all
@@ -98,6 +100,35 @@ int send_request(
 
 /**********************************************************************/
 
+char *dns_error(enum dns_rcode r,char *buf,size_t len)
+{
+  assert(buf != NULL);
+  assert(len >  0);
+  
+  switch(r)
+  {
+    case RCODE_OKAY:            snprintf(buf,len,"Everything is under control"); break;
+    case RCODE_FORMAT_ERROR:    snprintf(buf,len,"format error; could not parse answer"); break;
+    case RCODE_SERVER_FAILURE:  snprintf(buf,len,"the server encounted a problem"); break;
+    case RCODE_NAME_ERROR:      snprintf(buf,len,"domain name does not exist"); break;
+    case RCODE_NOT_IMPLEMENTED: snprintf(buf,len,"not implemented"); break;
+    case RCODE_REFUSED:         snprintf(buf,len,"server refused to answer"); break;
+    
+    case RCODE_DOMAIN_ERROR:    snprintf(buf,len,"problem parsing domain name"); break;
+    case RCODE_DOMAIN_LOOP:     snprintf(buf,len,"domain name encoding leads to loop"); break;
+    case RCODE_QUESTION_BAD:    snprintf(buf,len,"question could not be decoded"); break;
+    case RCODE_MX_BAD_RECORD:   snprintf(buf,len,"invalid MX result"); break;
+    case RCODE_ANSWER_BAD:      snprintf(buf,len,"response from server too short"); break;
+    case RCODE_BAD_LENGTH:      snprintf(buf,len,"length of record exceeds data"); break;
+    case RCODE_A_BAD_ADDR:      snprintf(buf,len,"A record bad"); break;
+    case RCODE_UNKNOWN_OPTIONS: snprintf(buf,len,"reponse code unrecognized"); break;
+    case RCODE_NO_MEMORY:       snprintf(buf,len,"insufficient memory to complete operation"); break;
+    default:                    snprintf(buf,len,"%d - unknown error",r);
+  }
+  
+  return buf;
+}
+
 char *type_name(enum dns_type t,char *buf,size_t len)
 {
   assert(buf != NULL);
@@ -121,6 +152,7 @@ char *type_name(enum dns_type t,char *buf,size_t len)
     case RR_MINFO:	snprintf(buf,len,"MINFO");	break;
     case RR_MX:		snprintf(buf,len,"MX");		break;
     case RR_TXT:	snprintf(buf,len,"TXT");	break;
+    case RR_ANY:	snprintf(buf,len,"ANY");	break;
     default:		snprintf(buf,len,"X-%d",t);	break;
   }
   return buf;
@@ -148,11 +180,11 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
   char type [16];
   char class[16];
   
-  printf(";;; %s\n",tag);
+  printf("\n;;; %s\n\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
-    	"%s %s %s\n",
+    	";%s %s %s\n",
     	pquest[i].name,
     	class_name(pquest[i].class,class,sizeof(class)),
     	type_name (pquest[i].type, type, sizeof(type))
@@ -166,7 +198,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   char type [16];
   char class[16];
   
-  printf(";;;%s\n",tag);
+  printf("\n;;; %s\n\n",tag);
   
   for (size_t i = 0 ; i < cnt ; i++)
   {
@@ -189,6 +221,26 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            break;
       case RR_MX:
            printf("%d %s",pans[i].mx.preference,pans[i].mx.exchange);
+           break;
+      case RR_PTR:
+           printf("%s",pans[i].ptr.ptr);
+           break;
+      case RR_SOA:
+           printf(
+           	"%s %s (\n"
+           	"\t\t%10lu   ; Serial\n"
+           	"\t\t%10lu   ; Refresh\n"
+           	"\t\t%10lu   ; Retry\n"
+           	"\t\t%10lu   ; Expire\n"
+           	"\t\t%10lu ) ; Miminum\n",
+           	pans[i].soa.mname,
+           	pans[i].soa.rname,
+           	(unsigned long)pans[i].soa.serial,
+           	(unsigned long)pans[i].soa.refresh,
+           	(unsigned long)pans[i].soa.retry,
+           	(unsigned long)pans[i].soa.expire,
+           	(unsigned long)pans[i].soa.minimum
+           );
            break;
       default:
            break;
@@ -216,8 +268,8 @@ int main(int argc,char *argv[])
   
   for (int i = 1 ; i < argc ; i++)
   {
-    domains[i - 1].name = argv[i];
-    domains[i - 1].type = RR_MX;
+    domains[i - 1].name  = argv[i];
+    domains[i - 1].type  = RR_PTR;
     domains[i - 1].class = CLASS_IN;
   }
   
@@ -236,9 +288,11 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
+#if DUMP
   printf("OUTGOING:\n\n");
   dump_memory(stdout,buffer,len,0);
-  
+#endif
+
   uint8_t inbuffer[MAX_DNS_QUERY_SIZE];
   size_t  insize;
 
@@ -248,10 +302,12 @@ int main(int argc,char *argv[])
     fprintf(stderr,"failure\n");
     return EXIT_FAILURE;
   }
-  
+
+#if DUMP  
   printf("\nINCOMING:\n\n");
   dump_memory(stdout,inbuffer,insize,0);
-  
+#endif
+
   uint8_t      bufresult[8192];
   dns_query_t *result;
   
@@ -263,13 +319,38 @@ int main(int argc,char *argv[])
   }
   
   result = (dns_query_t *)bufresult;
-  
+
+#if DUMP 
   syslog(LOG_DEBUG,"id:      %d",result->id);
   syslog(LOG_DEBUG,"qdcount: %lu",(unsigned long)result->qdcount);
   syslog(LOG_DEBUG,"ancount: %lu",(unsigned long)result->ancount);
   syslog(LOG_DEBUG,"nscount: %lu",(unsigned long)result->nscount);
   syslog(LOG_DEBUG,"arcount: %lu",(unsigned long)result->arcount);
+#endif
+
+  char terror[BUFSIZ];
   
+  printf(
+  	"; Questions            = %lu\n"
+  	"; Answers              = %lu\n"
+  	"; Name Servers         = %lu\n"
+  	"; Additional Records   = %lu\n"
+  	"; Authoritative Result = %s\n"
+  	"; Truncated Result     = %s\n"
+  	"; Recursion Desired    = %s\n"
+  	"; Recursion Available  = %s\n"
+  	"; Result               = %s\n",
+  	(unsigned long)result->qdcount,
+  	(unsigned long)result->ancount,
+  	(unsigned long)result->nscount,
+  	(unsigned long)result->arcount,
+  	result->aa ? "true" : "false",
+  	result->tc ? "true" : "false",
+  	result->rd ? "true" : "false",
+  	result->ra ? "true" : "false",
+  	dns_error(result->rcode,terror,BUFSIZ)
+  );
+  	
   print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
   print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
   print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
