@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if [ $# -eq 0 ]
+then
+        echo usage: $0 [rfc] ... 
+        exit 1
+fi
+
+while [ $# -gt 0 ]
+do
+        wget http://www.ietf.org/rfc/rfc$1.txt
+        shift
+done
+
+exit 0
