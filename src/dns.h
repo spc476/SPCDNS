@@ -33,12 +33,22 @@ enum dns_type
   RR_NSAP_PTR = 23,	/* NSAP Pointer			*/
   RR_SIG      = 24,	/* Signature			*/ /* RFC-2065 */  
   RR_KEY      = 25,	/* Key				*/
+  RR_PX       = 26,	/* X.400 mail mapping		*/ /* ???      */
+  RR_GPOS     = 27,	/* Geographical position (obs)	*/ /* ???      */
   RR_AAAA     = 28,	/* IPv6 Address			*/ /* RFC-1886 */
   RR_LOC      = 29,	/* Location			*/ /* RFC-1876 */
   RR_NXT      = 30,	/* Next RR			*/ /* RFC-2065 */
+  RR_EID      = 31,	/* Endpoint Identifier		*/ /* ???      */
+  RR_NIMLOC   = 32,	/* Nimrod Locator		*/ /* ???      */
   RR_SRV      = 33,	/* Service			*/ /* RFC-2782 */
+  RR_ATM      = 34,	/* ATM Address			*/ /* ???      */
   RR_NAPTR    = 35,	/* Naming Authority Pointer	*/ /* RFC-2915 */
+  RR_KX       = 36,	/* Key Exchange			*/ /* ???      */
+  RR_CERT     = 37,	/* Certification		*/ /* ???      */
   RR_A6       = 38,	/* IPv6 Address			*/ /* RFC-2874 */
+  RR_DNAME    = 39,	/* Non-terminal DNAME (IPv6)	*/ /* ???      */
+  RR_SINK     = 40,	/* Kitchen sink (experiemental) */ /* ???      */
+  RR_OPT      = 41,	/* EDNS0 option (meta-RR)	*/ /* RFC-2673 */
   RR_APL      = 42,	/* Address Prefix List		*/ /* RFC-3123 */
   RR_DS       = 43,	/* Delegation Signer		*/ /* RFC-3658 */  
   RR_RRSIG    = 46,	/* Resource Record Signature	*/ /* RFC-4034 */
@@ -48,6 +58,7 @@ enum dns_type
 	/* Query types, >= 128 */
   
   RR_TSIG     = 250,	/* Transaction Signature	*/ /* RFC-2845 */
+  RR_IXFR     = 251,	/* Incremental zone transfer	*/ /* ???      */
   RR_AXFR     = 252,	/* Transfer of zone		*/ /* RFC-1035 */
   RR_MAILB    = 253,	/* Mailbox related records	*/
   RR_MAILA    = 254,	/* Mail agent RRs (obsolete)	*/

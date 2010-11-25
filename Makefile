@@ -1,6 +1,7 @@
 
-CC = cc -g 
-CFLAGS = -Wall -Wextra -pedantic -std=c99
+CC = cc -g -std=c99
+CFLAGS = -Wall -Wextra -pedantic
+#CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
 LFLAGS = -lcgi6
 
 built/dotest : built/test.o built/codec.o built/mappings.o
