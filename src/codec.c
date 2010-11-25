@@ -290,7 +290,10 @@ static int read_string(
 
 /********************************************************************/
 
-static int read_domain(idns_context *const restrict data,const char **restrict result)
+static int read_domain(
+	idns_context  *const restrict data,
+	const char   **restrict       result
+)
 {
   block_t *parse = &data->parse;
   block_t  tmp;
@@ -424,8 +427,7 @@ static block_t dns_encode_domain(
   uint8_t *end;
   uint8_t *back_ptr;
   
-  assert(data.size        >  0);
-  assert(data.ptr         != NULL);
+  assert(block_okay(data));
   assert(data.err         == RCODE_OKAY);
   assert(pquestion        != NULL);
   assert(pquestion->name  != NULL);
@@ -548,8 +550,8 @@ static inline int decode_rr_a(
 	const size_t                 len
 )
 {
-  assert(data != NULL);
-  assert(pa   != NULL);
+  assert(context_okay(data));
+  assert(pa != NULL);
 
   if (len != 4) return RCODE_A_BAD_ADDR;
   memcpy(&pa->address,data->parse.ptr,4);
@@ -617,6 +619,9 @@ static inline int decode_rr_hinfo(
 )
 {
   enum dns_rcode rc;
+  
+  assert(context_okay(data));
+  assert(phinfo != NULL);
   
   rc = read_string(data,&phinfo->cpu);
   if (rc != RCODE_OKAY) return rc;

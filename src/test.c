@@ -145,7 +145,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            printf("%s",ipaddr);
            break;
       case RR_MX:
-           printf("%d %s",pans[i].mx.preference,pans[i].mx.exchange);
+           printf("%5d %s",pans[i].mx.preference,pans[i].mx.exchange);
            break;
       case RR_PTR:
            printf("%s",pans[i].ptr.ptr);
@@ -172,7 +172,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            break;
       case RR_NAPTR:
            printf(
-           	"%d %d (\n"
+           	"%5d %5d (\n"
            	"\t\t\"%s\"\n"
            	"\t\t\"%s\"\n"
            	"\t\t\"%s\"\n"
@@ -187,7 +187,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            break;
       case RR_SRV:
            printf(
-           	"%d %d %d %s",
+           	"%5d %5d %5d %s",
            	pans[i].srv.priority,
            	pans[i].srv.weight,
            	pans[i].srv.port,
