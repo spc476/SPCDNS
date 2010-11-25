@@ -150,6 +150,9 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
       case RR_PTR:
            printf("%s",pans[i].ptr.ptr);
            break;
+      case RR_HINFO:
+           printf("\"%s\" \"%s\"",pans[i].hinfo.cpu,pans[i].hinfo.os);
+           break;
       case RR_SOA:
            printf(
            	"%s %s (\n"
@@ -182,6 +185,16 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	pans[i].naptr.replacement
            );
            break;
+      case RR_SRV:
+           printf(
+           	"%d %d %d %s",
+           	pans[i].srv.priority,
+           	pans[i].srv.weight,
+           	pans[i].srv.port,
+           	pans[i].srv.target
+           );
+           break;
+           
       default:
            break;
     }
@@ -197,25 +210,44 @@ int main(int argc,char *argv[])
     return EXIT_FAILURE;
   }
   
-  dns_question_t domains;
+  dns_question_t domains[2];
+  size_t         dcnt;
   dns_query_t    query;
   uint8_t        buffer[MAX_DNS_QUERY_SIZE];
   size_t         len;
   int            rc;
   
-  memset(&domains,0,sizeof(domains));
+  memset(domains,0,sizeof(domains));
   memset(&query,0,sizeof(query));
   
-  domains.name  = argv[2];
-  domains.type  = dns_type_value(argv[1]);
-  domains.class = CLASS_IN;
-  
+  dcnt             = 1;
+  domains[0].name  = argv[2];
+  domains[0].type  = dns_type_value(argv[1]);
+  domains[0].class = CLASS_IN;
+
+#if 0
+  if (domains[0].type == RR_A)
+  {
+    dcnt++;
+    domains[1].name  = argv[2];
+    domains[1].type  = RR_AAAA;
+    domains[1].class = CLASS_IN;
+  }
+  else if (domains[0].type == RR_AAAA)
+  {
+    dcnt++;
+    domains[1].name  = argv[2];
+    domains[1].type  = RR_A;
+    domains[1].class = CLASS_IN;
+  }
+#endif
+
   query.id        = 1234;
   query.query     = true;
   query.rd        = true;
   query.opcode    = OP_QUERY;
-  query.qdcount   = 1;
-  query.questions = &domains;
+  query.qdcount   = dcnt;
+  query.questions = domains;
   
   len = sizeof(buffer);
   rc  = dns_encode(buffer,&len,&query);

@@ -66,6 +66,7 @@ static inline int      decode_rr_hinfo	(idns_context *const restrict,dns_hinfo_t
 static inline int      decode_rr_minfo	(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_naptr  (idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static        int      decode_answer    (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
 
 /***********************************************************************/
@@ -617,9 +618,9 @@ static inline int decode_rr_hinfo(
 {
   enum dns_rcode rc;
   
-  rc = read_domain(data,&phinfo->cpu);
+  rc = read_string(data,&phinfo->cpu);
   if (rc != RCODE_OKAY) return rc;
-  rc = read_domain(data,&phinfo->os);
+  rc = read_string(data,&phinfo->os);
   return rc;
 }
 
@@ -632,6 +633,9 @@ static inline int decode_rr_minfo(
 {
   enum dns_rcode rc;
   
+  assert(context_okay(data));
+  assert(pminfo != NULL);
+  
   rc = read_domain(data,&pminfo->rmailbx);
   if (rc != RCODE_OKAY) return rc;
   rc = read_domain(data,&pminfo->emailbx);
@@ -639,6 +643,26 @@ static inline int decode_rr_minfo(
 }
 
 /*********************************************************************/
+
+static inline int decode_rr_srv(
+	idns_context *const restrict data,
+	dns_srv_t    *const restrict psrv,
+	const size_t                 len
+)
+{
+  assert(context_okay(data));
+  assert(psrv != NULL);
+  
+  if (len < 7)
+    return RCODE_FORMAT_ERROR;
+  
+  psrv->priority = read_uint16(&data->parse);
+  psrv->weight   = read_uint16(&data->parse);
+  psrv->port     = read_uint16(&data->parse);
+  return read_domain(data,&psrv->target);
+}
+
+/**********************************************************************/
 
 static inline int decode_rr_naptr(
 	idns_context *const restrict data,
@@ -714,6 +738,7 @@ static int decode_answer(
     case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
     case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
     case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa,len);
+    case RR_SRV:   return decode_rr_srv  (data,&pans->srv,len);
     default:       return read_raw       (data,&pans->x.rawdata,len);
   }
   
