@@ -14,8 +14,6 @@
 
 #include "dns.h"
 
-#define MAX_UDP		(  8uL * 1024uL)
-#define MAX_TCP 	(128uL * 1024uL)
 #define MEM_ALIGN	sizeof(uintptr_t)
 #define MEM_MASK	~(sizeof(uintptr_t) - 1uL)
 
@@ -343,6 +341,11 @@ static int read_domain(idns_context *const restrict data,const char **restrict r
       tmp.size = data->packet.size - (size_t)(tmp.ptr - data->packet.ptr);
       parse    = &tmp;
     }
+    else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
+    {
+      /* XXX - see RFC2671 for details */
+      return RCODE_NOT_IMPLEMENTED;
+    }
     else
       return RCODE_DOMAIN_ERROR;
   } while(*parse->ptr);
@@ -424,7 +427,6 @@ static block_t dns_encode_domain(
   assert(data.err         == RCODE_OKAY);
   assert(pquestion        != NULL);
   assert(pquestion->name  != NULL);
-  assert(pquestion->type  <= RR_max);
   assert(pquestion->class >= 1);
   assert(pquestion->class <= 4);
   
@@ -447,6 +449,7 @@ static block_t dns_encode_domain(
   
   back_ptr = data.ptr;
   start    = &data.ptr[1];
+  end      = &data.ptr[1];
   
   while(len)
   {
@@ -738,8 +741,8 @@ int dns_decode(
   
   header      = (struct idns_header *)buffer;
   
-  if ((header->rcode & 0x70) != 0x00)
-    return free(response) , RCODE_UNKNOWN_OPTIONS;
+  if ((header->rcode & 0x40) != 0x00)	/* Z bit must be zero */
+    return RCODE_UNKNOWN_OPTIONS;
   
   response->id      = ntohs(header->id);
   response->opcode  = (header->opcode >> 3) & 0x0F;
@@ -748,6 +751,8 @@ int dns_decode(
   response->tc      = (header->opcode & 0x02) == 0x02;
   response->rd      = (header->opcode & 0x01) == 0x01;
   response->ra      = (header->rcode  & 0x80) == 0x80;
+  response->ad      = (header->rcode  & 0x20) == 0x20;
+  response->cd      = (header->rcode  & 0x10) == 0x10;
   response->rcode   = (header->rcode  & 0x0F);
   response->qdcount = ntohs(header->qdcount);
   response->ancount = ntohs(header->ancount);

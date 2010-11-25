@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
-#include <ctype.h>
 #include <assert.h>
 
 #include <netdb.h>
@@ -24,6 +23,7 @@
 #include <cgilib6/util.h>
 
 #include "dns.h"
+#include "mappings.h"
 
 #define DUMP 1
 
@@ -35,45 +35,7 @@ typedef union sockaddr_all
   struct sockaddr_in sin;
 } sockaddr_all;
 
-struct stringint
-{
-  const char *const txt;
-  const int         type;
-};
-
 /***********************************************************************/
-
-const struct stringint c_maps[] = 
-{
-  { "A"		, RR_A		} ,
-  { "AFSDB"	, RR_AFSDB	} ,
-  { "ANY"	, RR_ANY	} ,
-  { "CNAME"	, RR_CNAME	} ,
-  { "HINFO"	, RR_HINFO	} ,
-  { "ISDN"	, RR_ISDN	} ,
-  { "MB"	, RR_MB		} ,
-  { "MD"	, RR_MD		} ,
-  { "MF"	, RR_MF		} ,
-  { "MG"	, RR_MG		} ,
-  { "MINFO"	, RR_MINFO	} ,
-  { "MR"	, RR_MR		} ,
-  { "MX"	, RR_MX		} ,
-  { "NAPTR"	, RR_NAPTR	} ,
-  { "NS"	, RR_NS		} ,
-  { "NULL"	, RR_NULL	} ,
-  { "PTR"	, RR_PTR	} ,
-  { "RP"	, RR_RP		} ,
-  { "RT"	, RR_RT		} ,
-  { "SOA"	, RR_SOA	} ,
-  { "SRV"	, RR_SRV	} ,
-  { "TXT"	, RR_TXT	} ,
-  { "WKS"	, RR_WKS	} ,
-  { "X25"	, RR_X25	} ,
-};
-
-#define MAX_RR	(sizeof(c_maps) / sizeof(struct stringint))
-
-/************************************************************************/
 
 int send_request(
 	uint8_t                       *dest,
@@ -139,95 +101,16 @@ int send_request(
 
 /**********************************************************************/
 
-char *dns_error(enum dns_rcode r,char *buf,size_t len)
-{
-  assert(buf != NULL);
-  assert(len >  0);
-  
-  switch(r)
-  {
-    case RCODE_OKAY:            snprintf(buf,len,"Everything is under control"); break;
-    case RCODE_FORMAT_ERROR:    snprintf(buf,len,"format error; could not parse answer"); break;
-    case RCODE_SERVER_FAILURE:  snprintf(buf,len,"the server encounted a problem"); break;
-    case RCODE_NAME_ERROR:      snprintf(buf,len,"domain name does not exist"); break;
-    case RCODE_NOT_IMPLEMENTED: snprintf(buf,len,"not implemented"); break;
-    case RCODE_REFUSED:         snprintf(buf,len,"server refused to answer"); break;
-    
-    case RCODE_DOMAIN_ERROR:    snprintf(buf,len,"problem parsing domain name"); break;
-    case RCODE_DOMAIN_LOOP:     snprintf(buf,len,"domain name encoding leads to loop"); break;
-    case RCODE_QUESTION_BAD:    snprintf(buf,len,"question could not be decoded"); break;
-    case RCODE_MX_BAD_RECORD:   snprintf(buf,len,"invalid MX result"); break;
-    case RCODE_ANSWER_BAD:      snprintf(buf,len,"response from server too short"); break;
-    case RCODE_BAD_LENGTH:      snprintf(buf,len,"length of record exceeds data"); break;
-    case RCODE_A_BAD_ADDR:      snprintf(buf,len,"A record bad"); break;
-    case RCODE_UNKNOWN_OPTIONS: snprintf(buf,len,"reponse code unrecognized"); break;
-    case RCODE_NO_MEMORY:       snprintf(buf,len,"insufficient memory to complete operation"); break;
-    default:                    snprintf(buf,len,"%d - unknown error",r);
-  }
-  
-  return buf;
-}
-
-char *type_name(enum dns_type t,char *buf,size_t len)
-{
-  assert(buf != NULL);
-  assert(len >  6);
-  
-  switch(t)
-  {
-    case RR_A:		snprintf(buf,len,"A");		break;
-    case RR_NS:		snprintf(buf,len,"NS");		break;
-    case RR_MD: 	snprintf(buf,len,"MD");		break;
-    case RR_MF: 	snprintf(buf,len,"MF");		break;
-    case RR_CNAME:	snprintf(buf,len,"CNAME"); 	break;
-    case RR_SOA:	snprintf(buf,len,"SOA");	break;
-    case RR_MB:		snprintf(buf,len,"MB");		break;
-    case RR_MG:		snprintf(buf,len,"MG");		break;
-    case RR_MR:		snprintf(buf,len,"MR");		break;
-    case RR_NULL:	snprintf(buf,len,"NULL");	break;
-    case RR_WKS:	snprintf(buf,len,"WKS");	break;
-    case RR_PTR:	snprintf(buf,len,"PTR");	break;
-    case RR_HINFO:	snprintf(buf,len,"HINFO");	break;
-    case RR_MINFO:	snprintf(buf,len,"MINFO");	break;
-    case RR_MX:		snprintf(buf,len,"MX");		break;
-    case RR_TXT:	snprintf(buf,len,"TXT");	break;
-    case RR_NAPTR:      snprintf(buf,len,"NAPTR");	break;
-    case RR_ANY:	snprintf(buf,len,"ANY");	break;
-    default:		snprintf(buf,len,"X-%d",t);	break;
-  }
-  return buf;
-}
-
-char *class_name(enum dns_class c,char *buf,size_t len)
-{
-  assert(buf != NULL);
-  assert(len >  6);
-  
-  switch(c)
-  {
-    case CLASS_IN: snprintf(buf,len,"IN");     break;
-    case CLASS_CS: snprintf(buf,len,"CS");     break;
-    case CLASS_CH: snprintf(buf,len,"CH");     break;
-    case CLASS_HS: snprintf(buf,len,"HS");     break;
-    default:       snprintf(buf,len,"X-%d",c); break;
-  }
-  
-  return buf;
-}
-
 void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 {
-  char type [16];
-  char class[16];
-  
   printf("\n;;; %s\n\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
     	";%s %s %s\n",
     	pquest[i].name,
-    	class_name(pquest[i].class,class,sizeof(class)),
-    	type_name (pquest[i].type, type, sizeof(type))
+    	dns_class_text(pquest[i].class),
+    	dns_type_text (pquest[i].type)
     );
   }
 }
@@ -235,8 +118,6 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
   char ipaddr[32];
-  char type [16];
-  char class[16];
   
   printf("\n;;; %s\n\n",tag);
   
@@ -246,8 +127,8 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
     	"%s %lu %s %s ",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
-    	class_name(pans[i].generic.class,class,sizeof(class)),
-    	type_name (pans[i].generic.type, type, sizeof(type))
+    	dns_class_text(pans[i].generic.class),
+    	dns_type_text (pans[i].generic.type)
     );
     
     switch(pans[i].generic.type)
@@ -304,21 +185,6 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   }
 }
 
-static enum dns_type get_type(const char *tag)
-{
-  size_t len = strlen(tag);
-  char   buffer[len];
-  
-  for (size_t i = 0 ; i < len + 1 ; i++)
-    buffer[i] = toupper(tag[i]);
-  
-  for (size_t i = 0 ; i < MAX_RR ; i++)
-    if (strcmp(buffer,c_maps[i].txt) == 0)
-      return c_maps[i].type;
-  
-  return RR_A;
-}
-
 int main(int argc,char *argv[])
 {
   if (argc == 1)
@@ -337,7 +203,7 @@ int main(int argc,char *argv[])
   memset(&query,0,sizeof(query));
   
   domains.name  = argv[2];
-  domains.type  = get_type(argv[1]);
+  domains.type  = dns_type_value(argv[1]);
   domains.class = CLASS_IN;
   
   query.id        = 1234;
@@ -395,8 +261,6 @@ int main(int argc,char *argv[])
   syslog(LOG_DEBUG,"arcount: %lu",(unsigned long)result->arcount);
 #endif
 
-  char terror[BUFSIZ];
-  
   printf(
   	"; Questions            = %lu\n"
   	"; Answers              = %lu\n"
@@ -415,7 +279,7 @@ int main(int argc,char *argv[])
   	result->tc ? "true" : "false",
   	result->rd ? "true" : "false",
   	result->ra ? "true" : "false",
-  	dns_error(result->rcode,terror,BUFSIZ)
+  	dns_rcode_text(result->rcode)
   );
   	
   print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
