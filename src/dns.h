@@ -620,6 +620,7 @@ typedef union dns_answer_t
   dns_isdn_t    isdn;
   dns_rt_t      rt;
   dns_naptr_t   naptr;
+  dns_aaaa_t    aaaa;
   dns_x_t       x;
 } dns_answer_t;
 

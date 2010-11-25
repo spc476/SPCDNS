@@ -65,6 +65,7 @@ static inline int      decode_rr_txt	(idns_context *const restrict,dns_txt_t    
 static inline int      decode_rr_hinfo	(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_minfo	(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_naptr  (idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int      decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static        int      decode_answer    (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
 
 /***********************************************************************/
@@ -558,6 +559,24 @@ static inline int decode_rr_a(
 
 /***********************************************************************/
 
+static inline int decode_rr_aaaa(
+	idns_context *const restrict data,
+	dns_aaaa_t   *const restrict pa,
+	const size_t                 len
+)
+{
+  assert(context_okay(data));
+  assert(pa != NULL);
+  
+  if (len != 16) return RCODE_FORMAT_ERROR;
+  memcpy(pa->ipv6.s6_addr,data->parse.ptr,16);
+  data->parse.ptr  += 16;
+  data->parse.size -= 16;
+  return RCODE_OKAY;
+}
+
+/**********************************************************************/
+
 static inline int decode_rr_mx(
 	idns_context *const restrict data,
 	dns_mx_t     *const restrict pmx,
@@ -694,6 +713,7 @@ static int decode_answer(
     case RR_MX:    return decode_rr_mx   (data,&pans->mx ,len);
     case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
     case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
+    case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa,len);
     default:       return read_raw       (data,&pans->x.rawdata,len);
   }
   

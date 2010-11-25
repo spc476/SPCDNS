@@ -117,7 +117,7 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 
 void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
-  char ipaddr[32];
+  char ipaddr[INET6_ADDRSTRLEN];
   
   printf("\n;;; %s\n\n",tag);
   
@@ -137,7 +137,11 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            printf("%s",pans[i].ns.nsdname);
            break;
       case RR_A:
-           inet_ntop(AF_INET,&pans[i].a.address,ipaddr,32);
+           inet_ntop(AF_INET,&pans[i].a.address,ipaddr,sizeof(ipaddr));
+           printf("%s",ipaddr);
+           break;
+      case RR_AAAA:
+           inet_ntop(AF_INET6,&pans[i].aaaa.ipv6,ipaddr,sizeof(ipaddr));
            printf("%s",ipaddr);
            break;
       case RR_MX:
@@ -169,7 +173,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	"\t\t\"%s\"\n"
            	"\t\t\"%s\"\n"
            	"\t\t\"%s\"\n"
-           	"\t\t\"%s\" )\n",
+           	"\t\t%s )\n",
            	pans[i].naptr.order,
            	pans[i].naptr.preference,
            	pans[i].naptr.flags,
