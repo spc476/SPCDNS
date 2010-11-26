@@ -237,171 +237,97 @@ static int strint_cmp(const void *needle,const void *haystack)
 
 /**********************************************************************/
 
-const char *dns_rcode_text(const enum dns_rcode r)
+static const char *itosdef(
+	int                                         v,
+	const struct int_string_map *const restrict pitab,
+	const size_t                                itabcnt,
+	const char                  *const restrict def
+)
 {
   struct int_string_map *pism;
-  int                    rc;
   
-  rc   = r;
-  pism = bsearch(
-  		&rc,
-  		cm_dns_rcode,
-  		RCODE_COUNT,
-  		sizeof(struct int_string_map),
-  		intstr_cmp
-  	);
-
+  assert(v       >= 0);
+  assert(pitab   != NULL);
+  assert(itabcnt >  0);
+  assert(def     != NULL);
+  
+  pism = bsearch(&v,pitab,itabcnt,sizeof(struct int_string_map),intstr_cmp);
   if (pism)
     return pism->text;
   else
-    return "Unknown error";
+    return def;
+}
+
+/********************************************************************/
+
+static int stoidef(
+	const char *const restrict                  tag,
+	const struct string_int_map *const restrict pstab,
+	const size_t                                stabcnt,
+	const int                                   def
+)
+{
+  struct string_int_map *psim;
+  size_t                 len = strlen(tag) + 1;
+  char                   buffer[len];
+  
+  for (size_t i = 0 ; i < len ; i++)
+    buffer[i] = toupper(tag[i]);
+  
+  psim = bsearch(buffer,pstab,stabcnt,sizeof(struct string_int_map),strint_cmp);
+  if (psim)
+    return psim->value;
+  else
+    return def;
+}
+
+/*******************************************************************/
+
+const char *dns_rcode_text(const enum dns_rcode r)
+{
+  return itosdef(r,cm_dns_rcode,RCODE_COUNT,"Unknown error");
 }
 
 /*********************************************************************/
 
 const char *dns_type_text(const enum dns_type t)
 {
-  struct int_string_map *pism;
-  int                    rc;
-  
-  rc   = t;
-  pism = bsearch(
-  		&rc,
-  		cm_dns_type,
-  		TYPE_COUNT,
-  		sizeof(struct int_string_map),
-  		intstr_cmp
-  	);
-  	
-  if (pism)
-    return pism->text;
-  else
-    return "X-UNKN";
+  return itosdef(t,cm_dns_type,TYPE_COUNT,"X-UNKN");
 }
 
 /**********************************************************************/
 
 const char *dns_class_text(const enum dns_class c)
 {
-  struct int_string_map *pism;
-  int                    rc;
-  
-  rc   = c;
-  pism = bsearch(
-  		&rc,
-  		cm_dns_class,
-  		CLASS_COUNT,
-  		sizeof(struct int_string_map),
-  		intstr_cmp
-  	);
-
-  if (pism)
-    return pism->text;
-  else
-    return "X-UNKN";
+  return itosdef(c,cm_dns_class,CLASS_COUNT,"X-UNKN");
 }
 
 /*******************************************************************/
 
 const char *dns_op_text(const enum dns_op o)
 {
-  struct int_string_map *pism;
-  int                    rc;
-  
-  rc   = o;
-  pism = bsearch(
-  		&rc,
-  		cm_dns_op,
-  		OP_COUNT,
-  		sizeof(struct int_string_map),
-  		intstr_cmp
-  	);
- 
-  if (pism)
-    return pism->text;
-  else
-    return "X-UNKNOWN";
+  return itosdef(o,cm_dns_op,OP_COUNT,"X-UNKNOWN");
 }
 
 /********************************************************************/
 
 enum dns_type dns_type_value(const char *tag)
 {
-  struct string_int_map *psim;
-  size_t                 len = strlen(tag);
-  char                   buffer[len + 1];
-  
-  assert(tag != NULL);
-  
-  for (size_t i = 0 ; i < len + 1 ; i++)
-    buffer[i] = toupper(tag[i]);
-  
-  psim = bsearch(
-  		buffer,
-  		cm_dns_type_is,
-  		TYPE_COUNT,
-  		sizeof(struct string_int_map),
-  		strint_cmp
-  	);
-
-  if (psim)
-    return psim->value;
-  else
-    return RR_A;
+  return stoidef(tag,cm_dns_type_is,TYPE_COUNT,RR_A);
 }
 
 /*********************************************************************/
 
 enum dns_class dns_class_value(const char *tag)
 {
-  struct string_int_map *psim;
-  size_t                 len = strlen(tag) + 1;
-  char                   buffer[len];
-  
-  assert(tag != NULL);
-  
-  for (size_t i = 0 ; i < len ; i++)
-    buffer[i] = toupper(tag[i]);
-  
-  psim = bsearch(
-  		buffer,
-  		cm_dns_class_is,
-  		CLASS_COUNT,
-  		sizeof(struct string_int_map),
-  		strint_cmp
-  	);
-
-  if (psim)
-    return psim->value;
-  else
-    return CLASS_IN;
+  return stoidef(tag,cm_dns_class_is,CLASS_COUNT,CLASS_IN);
 }
 
 /**********************************************************************/
 
 enum dns_op dns_op_value(const char *tag)
 {
-  struct string_int_map *psim;
-  size_t                 len = strlen(tag) + 1;
-  char                   buffer[len];
-  
-  assert(tag != NULL);
-  
-  for (size_t i = 0 ; i < len ; i++)
-    buffer[i] = toupper(tag[i]);
-  
-  psim = bsearch(
-  		buffer,
-  		cm_dns_op_is,
-  		OP_COUNT,
-  		sizeof(struct string_int_map),
-  		strint_cmp
-  	);
-
-  if (psim)
-    return psim->value;
-  else
-    return OP_QUERY;
+  return stoidef(tag,cm_dns_op_is,OP_COUNT,OP_QUERY);
 }
 
 /**********************************************************************/
