@@ -144,6 +144,9 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            inet_ntop(AF_INET6,&pans[i].aaaa.ipv6,ipaddr,sizeof(ipaddr));
            printf("%s",ipaddr);
            break;
+      case RR_CNAME:
+           printf("%s",pans[i].cname.cname);
+           break;
       case RR_MX:
            printf("%5d %s",pans[i].mx.preference,pans[i].mx.exchange);
            break;

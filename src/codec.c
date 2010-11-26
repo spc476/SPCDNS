@@ -754,25 +754,34 @@ static int decode_answer(
 
   switch(pans->generic.type)
   {
-    case RR_A:     return decode_rr_a    (data,&pans->a,len);
-    case RR_NS:    return read_domain    (data,&pans->ns.nsdname);
-    case RR_MD:    return read_domain    (data,&pans->md.madname);
-    case RR_MF:    return read_domain    (data,&pans->mf.madname);
-    case RR_CNAME: return read_domain    (data,&pans->cname.cname);
-    case RR_SOA:   return decode_rr_soa  (data,&pans->soa,len);
-    case RR_MB:    return read_domain    (data,&pans->mb.madname);
-    case RR_MG:    return read_domain    (data,&pans->mg.mgmname);
-    case RR_MR:    return read_domain    (data,&pans->mr.newname);
-    case RR_NULL:  return read_raw       (data,&pans->x.rawdata,len);
-    case RR_WKS:   return read_raw       (data,&pans->x.rawdata,len);
-    case RR_PTR:   return read_domain    (data,&pans->ptr.ptr);
+    case RR_A:     return decode_rr_a    (data,&pans->a    ,len);
+    case RR_SOA:   return decode_rr_soa  (data,&pans->soa  ,len);
+    case RR_MX:    return decode_rr_mx   (data,&pans->mx   ,len);
+    case RR_TXT:   return decode_rr_txt  (data,&pans->txt  ,len);
+    case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
+    case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa ,len);
+    case RR_SRV:   return decode_rr_srv  (data,&pans->srv  ,len);
     case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);
     case RR_MINFO: return decode_rr_minfo(data,&pans->minfo);
-    case RR_MX:    return decode_rr_mx   (data,&pans->mx ,len);
-    case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
-    case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
-    case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa,len);
-    case RR_SRV:   return decode_rr_srv  (data,&pans->srv,len);
+    
+    /*----------------------------------------------------------------------	
+    ; The following record types all share the same structure (although the
+    ; last field name is different, depending upon the record), so they can
+    ; share the same call site.  It's enough to shave some space in the
+    ; executable while being a cheap and non-obscure size optimization.
+    ;----------------------------------------------------------------------*/
+    
+    case RR_MD:
+    case RR_MF:
+    case RR_MB:
+    case RR_MG:
+    case RR_MR:
+    case RR_NS:
+    case RR_PTR:
+    case RR_CNAME: return read_domain    (data,&pans->cname.cname);
+    
+    case RR_NULL:
+    case RR_WKS:
     default:       return read_raw       (data,&pans->x.rawdata,len);
   }
   
