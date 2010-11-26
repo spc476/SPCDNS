@@ -180,6 +180,15 @@ static const struct int_string_map cm_dns_class[] =
 
 #define CLASS_COUNT	(sizeof(cm_dns_class) / sizeof(struct int_string_map))
 
+static const struct string_int_map cm_dns_class_is[] =
+{
+  { "CH"	, CLASS_CH	} ,
+  { "CS"	, CLASS_CS	} ,
+  { "HS"	, CLASS_HS	} ,
+  { "IN"	, CLASS_IN	} ,
+  { "NONE"	, CLASS_NONE	} ,
+};
+
 static const struct int_string_map cm_dns_op[] = 
 {
   { OP_QUERY	, "QUERY"	} ,
@@ -190,7 +199,16 @@ static const struct int_string_map cm_dns_op[] =
 };
 
 #define OP_COUNT	(sizeof(cm_dns_op) / sizeof(struct int_string_map))
-  
+
+static const struct string_int_map cm_dns_op_is[] = 
+{
+  { "IQUERY"	, OP_IQUERY	} ,
+  { "NOTIFY"	, OP_NOTIFY	} ,
+  { "QUERY"	, OP_QUERY	} ,
+  { "STATUS"	, OP_STATUS	} ,
+  { "UPDATE"	, OP_UPDATE	} 
+};
+ 
 /*************************************************************************/
 
 static int intstr_cmp(const void *needle,const void *haystack)
@@ -313,6 +331,8 @@ enum dns_type dns_type_value(const char *tag)
   size_t                 len = strlen(tag);
   char                   buffer[len + 1];
   
+  assert(tag != NULL);
+  
   for (size_t i = 0 ; i < len + 1 ; i++)
     buffer[i] = toupper(tag[i]);
   
@@ -332,3 +352,56 @@ enum dns_type dns_type_value(const char *tag)
 
 /*********************************************************************/
 
+enum dns_class dns_class_value(const char *tag)
+{
+  struct string_int_map *psim;
+  size_t                 len = strlen(tag) + 1;
+  char                   buffer[len];
+  
+  assert(tag != NULL);
+  
+  for (size_t i = 0 ; i < len ; i++)
+    buffer[i] = toupper(tag[i]);
+  
+  psim = bsearch(
+  		buffer,
+  		cm_dns_class_is,
+  		CLASS_COUNT,
+  		sizeof(struct string_int_map),
+  		strint_cmp
+  	);
+
+  if (psim)
+    return psim->value;
+  else
+    return CLASS_IN;
+}
+
+/**********************************************************************/
+
+enum dns_op dns_op_value(const char *tag)
+{
+  struct string_int_map *psim;
+  size_t                 len = strlen(tag) + 1;
+  char                   buffer[len];
+  
+  assert(tag != NULL);
+  
+  for (size_t i = 0 ; i < len ; i++)
+    buffer[i] = toupper(tag[i]);
+  
+  psim = bsearch(
+  		buffer,
+  		cm_dns_op_is,
+  		OP_COUNT,
+  		sizeof(struct string_int_map),
+  		strint_cmp
+  	);
+
+  if (psim)
+    return psim->value;
+  else
+    return OP_QUERY;
+}
+
+/**********************************************************************/

@@ -8,5 +8,7 @@ const char 	*dns_class_text		(const enum dns_class);
 const char 	*dns_op_text		(const enum dns_op);
 
 enum dns_type	 dns_type_value		(const char *);
+enum dns_class	 dns_class_value	(const char *);
+enum dns_op	 dns_op_value		(const char *);
 
 #endif
