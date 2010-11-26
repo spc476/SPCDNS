@@ -818,7 +818,7 @@ int dns_decode(
   response->nameservers = NULL;
   response->additional  = NULL;
   
-  header      = (struct idns_header *)buffer;
+  header = (struct idns_header *)buffer;
   
   if ((header->rcode & 0x40) != 0x00)	/* Z bit must be zero */
     return RCODE_UNKNOWN_OPTIONS;
