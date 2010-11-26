@@ -156,6 +156,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
       case RR_HINFO:
            printf("\"%s\" \"%s\"",pans[i].hinfo.cpu,pans[i].hinfo.os);
            break;
+      case RR_SPF:
       case RR_TXT:
            assert(pans[i].generic.type == RR_TXT);
            assert(pans[i].txt.type     == RR_TXT);
