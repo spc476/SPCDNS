@@ -124,7 +124,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   for (size_t i = 0 ; i < cnt ; i++)
   {
     printf(
-    	"%s %lu %s %s ",
+    	"%-16s\t%lu\t%s\t%s\t",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
     	dns_class_text(pans[i].generic.class),
