@@ -63,7 +63,6 @@ static inline int      decode_rr_a	(idns_context *const restrict,dns_a_t        
 static inline int      decode_rr_mx     (idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_hinfo	(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_minfo	(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_naptr  (idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static inline int      decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
@@ -660,24 +659,6 @@ static inline int decode_rr_hinfo(
 
 /**********************************************************************/
 
-static inline int decode_rr_minfo(
-	idns_context *const restrict data,
-	dns_minfo_t  *const restrict pminfo
-)
-{
-  enum dns_rcode rc;
-  
-  assert(context_okay(data));
-  assert(pminfo != NULL);
-  
-  rc = read_domain(data,&pminfo->rmailbx);
-  if (rc != RCODE_OKAY) return rc;
-  rc = read_domain(data,&pminfo->emailbx);
-  return rc;
-}
-
-/*********************************************************************/
-
 static inline int decode_rr_srv(
 	idns_context *const restrict data,
 	dns_srv_t    *const restrict psrv,
@@ -759,12 +740,9 @@ static int decode_answer(
     case RR_A:     return decode_rr_a    (data,&pans->a    ,len);
     case RR_SOA:   return decode_rr_soa  (data,&pans->soa  ,len);
     case RR_MX:    return decode_rr_mx   (data,&pans->mx   ,len);
-
     case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
     case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa ,len);
     case RR_SRV:   return decode_rr_srv  (data,&pans->srv  ,len);
-    case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);
-    case RR_MINFO: return decode_rr_minfo(data,&pans->minfo);
     
     /*----------------------------------------------------------------------	
     ; The following record types all share the same structure (although the
@@ -772,6 +750,9 @@ static int decode_answer(
     ; share the same call site.  It's enough to shave some space in the
     ; executable while being a cheap and non-obscure size optimization.
     ;----------------------------------------------------------------------*/
+    
+    case RR_MINFO:
+    case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);    
     
     case RR_SPF:
     case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
