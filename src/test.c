@@ -25,7 +25,7 @@
 #include "dns.h"
 #include "mappings.h"
 
-#define DUMP 1
+#define DUMP 0
 
 /************************************************************************/
 
@@ -153,6 +153,19 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
       case RR_HINFO:
            printf("\"%s\" \"%s\"",pans[i].hinfo.cpu,pans[i].hinfo.os);
            break;
+      case RR_TXT:
+           assert(pans[i].generic.type == RR_TXT);
+           assert(pans[i].txt.type     == RR_TXT);
+           if (pans[i].txt.items == 1)
+             printf("\"%s\"",pans[i].txt.txt[0]);
+           else
+           {
+             printf("(");
+             for (size_t j = 0 ; j < pans[i].txt.items ; j++)
+               printf("\n\t\t\t\"%s\"",pans[i].txt.txt[j]);
+             printf("\n\t\t)");
+           }
+           break;
       case RR_SOA:
            printf(
            	"%s %s (\n"
@@ -202,11 +215,13 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   }
 }
 
+/*********************************************************************/
+
 int main(int argc,char *argv[])
 {
   if (argc == 1)
   {
-    fprintf(stderr,"usage: %s fqdn\n",argv[0]);
+    fprintf(stderr,"usage: %s type fqdn\n",argv[0]);
     return EXIT_FAILURE;
   }
   

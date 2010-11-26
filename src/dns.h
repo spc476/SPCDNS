@@ -252,7 +252,8 @@ typedef struct dns_txt_t
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
-  const char     *txt;
+  size_t          items;
+  const char    **txt;
 } dns_txt_t;
 
 typedef struct dns_mx_t
@@ -636,7 +637,7 @@ typedef union dns_answer_t
   dns_x_t       x;
 } dns_answer_t;
 
-typedef struct dns_query_t
+typedef struct dns_query_t	/* RFC-1035 */
 {
   int             id;
   bool            query;

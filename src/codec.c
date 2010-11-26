@@ -603,11 +603,40 @@ static inline int decode_rr_txt(
 	const size_t                 len
 )
 {
+  block_t tmp;
+  size_t  worklen;
+
   assert(context_okay(data));
   assert(ptxt != NULL);
-
-  data->parse.ptr  += len;
-  data->parse.size -= len;
+  
+  tmp     = data->parse;
+  worklen = len;
+  
+  for (ptxt->items = 0 ; worklen ; )
+  {
+    size_t slen;
+    
+    slen = (*tmp.ptr) + 1;
+    if (tmp.size < slen)
+      return RCODE_FORMAT_ERROR;
+    ptxt->items++;
+    tmp.ptr  += slen;
+    tmp.size -= slen;
+    worklen  -= slen;
+  }
+  
+  ptxt->txt = alloc_struct(&data->dest,sizeof(const char *) * ptxt->items);
+  if (ptxt->txt == NULL)
+    return RCODE_NO_MEMORY;
+  
+  for (size_t i = 0 ; i < ptxt->items ; i++)
+  {
+    enum dns_rcode rc;
+    
+    rc = read_string(data,&ptxt->txt[i]);
+    if (rc != RCODE_OKAY) return rc;
+  }
+  
   return RCODE_OKAY;
 }
 
