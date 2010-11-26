@@ -33,8 +33,8 @@ enum dns_type
   RR_NSAP_PTR = 23,	/* NSAP Pointer			*/
   RR_SIG      = 24,	/* Signature			*/ /* RFC-2065 */  
   RR_KEY      = 25,	/* Key				*/
-  RR_PX       = 26,	/* X.400 mail mapping		*/ /* ???      */
-  RR_GPOS     = 27,	/* Geographical position (obs)	*/ /* ???      */
+  RR_PX       = 26,	/* X.400 mail mapping		*/ /* RFC-2163 */
+  RR_GPOS     = 27,	/* Geographical position (obs)	*/ /* RFC-1712 */
   RR_AAAA     = 28,	/* IPv6 Address			*/ /* RFC-1886 */
   RR_LOC      = 29,	/* Location			*/ /* RFC-1876 */
   RR_NXT      = 30,	/* Next RR			*/ /* RFC-2065 */
@@ -46,7 +46,7 @@ enum dns_type
   RR_KX       = 36,	/* Key Exchange			*/ /* ???      */
   RR_CERT     = 37,	/* Certification		*/ /* ???      */
   RR_A6       = 38,	/* IPv6 Address			*/ /* RFC-2874 */
-  RR_DNAME    = 39,	/* Non-terminal DNAME (IPv6)	*/ /* ???      */
+  RR_DNAME    = 39,	/* Non-terminal DNAME (IPv6)	*/ /* RFC-2672 */
   RR_SINK     = 40,	/* Kitchen sink (experiemental) */ /* ???      */
   RR_OPT      = 41,	/* EDNS0 option (meta-RR)	*/ /* RFC-2673 */
   RR_APL      = 42,	/* Address Prefix List		*/ /* RFC-3123 */
@@ -54,6 +54,8 @@ enum dns_type
   RR_RRSIG    = 46,	/* Resource Record Signature	*/ /* RFC-4034 */
   RR_NSEC     = 47,	/* Next Security Record		*/
   RR_DNSKEY   = 48,	/* DNS Security	Key		*/
+  
+  RR_SPF      = 99,	/* Sender Policy Framework	*/ /* RFC-4408 */
 
 	/* Query types, >= 128 */
   
@@ -345,7 +347,16 @@ typedef struct dns_nsap_ptr_t
   const char     *owner;
 } dns_nsap_ptr_t;
 
-struct dnsloc_long;
+typedef struct dns_gpos_t	/* RFC-1712 */
+{
+  const char *name;
+  enum dns_type type;
+  enum dns_class class;
+  TTL            ttl;
+  double         longitude;
+  double         latitude;
+  double         altitude;
+} dns_gpos_t;
 
 typedef struct dns_loc_t	/* RFC-1876 */
 {
@@ -600,6 +611,16 @@ typedef struct dns_nsec_t
   uint8_t        *bitmap;
 } dns_nsec_t;
 
+typedef struct dns_spf_t	/* RFC-4408 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  size_t          items;
+  const char    **txt;
+} dns_spf_t;
+
 typedef union dns_answer_t
 {
   dns_generic_t generic;
@@ -625,6 +646,7 @@ typedef union dns_answer_t
   dns_naptr_t   naptr;
   dns_aaaa_t    aaaa;
   dns_srv_t     srv;
+  dns_spf_t     spf;
   dns_x_t       x;
 } dns_answer_t;
 

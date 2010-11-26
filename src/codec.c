@@ -759,7 +759,7 @@ static int decode_answer(
     case RR_A:     return decode_rr_a    (data,&pans->a    ,len);
     case RR_SOA:   return decode_rr_soa  (data,&pans->soa  ,len);
     case RR_MX:    return decode_rr_mx   (data,&pans->mx   ,len);
-    case RR_TXT:   return decode_rr_txt  (data,&pans->txt  ,len);
+
     case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
     case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa ,len);
     case RR_SRV:   return decode_rr_srv  (data,&pans->srv  ,len);
@@ -772,6 +772,9 @@ static int decode_answer(
     ; share the same call site.  It's enough to shave some space in the
     ; executable while being a cheap and non-obscure size optimization.
     ;----------------------------------------------------------------------*/
+    
+    case RR_SPF:
+    case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
     
     case RR_MD:
     case RR_MF:
