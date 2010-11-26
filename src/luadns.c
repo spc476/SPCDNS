@@ -166,8 +166,8 @@ static void decode_answer(
              
              for (size_t j = 0 ; j < pans[i].txt.items ; j++)
              {
+               lua_pushinteger(L,j + 1);
                lua_pushstring(L,pans[i].txt.txt[j]);
-               lua_pushinteger(L,i);
                lua_settable(L,-3);
              }
              
