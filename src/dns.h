@@ -2,6 +2,10 @@
 #ifndef DNS_H
 #define DNS_H
 
+#ifndef __GNUC__
+#  define __attribute__ (x)
+#endif
+
 #define MAX_DNS_QUERY_SIZE	512
 #define MAX_DOMAIN_SEGMENT	 64
 #define MAX_STRING_LEN		256
