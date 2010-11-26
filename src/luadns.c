@@ -265,6 +265,12 @@ static int dnslua_decode(lua_State *L)
   lua_setfield(L,tab,"rd");
   lua_pushboolean(L,result->ra);
   lua_setfield(L,tab,"ra");
+  lua_pushboolean(L,result->ad);
+  lua_setfield(L,tab,"ad");
+  lua_pushboolean(L,result->cd);
+  lua_setfield(L,tab,"cd");
+  lua_pushinteger(L,result->rcode);
+  lua_setfield(L,tab,"rcode");
   
   if (result->qdcount)
   {
@@ -289,6 +295,14 @@ static int dnslua_decode(lua_State *L)
 
 /*********************************************************************/
 
+static int dnslua_strerror(lua_State *L)
+{
+  lua_pushstring(L,dns_rcode_text(luaL_checkint(L,1)));
+  return 1;
+}
+
+/*********************************************************************/
+  
 static int dnslua_query(lua_State *L)
 {
   sockaddr_all  remote;
@@ -369,10 +383,11 @@ static int dnslua_query(lua_State *L)
 
 static const struct luaL_reg reg_dns[] =
 {
-  { "encode"	, dnslua_encode	} ,
-  { "decode"	, dnslua_decode	} ,
-  { "query"	, dnslua_query	} ,
-  { NULL	, NULL		} 
+  { "encode"	, dnslua_encode		} ,
+  { "decode"	, dnslua_decode		} ,
+  { "strerror"	, dnslua_strerror	} ,
+  { "query"	, dnslua_query		} ,
+  { NULL	, NULL			} 
 };
 
 int luaopen_org_conman_dns(lua_State *L)
