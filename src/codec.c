@@ -313,7 +313,7 @@ static int read_domain(
       len = *parse->ptr;
       
       if (parse->size < len + 1)
-        return RCODE_DOMAIN_ERROR;
+        return RCODE_FORMAT_ERROR;
 
       if (data->dest.size < len)
         return RCODE_NO_MEMORY;
@@ -332,15 +332,15 @@ static int read_domain(
     else if (*parse->ptr >= 192)
     {
       if (++loop == 256)
-        return RCODE_DOMAIN_LOOP;
+        return RCODE_FORMAT_ERROR;
       
       if (parse->size < 2)
-        return RCODE_DOMAIN_ERROR;
+        return RCODE_FORMAT_ERROR;
       
       len = read_uint16(parse) & 0x3FFF;
       
       if (len >= data->packet.size)
-        return RCODE_DOMAIN_ERROR;
+        return RCODE_FORMAT_ERROR;
       
       tmp.ptr = &data->packet.ptr[len];
       tmp.size = data->packet.size - (size_t)(tmp.ptr - data->packet.ptr);
@@ -352,7 +352,7 @@ static int read_domain(
       return RCODE_NOT_IMPLEMENTED;
     }
     else
-      return RCODE_DOMAIN_ERROR;
+      return RCODE_FORMAT_ERROR;
   } while(*parse->ptr);
   
   parse->ptr++;
@@ -501,10 +501,10 @@ static int decode_question(
   
   rc = read_domain(data,&pquest->name);
   if (rc != RCODE_OKAY)
-    return RCODE_QUESTION_BAD;
+    return rc;
   
   if (data->parse.size < 4)
-    return RCODE_QUESTION_BAD;
+    return RCODE_FORMAT_ERROR;
     
   pquest->type  = (enum dns_type) read_uint16(&data->parse);
   pquest->class = (enum dns_class)read_uint16(&data->parse);
@@ -531,7 +531,7 @@ static inline int decode_rr_soa(
   if (rc != RCODE_OKAY) return rc;
   
   if (len < 20)
-    return RCODE_SOA_BAD_LEN;
+    return RCODE_FORMAT_ERROR;
   
   psoa->serial  = read_uint32(&data->parse);
   psoa->refresh = read_uint32(&data->parse);
@@ -553,7 +553,7 @@ static inline int decode_rr_a(
   assert(context_okay(data));
   assert(pa != NULL);
 
-  if (len != 4) return RCODE_A_BAD_ADDR;
+  if (len != 4) return RCODE_FORMAT_ERROR;
   memcpy(&pa->address,data->parse.ptr,4);
   data->parse.ptr  += 4;
   data->parse.size -= 4;
@@ -589,7 +589,7 @@ static inline int decode_rr_mx(
   assert(context_okay(data));
   assert(pmx != NULL);
 
-  if (len < 4) return RCODE_MX_BAD_RECORD;
+  if (len < 4) return RCODE_FORMAT_ERROR;
   
   pmx->preference = read_uint16(&data->parse);
   return read_domain(data,&pmx->exchange);
@@ -733,15 +733,17 @@ static int decode_answer(
 {
   size_t         len;
   size_t         rest;
+  enum dns_rcode rc;
   
   assert(context_okay(data));
   assert(pans != NULL);
   
-  if (read_domain(data,&pans->generic.name) != RCODE_OKAY)
-    return RCODE_DOMAIN_ERROR;
+  rc = read_domain(data,&pans->generic.name);
+  if (rc != RCODE_OKAY)
+    return rc;
   
   if (data->parse.size < 10)
-    return RCODE_ANSWER_BAD;
+    return RCODE_FORMAT_ERROR;
     
   pans->generic.type  = read_uint16(&data->parse);
   pans->generic.class = read_uint16(&data->parse);
@@ -750,7 +752,7 @@ static int decode_answer(
   len  = read_uint16(&data->parse);
   rest = data->packet.size - (data->parse.ptr - data->packet.ptr);
   if (len > rest) 
-    return RCODE_BAD_LENGTH;
+    return RCODE_FORMAT_ERROR;
 
   switch(pans->generic.type)
   {
@@ -830,7 +832,7 @@ int dns_decode(
   header = (struct idns_header *)buffer;
   
   if ((header->rcode & 0x40) != 0x00)	/* Z bit must be zero */
-    return RCODE_UNKNOWN_OPTIONS;
+    return RCODE_FORMAT_ERROR;
   
   response->id      = ntohs(header->id);
   response->opcode  = (header->opcode >> 3) & 0x0F;

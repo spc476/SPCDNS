@@ -30,18 +30,25 @@ struct string_int_map
 
 static const struct int_string_map cm_dns_rcode[] =
 {
-  { RCODE_OKAY 			, "No error condition" 			} ,
+  { RCODE_OKAY 			, "No error"	 			} ,
   { RCODE_FORMAT_ERROR		, "Format error"			} ,
-  { RCODE_SERVER_FAILURE 	, "Server internal error"		} ,
-  { RCODE_NAME_ERROR		, "Domain name does not exist"		} ,
+  { RCODE_SERVER_FAILURE 	, "Server failure"			} ,
+  { RCODE_NAME_ERROR		, "Non-existant domain"			} ,
   { RCODE_NOT_IMPLEMENTED	, "Not implemented"			} ,
-  { RCODE_REFUSED		, "Server refused query"		} ,
-  { RCODE_YXDOMAIN		, "Domain name shouldn't exist"		} ,
-  { RCODE_YXRRSET		, "RRset shouldn't exist"		} ,
+  { RCODE_REFUSED		, "Query refused"			} ,
+  { RCODE_YXDOMAIN		, "Name exists when it should not"	} ,
+  { RCODE_YXRRSET		, "RRset exists when it should not"	} ,
   { RCODE_NXRRSET		, "RRset does not exist"		} ,
   { RCODE_NOTAUTH		, "Server not authoritative"		} ,
   { RCODE_NOTZONE		, "Zone not in zone section"		} ,
-  { RCODE_BADVERS		, "Invalid version for extention"	} ,
+  { RCODE_BADVERS		, "Bad OPT version/TSIG failed"		} ,
+  { RCODE_BADKEY		, "Key not recognized"			} ,
+  { RCODE_BADTIME		, "Signature out of time window"	} ,
+  { RCODE_BADMODE		, "Bad TKEY mode"			} ,
+  { RCODE_BADNAME		, "Duplicate key name"			} ,
+  { RCODE_BADALG		, "Algorithm not supported"		} ,
+  { RCODE_BADTRUC		, "Bad truncation"			} ,
+  { RCODE_NO_MEMORY		, "No memory"				} ,
 };
 
 #define RCODE_COUNT	(sizeof(cm_dns_rcode) / sizeof(struct int_string_map))
