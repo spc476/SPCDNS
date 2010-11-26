@@ -1,23 +1,20 @@
 
 require "org.conman.dns"
-require "org.conman.table"
 
 local SERVER = "127.0.0.1"
-
 local dns    = org.conman.dns
-local show   = org.conman.table.show
 
 -- **************************************************************
 
 local function query(host,type)
   local e = dns.encode {
-  		id = math.random(),
-  		query = true,
-  		rd    = true,
-  		opcode = 'query',
+  		id       = math.random(),
+  		query    = true,
+  		rd       = true,
+  		opcode   = 'query',
   		question = {
-  			name = host,
-  			type = type,
+  			name  = host,
+  			type  = type,
   			class = 'in'
   		}
   	}
