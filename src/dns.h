@@ -9,30 +9,30 @@
 enum dns_type
 {
   RR_A        =  1,	/* IPv4 Address 		*/ /* RFC-1035 */
-  RR_NS       =  2,	/* Name server			*/
-  RR_MD       =  3,	/* Mail Destination (obsolete)	*/
-  RR_MF       =  4,	/* Mail Forwarder (obsolete)	*/
-  RR_CNAME    =  5,	/* Canonical name		*/
-  RR_SOA      =  6,	/* Start of Authority		*/
-  RR_MB       =  7,	/* Mailbox (experimental)	*/
-  RR_MG       =  8,	/* Mailgroup (experimental)	*/
-  RR_MR       =  9,	/* Mailrename (experimental)	*/
-  RR_NULL     = 10,	/* NULL resource (experimental)	*/
-  RR_WKS      = 11,	/* Well Known Service		*/
-  RR_PTR      = 12,	/* Pointer			*/
-  RR_HINFO    = 13,	/* Host Info			*/
-  RR_MINFO    = 14,	/* Mailbox/mail list info	*/
-  RR_MX       = 15,	/* Mail Exchange		*/
-  RR_TXT      = 16,	/* Text				*/
+  RR_NS       =  2,	/* Name server			*/ /* RFC-1035 */
+  RR_MD       =  3,	/* Mail Destination (obsolete)	*/ /* RFC-1035 */
+  RR_MF       =  4,	/* Mail Forwarder (obsolete)	*/ /* RFC-1035 */
+  RR_CNAME    =  5,	/* Canonical name		*/ /* RFC-1035 */
+  RR_SOA      =  6,	/* Start of Authority		*/ /* RFC-1035 */
+  RR_MB       =  7,	/* Mailbox (experimental)	*/ /* RFC-1035 */
+  RR_MG       =  8,	/* Mailgroup (experimental)	*/ /* RFC-1035 */
+  RR_MR       =  9,	/* Mailrename (experimental)	*/ /* RFC-1035 */
+  RR_NULL     = 10,	/* NULL resource (experimental)	*/ /* RFC-1035 */
+  RR_WKS      = 11,	/* Well Known Service		*/ /* RFC-1035 */
+  RR_PTR      = 12,	/* Pointer			*/ /* RFC-1035 */
+  RR_HINFO    = 13,	/* Host Info			*/ /* RFC-1035 */
+  RR_MINFO    = 14,	/* Mailbox/mail list info	*/ /* RFC-1035 */
+  RR_MX       = 15,	/* Mail Exchange		*/ /* RFC-1035 */
+  RR_TXT      = 16,	/* Text				*/ /* RFC-1035 */
   RR_RP       = 17,	/* Responsible Person		*/ /* RFC-1183 */
-  RR_AFSDB    = 18,	/* Andrew File System DB	*/
-  RR_X25      = 19,	/* X.25 address, route binding  */
-  RR_ISDN     = 20,	/* ISDN address, route binding	*/
-  RR_RT       = 21,	/* Route Through		*/
+  RR_AFSDB    = 18,	/* Andrew File System DB	*/ /* RFC-1183 */
+  RR_X25      = 19,	/* X.25 address, route binding  */ /* RFC-1183 */
+  RR_ISDN     = 20,	/* ISDN address, route binding	*/ /* RFC-1183 */
+  RR_RT       = 21,	/* Route Through		*/ /* RFC-1183 */
   RR_NSAP     = 22,	/* Network Service Access Proto	*/ /* RFC-1348 */
-  RR_NSAP_PTR = 23,	/* NSAP Pointer			*/
+  RR_NSAP_PTR = 23,	/* NSAP Pointer			*/ /* RFC-1348 */
   RR_SIG      = 24,	/* Signature			*/ /* RFC-2065 */  
-  RR_KEY      = 25,	/* Key				*/
+  RR_KEY      = 25,	/* Key				*/ /* RFC-2065 */
   RR_PX       = 26,	/* X.400 mail mapping		*/ /* RFC-2163 */
   RR_GPOS     = 27,	/* Geographical position (obs)	*/ /* RFC-1712 */
   RR_AAAA     = 28,	/* IPv6 Address			*/ /* RFC-1886 */
@@ -52,9 +52,8 @@ enum dns_type
   RR_APL      = 42,	/* Address Prefix List		*/ /* RFC-3123 */
   RR_DS       = 43,	/* Delegation Signer		*/ /* RFC-3658 */  
   RR_RRSIG    = 46,	/* Resource Record Signature	*/ /* RFC-4034 */
-  RR_NSEC     = 47,	/* Next Security Record		*/
-  RR_DNSKEY   = 48,	/* DNS Security	Key		*/
-  
+  RR_NSEC     = 47,	/* Next Security Record		*/ /* RFC-4034 */
+  RR_DNSKEY   = 48,	/* DNS Security	Key		*/ /* RFC-4034 */
   RR_SPF      = 99,	/* Sender Policy Framework	*/ /* RFC-4408 */
 
 	/* Query types, >= 128 */
@@ -62,18 +61,18 @@ enum dns_type
   RR_TSIG     = 250,	/* Transaction Signature	*/ /* RFC-2845 */
   RR_IXFR     = 251,	/* Incremental zone transfer	*/ /* ???      */
   RR_AXFR     = 252,	/* Transfer of zone		*/ /* RFC-1035 */
-  RR_MAILB    = 253,	/* Mailbox related records	*/
-  RR_MAILA    = 254,	/* Mail agent RRs (obsolete)	*/
-  RR_ANY      = 255,	/* All records			*/
+  RR_MAILB    = 253,	/* Mailbox related records	*/ /* RFC-1035 */
+  RR_MAILA    = 254,	/* Mail agent RRs (obsolete)	*/ /* RFC-1035 */
+  RR_ANY      = 255,	/* All records			*/ /* RFC-1035 */
 };
 
 enum dns_class
 {
-  CLASS_IN  = 1,	/* Internet			*/
-  CLASS_CS,		/* CSNET - obsolete		*/
-  CLASS_CH,		/* CHAOS			*/
-  CLASS_HS,		/* Hesiod			*/
-  CLASS_NONE = 254,	/* 				*/ /* RFC-2136 */
+  CLASS_IN   =   1,	/* Internet		*/ /* RFC-1035 */
+  CLASS_CS   =   2,	/* CSNET - obsolete	*/ /* RFC-1035 */
+  CLASS_CH   =   3,	/* CHAOS		*/ /* RFC-1035 */
+  CLASS_HS   =   4,	/* Hesiod		*/ /* RFC-1035 */
+  CLASS_NONE = 254,	/* 			*/ /* RFC-2136 */
 };
 
 enum dns_op
@@ -87,45 +86,45 @@ enum dns_op
 
 enum dns_rcode
 {
-  RCODE_OKAY = 0,		/* RFC-1035 */
-  RCODE_FORMAT_ERROR,
-  RCODE_SERVER_FAILURE,
-  RCODE_NAME_ERROR,
-  RCODE_NOT_IMPLEMENTED,
-  RCODE_REFUSED,
-  RCODE_YXDOMAIN,		/* RFC-2136 */
-  RCODE_YXRRSET,
-  RCODE_NXRRSET,
-  RCODE_NOTAUTH,
-  RCODE_NOTZONE,
-  RCODE_BADVERS = 16,		/* RFC-2671 */
-  RCODE_BADSIG  = 16,		/* RFC-2845 */
-  RCODE_BADKEY,
-  RCODE_BADTIME,
-  RCODE_BADMODE,
-  RCODE_BADNAME,		/* RFC-2930 */
-  RCODE_BADALG,
-  RCODE_BADTRUC,		/* RFC-4635 */
+  RCODE_OKAY            =    0,	/* RFC-1035 */
+  RCODE_FORMAT_ERROR    =    1,	/* RFC-1035 */
+  RCODE_SERVER_FAILURE  =    2,	/* RFC-1035 */
+  RCODE_NAME_ERROR      =    3,	/* RFC-1035 */
+  RCODE_NOT_IMPLEMENTED =    4,	/* RFC-1035 */
+  RCODE_REFUSED         =    5,	/* RFC-1035 */
+  RCODE_YXDOMAIN        =    6,	/* RFC-2136 */
+  RCODE_YXRRSET         =    7,	/* RFC-2136 */
+  RCODE_NXRRSET         =    8,	/* RFC-2136 */
+  RCODE_NOTAUTH         =    9,	/* RFC-2136 */
+  RCODE_NOTZONE         =   10,	/* RFC-2136 */
+  RCODE_BADVERS         =   16,	/* RFC-2671 */
+  RCODE_BADSIG          =   16,	/* RFC-2845 */
+  RCODE_BADKEY          =   17,	/* RFC-2845 */
+  RCODE_BADTIME         =   18,	/* RFC-2845 */
+  RCODE_BADMODE         =   19,	/* RFC-2845 */
+  RCODE_BADNAME         =   20,	/* RFC-2930 */
+  RCODE_BADALG          =   21,	/* RFC-2930 */
+  RCODE_BADTRUC         =   22,	/* RFC-4635 */  
+  RCODE_PRIVATE         = 3841,	/* RFC-2929 */
   
-  RCODE_PRIVATE = 3841,		/* RFC-2929 */
   RCODE_NO_MEMORY
 };  
 
-enum edns0_label
+enum edns0_label		/* RFC-2673 */
 {
-  EDNS0_ELT = 1,	/* RFC-2673 */
+  EDNS0_ELT = 1,		
 };
 
 typedef uint32_t TTL;
 
-typedef struct dns_question_t
+typedef struct dns_question_t	/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
   enum dns_class  class;
 } dns_question_t;
 
-typedef struct dns_generic_t
+typedef struct dns_generic_t	/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -133,17 +132,52 @@ typedef struct dns_generic_t
   TTL             ttl;
 } dns_generic_t;
 
-typedef struct dns_x_t
+typedef struct dns_a_t		/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
-  size_t          size;
-  uint8_t        *rawdata;
-} dns_x_t;
+  in_addr_t       address;
+} dns_a_t;
 
-typedef struct dns_soa_t
+typedef struct dns_ns_t		/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *nsdname;
+} dns_ns_t;
+
+typedef struct dns_md_t		/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *madname;
+} dns_md_t;
+
+typedef struct dns_mf_t		/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *madname;
+} dns_mf_t;
+
+typedef struct dns_cname_t	/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *cname;
+} dns_cname_t;
+
+typedef struct dns_soa_t	/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -158,34 +192,7 @@ typedef struct dns_soa_t
   uint32_t        minimum;
 } dns_soa_t;
 
-typedef struct dns_a_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  in_addr_t       address;
-} dns_a_t;
-
-typedef struct dns_cname_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  const char     *cname;
-} dns_cname_t;
-
-typedef struct dns_ns_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  const char     *nsdname;
-} dns_ns_t;
-
-typedef struct dns_mb_t
+typedef struct dns_mb_t		/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -194,25 +201,7 @@ typedef struct dns_mb_t
   const char     *madname;
 } dns_mb_t;
 
-typedef struct dns_md_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  const char     *madname;
-} dns_md_t;
-
-typedef struct dns_mf_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  const char     *madname;
-} dns_mf_t;
-
-typedef struct dns_mg_t
+typedef struct dns_mg_t		/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -221,7 +210,7 @@ typedef struct dns_mg_t
   const char     *mgmname;
 } dns_mg_t;
 
-typedef struct dns_mr_t
+typedef struct dns_mr_t		/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -230,7 +219,29 @@ typedef struct dns_mr_t
   const char     *newname;
 } dns_mr_t;
 
-typedef struct dns_ptr_t
+typedef struct dns_null_t	/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  size_t          size;
+  uint8_t        *data;
+} dns_null_t;
+
+typedef struct dns_wks_t	/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  in_addr_t       address;
+  int             protocol;
+  size_t          numbits;
+  uint8_t        *bits;
+} dns_wks_t;
+
+typedef struct dns_ptr_t	/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -239,27 +250,7 @@ typedef struct dns_ptr_t
   const char     *ptr;
 } dns_ptr_t;
 
-typedef struct dns_txt_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  size_t          items;
-  const char    **txt;
-} dns_txt_t;
-
-typedef struct dns_mx_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  int             preference;
-  const char     *exchange;
-} dns_mx_t;
-
-typedef struct dns_hinfo_t
+typedef struct dns_hinfo_t	/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -269,7 +260,7 @@ typedef struct dns_hinfo_t
   const char     *os;
 } dns_hinfo_t;
 
-typedef struct dns_minfo_t
+typedef struct dns_minfo_t	/* RFC-1035 */
 {
   const char     *name;
   enum dns_type   type;
@@ -278,6 +269,36 @@ typedef struct dns_minfo_t
   const char     *rmailbx;
   const char     *emailbx;
 } dns_minfo_t;
+
+typedef struct dns_mx_t		/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  int             preference;
+  const char     *exchange;
+} dns_mx_t;
+
+typedef struct dns_txt_t	/* RFC-1035 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  size_t          items;
+  const char    **txt;
+} dns_txt_t;
+
+typedef struct dns_rp_t		/* RFC-1183 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  const char     *mbox;
+  const char     *domain;
+} dns_rp_t;
 
 typedef struct dns_afsdb_t	/* RFC-1183 */
 {
@@ -289,17 +310,7 @@ typedef struct dns_afsdb_t	/* RFC-1183 */
   const char     *hostname;
 } dns_afsdb_t;
 
-typedef struct dns_rp_t
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  const char     *mbox;
-  const char     *domain;
-} dns_rp_t;
-
-typedef struct dns_x25_t
+typedef struct dns_x25_t	/* RFC-1183 */
 {
   const char     *name;
   enum dns_type   type;
@@ -308,7 +319,7 @@ typedef struct dns_x25_t
   const char     *psdnaddress;
 } dns_x25_t;
 
-typedef struct dns_isdn_t
+typedef struct dns_isdn_t	/* RFC-1183 */
 {
   const char     *name;
   enum dns_type   type;
@@ -318,7 +329,7 @@ typedef struct dns_isdn_t
   const char     *sa;
 } dns_isdn_t;
 
-typedef struct dns_rt_t
+typedef struct dns_rt_t		/* RFC-1183 */
 {
   const char     *name;
   enum dns_type   type;
@@ -338,7 +349,7 @@ typedef struct dns_nsap_t	/* RFC-1348 */
   const char     *nsapaddress;
 } dns_nsap_t;
 
-typedef struct dns_nsap_ptr_t
+typedef struct dns_nsap_ptr_t	/* RFC-1348 */
 {
   const char     *name;
   enum dns_type   type;
@@ -346,45 +357,6 @@ typedef struct dns_nsap_ptr_t
   TTL             ttl;
   const char     *owner;
 } dns_nsap_ptr_t;
-
-typedef struct dns_gpos_t	/* RFC-1712 */
-{
-  const char *name;
-  enum dns_type type;
-  enum dns_class class;
-  TTL            ttl;
-  double         longitude;
-  double         latitude;
-  double         altitude;
-} dns_gpos_t;
-
-typedef struct dns_loc_t	/* RFC-1876 */
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  int             version;
-  unsigned long   size;		/* plese see RFC-1876 for a discussion 	*/
-  unsigned long   horiz_pre;	/* of these fields			*/
-  unsigned long   vert_pre;
-  int             lat;
-  int             lat_min;
-  int             lat_sec;
-  int             lng;
-  int             lng_min;
-  int             lng_sec;
-  long            altitude;
-} dns_loc_t;  
-
-typedef struct dns_aaaa_t	/* RFC-1886 */
-{
-  const char      *name;
-  enum dns_type    type;
-  enum dns_class   class;
-  TTL              ttl;
-  struct in6_addr  ipv6;
-} dns_aaaa_t;
 
 enum dnskey_algorithm		/* RFC-2065 */
 {
@@ -399,6 +371,24 @@ enum dnskey_algorithm		/* RFC-2065 */
   DNSKEYA_RSVP       = 255
 };
 
+typedef struct dns_sig_t	/* RFC-2065 */
+{
+  const char            *name;
+  enum dns_type          type;
+  enum dns_class         class;
+  TTL                    ttl;
+  enum dns_type          covered;
+  enum dnskey_algorithm  algorithm;
+  int                    labels;
+  TTL                    originttl;
+  unsigned long          sigexpire;
+  unsigned long          timesigned;
+  uint16_t               keyfootprint;
+  const char            *signer;
+  size_t                 sigsize;
+  uint8_t               *signature;
+} dns_sig_t;
+
 enum dnskey_protocol		/* RFC-2535 */
 {
   DNSKEYP_NONE   =   0,
@@ -409,7 +399,7 @@ enum dnskey_protocol		/* RFC-2535 */
   DNSKEYP_ALL    = 255
 };
 
-typedef union dnskey_key
+typedef union dnskey_key	/* RFC-2065 */
 {
   struct
   {
@@ -426,7 +416,7 @@ typedef union dnskey_key
   } unknown;
 } dnskey_key;
 
-typedef struct dns_key_t
+typedef struct dns_key_t	/* RFC-2065 */
 {
   const char     *name;
   enum dns_type   type;
@@ -449,25 +439,56 @@ typedef struct dns_key_t
   dnskey_key             key;
 } dns_key_t;
 
-typedef struct dns_sig_t
+typedef struct dns_px_t		/* RFC-2163 */
 {
-  const char            *name;
-  enum dns_type          type;
-  enum dns_class         class;
-  TTL                    ttl;
-  enum dns_type          covered;
-  enum dnskey_algorithm  algorithm;
-  int                    labels;
-  TTL                    originttl;
-  unsigned long          sigexpire;
-  unsigned long          timesigned;
-  uint16_t               keyfootprint;
-  const char            *signer;
-  size_t                 sigsize;
-  uint8_t               *signature;
-} dns_sig_t;
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  size_t          size;
+  uint8_t        *rawdata;
+} dns_px_t;
 
-typedef struct dns_nxt_t
+typedef struct dns_gpos_t	/* RFC-1712 */
+{
+  const char *name;
+  enum dns_type type;
+  enum dns_class class;
+  TTL            ttl;
+  double         longitude;
+  double         latitude;
+  double         altitude;
+} dns_gpos_t;
+
+typedef struct dns_aaaa_t	/* RFC-1886 */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum dns_class   class;
+  TTL              ttl;
+  struct in6_addr  ipv6;
+} dns_aaaa_t;
+
+typedef struct dns_loc_t	/* RFC-1876 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  int             version;
+  unsigned long   size;		/* plese see RFC-1876 for a discussion 	*/
+  unsigned long   horiz_pre;	/* of these fields			*/
+  unsigned long   vert_pre;
+  int             lat;
+  int             lat_min;
+  int             lat_sec;
+  int             lng;
+  int             lng_min;
+  int             lng_sec;
+  long            altitude;
+} dns_loc_t;  
+
+typedef struct dns_nxt_t	/* RFC-2065 */
 {
   const char     *name;
   enum dns_type   type;
@@ -477,7 +498,27 @@ typedef struct dns_nxt_t
   size_t          numbits;
   uint8_t        *bitmap;
 } dns_nxt_t;
-  
+
+typedef struct dns_eid_t	/* (unknown) */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_eid_t;
+
+typedef struct dns_nimloc_t	/* (unknown) */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_nimloc_t;
+
 typedef struct dns_srv_t	/* RFC-2782 */
 {
   const char     *name;
@@ -490,32 +531,15 @@ typedef struct dns_srv_t	/* RFC-2782 */
   const char     *target;
 } dns_srv_t;
 
-typedef struct dns_tsig_t	/* RFC-2845 */
+typedef struct dns_atm_t	/* (unknown) */
 {
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;	/* must be 0 */
-  const char     *algorithm;
-  uint64_t        timesigned;
-  unsigned int    fudge;
-  size_t          MACsize;
-  uint8_t        *MAC;
-  int             id;
-  int             error;
-  size_t          lenother;
-  uint8_t        *other;
-} dns_tsig_t;
-
-typedef struct dns_a6_t		/* RFC-2874 */
-{
-  const char     *name;
-  enum dns_type   type;
-  enum dns_class  class;
-  TTL             ttl;
-  uint8_t         address[16];
-  const char     *prefixname;
-} dns_a6_6;
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_atm_t;
 
 typedef struct dns_naptr_t	/* RFC-2915 */
 {
@@ -531,7 +555,67 @@ typedef struct dns_naptr_t	/* RFC-2915 */
   const char     *replacement;
 } dns_naptr_t;
 
-typedef struct dnsapl_record
+typedef struct dns_kx_t	/* (unknown) */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_kx_t;
+
+typedef struct dns_cert_t	/* (unknown) */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_cert_t;
+
+typedef struct dns_a6_t		/* RFC-2874 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  uint8_t         address[16];
+  const char     *prefixname;
+} dns_a6_t;
+
+typedef struct dns_dname_t	/* RFC-2672 */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_dname_t;
+
+typedef struct dns_sink_t	/* (unknown) */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_sink_t;
+
+typedef struct dns_opt_t	/* RFC-2673 */
+{
+  const char      *name;
+  enum dns_type    type;
+  enum  dns_class  class;
+  TTL              ttl;
+  size_t           size;
+  uint8_t         *rawdata;
+} dns_opt_t;
+
+typedef struct dnsapl_record	/* RFC-3123 */
 {
   int      addressfamily;
   int      prefix;
@@ -550,12 +634,13 @@ typedef struct dns_apl_t	/* RFC-3123 */
   dnsapl_record  *recs;
 } dns_apl_t;
 
+
 enum dnsds_digest		/* RFC-3658 */
 {
   DNSDS_SHA1 = 1,
 };
 
-typedef struct dns_ds_t
+typedef struct dns_ds_t		/* RFC-3658 */
 {
   const char            *name;
   enum dns_type          type;
@@ -568,21 +653,7 @@ typedef struct dns_ds_t
   uint8_t               *digestdata;
 } dns_ds_t;
 
-typedef struct dns_dnskey_t	/* RFC-4034 */
-{
-  const char           *name;
-  enum dns_type         type;
-  enum dns_class        class;
-  TTL                   ttl;
-  bool                  zonekey;
-  bool                  sep;
-  enum dnskey_protocol  protocol;	/* must be DNSKEYP_DNSSEC */
-  enum dnskey_algorithm algoritm;
-  size_t                keysize;
-  uint8_t              *key;
-} dns_dnskey_t;  
-
-typedef struct dns_rrsig_t
+typedef struct dns_rrsig_t	/* RFC-4034 */
 {
   const char            *name;
   enum dns_type          type;
@@ -600,7 +671,7 @@ typedef struct dns_rrsig_t
   uint8_t               *signature;
 } dns_rrsig_t;
 
-typedef struct dns_nsec_t
+typedef struct dns_nsec_t	/* RFC-4034 */
 {
   const char     *name;
   enum dns_type   type;
@@ -610,6 +681,20 @@ typedef struct dns_nsec_t
   size_t          numbits;
   uint8_t        *bitmap;
 } dns_nsec_t;
+
+typedef struct dns_dnskey_t	/* RFC-4034 */
+{
+  const char           *name;
+  enum dns_type         type;
+  enum dns_class        class;
+  TTL                   ttl;
+  bool                  zonekey;
+  bool                  sep;
+  enum dnskey_protocol  protocol;	/* must be DNSKEYP_DNSSEC */
+  enum dnskey_algorithm algoritm;
+  size_t                keysize;
+  uint8_t              *key;
+} dns_dnskey_t;  
 
 typedef struct dns_spf_t	/* RFC-4408 */
 {
@@ -621,33 +706,85 @@ typedef struct dns_spf_t	/* RFC-4408 */
   const char    **txt;
 } dns_spf_t;
 
+typedef struct dns_tsig_t	/* RFC-2845 */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;	/* must be 0 */
+  const char     *algorithm;
+  uint64_t        timesigned;
+  unsigned int    fudge;
+  size_t          MACsize;
+  uint8_t        *MAC;
+  int             id;
+  int             error;
+  size_t          lenother;
+  uint8_t        *other;
+} dns_tsig_t;
+
+typedef struct dns_x_t		/* CATCH-ALL */
+{
+  const char     *name;
+  enum dns_type   type;
+  enum dns_class  class;
+  TTL             ttl;
+  size_t          size;
+  uint8_t        *rawdata;
+} dns_x_t;
+
 typedef union dns_answer_t
 {
-  dns_generic_t generic;
-  dns_soa_t     soa;
-  dns_mx_t      mx;
-  dns_a_t       a;
-  dns_cname_t   cname;
-  dns_ns_t      ns;
-  dns_txt_t     txt;
-  dns_mb_t      mb;
-  dns_md_t      md;
-  dns_mf_t      mf;
-  dns_mg_t      mg;
-  dns_mr_t      mr;
-  dns_hinfo_t   hinfo;
-  dns_minfo_t   minfo;
-  dns_ptr_t     ptr;
-  dns_rp_t      rp;
-  dns_afsdb_t   fsdb;
-  dns_x25_t     x25;
-  dns_isdn_t    isdn;
-  dns_rt_t      rt;
-  dns_naptr_t   naptr;
-  dns_aaaa_t    aaaa;
-  dns_srv_t     srv;
-  dns_spf_t     spf;
-  dns_x_t       x;
+  dns_generic_t  generic;
+  dns_x_t        x;
+  dns_a_t        a;
+  dns_ns_t       ns;
+  dns_md_t       md;
+  dns_mf_t       mf;
+  dns_cname_t    cname;
+  dns_soa_t      soa;
+  dns_mb_t       mb;
+  dns_mg_t       mg;
+  dns_mr_t       mr;
+  dns_null_t     null;
+  dns_wks_t      wks;
+  dns_ptr_t      ptr;
+  dns_hinfo_t    hinfo;
+  dns_minfo_t    minfo;
+  dns_mx_t       mx;
+  dns_txt_t      txt;
+  dns_rp_t       rp;
+  dns_afsdb_t    afsdb;
+  dns_x25_t      x25;
+  dns_isdn_t     isdn;
+  dns_rt_t       rt;
+  dns_nsap_t     nsap;
+  dns_nsap_ptr_t nsap_ptr;
+  dns_sig_t      sig;
+  dns_key_t      key;
+  dns_px_t       px;
+  dns_gpos_t     gpos;
+  dns_aaaa_t     aaaa;
+  dns_loc_t      loc;
+  dns_nxt_t      nxt;
+  dns_eid_t      eid;
+  dns_nimloc_t   nimloc;
+  dns_srv_t      srv;
+  dns_atm_t      atm;
+  dns_naptr_t    naptr;
+  dns_kx_t       kx;
+  dns_cert_t     cert;
+  dns_a6_t       a6;
+  dns_dname_t    dname;
+  dns_sink_t     sink;
+  dns_opt_t      opt;
+  dns_apl_t      apl;
+  dns_ds_t       ds;
+  dns_rrsig_t    rrsig;
+  dns_nsec_t     nsec;
+  dns_dnskey_t   dnskey;
+  dns_spf_t      spf;
+  dns_tsig_t     tsig;
 } dns_answer_t;
 
 typedef struct dns_query_t	/* RFC-1035 */
