@@ -22,7 +22,7 @@ local function query(host,type)
   		}
   	}
   	
-  local r,err = dns.query('127.0.0.1',e)
+  local r,err = dns.query(SERVER,e)
   
   if r == nil then
     print("error:",err)
