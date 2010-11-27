@@ -690,45 +690,56 @@ static inline int decode_rr_txt(
 {
   block_t tmp;
   size_t  worklen;
-
+  size_t  items;
+  size_t  slen;
+  
   assert(context_okay(data));
   assert(ptxt != NULL);
   
-  /*-----------------------------------------------------------------------
-  ; The spec allows for multiple strings in a TXT record.  Most libraries
-  ; just concat all the strings together, but I'm not sure I like that; so
-  ; here I just return each string as I find it in an array.  This may
-  ; change in the future
-  ;------------------------------------------------------------------------*/
+  /*--------------------------------------------------------------------
+  ; collapse multiple strings (which are allowed per the spec) into one
+  ; large string.  Cache the length as well, as some records might prefer
+  ; the length to be there (in case of binary data)
+  ;---------------------------------------------------------------------*/
   
-  tmp     = data->parse;
-  worklen = len;
+  tmp       = data->parse;
+  worklen   = len;
+  ptxt->len = 0;
   
-  for (ptxt->total = ptxt->items = 0 ; worklen ; )
+  for (items = 0 ; worklen ; )
   {
-    size_t slen;
+    slen = *tmp.ptr + 1;
     
-    slen = (*tmp.ptr) + 1;
     if (tmp.size < slen)
       return RCODE_FORMAT_ERROR;
-    ptxt->items++;
-    ptxt->total += slen;
-    tmp.ptr     += slen;
-    tmp.size    -= slen;
-    worklen     -= slen;
+    
+    items++;
+    ptxt->len += slen - 1;
+    tmp.ptr   += slen;
+    tmp.size  -= slen;
+    worklen   -= slen;
   }
   
-  ptxt->txt = alloc_struct(&data->dest,sizeof(const char *) * ptxt->items);
-  if (ptxt->txt == NULL)
+  ptxt->text = data->dest.ptr;
+  
+  for (size_t i = 0 ; i < items ; i++)
+  {
+    slen = *data->parse.ptr;
+    if (data->dest.size < slen)
+      return RCODE_NO_MEMORY;
+      
+    memcpy(data->dest.ptr,&data->parse.ptr[1],slen);
+    data->dest.ptr   += slen;
+    data->dest.size  -= slen;
+    data->parse.ptr  += (slen + 1);
+    data->parse.size -= (slen + 1);
+  }
+  
+  if (data->dest.size == 0)
     return RCODE_NO_MEMORY;
   
-  for (size_t i = 0 ; i < ptxt->items ; i++)
-  {
-    enum dns_rcode rc;
-    
-    rc = read_string(data,&ptxt->txt[i]);
-    if (rc != RCODE_OKAY) return rc;
-  }
+  *data->dest.ptr++ = '\0';
+  data->dest.size--;
   
   return RCODE_OKAY;
 }

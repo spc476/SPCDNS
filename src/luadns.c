@@ -155,24 +155,8 @@ static void decode_answer(
            break;
       case RR_SPF:
       case RR_TXT:
-           if (pans[i].txt.items == 1)
-           {
-             lua_pushstring(L,pans[i].txt.txt[0]);
-             lua_setfield(L,-2,"txt");
-           }
-           else
-           {
-             lua_createtable(L,0,0);
-             
-             for (size_t j = 0 ; j < pans[i].txt.items ; j++)
-             {
-               lua_pushinteger(L,j + 1);
-               lua_pushstring(L,pans[i].txt.txt[j]);
-               lua_settable(L,-3);
-             }
-             
-             lua_setfield(L,-2,"txt");
-           }
+           lua_pushlstring(L,pans[i].txt.text,pans[i].txt.len);
+           lua_setfield(L,-2,"txt");
            break;
       case RR_SOA:
            lua_pushstring(L,pans[i].soa.mname);

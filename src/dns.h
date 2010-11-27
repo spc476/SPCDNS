@@ -290,9 +290,8 @@ typedef struct dns_txt_t	/* RFC-1035 */
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
-  size_t          total;	/* total size of all strings */
-  size_t          items;
-  const char    **txt;
+  size_t          len;
+  const char     *text;
 } dns_txt_t;
 
 typedef struct dns_rp_t		/* RFC-1183 */
@@ -321,6 +320,7 @@ typedef struct dns_x25_t	/* RFC-1183 */
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
+  size_t          size;
   const char     *psdnaddress;
 } dns_x25_t;
 
@@ -707,8 +707,8 @@ typedef struct dns_spf_t	/* RFC-4408 */
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
-  size_t          items;
-  const char    **txt;
+  size_t          len;
+  const char     *text;
 } dns_spf_t;
 
 typedef struct dns_tsig_t	/* RFC-2845 */

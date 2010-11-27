@@ -158,16 +158,27 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            break;
       case RR_SPF:
       case RR_TXT:
-           assert(pans[i].generic.type == RR_TXT);
-           assert(pans[i].txt.type     == RR_TXT);
-           if (pans[i].txt.items == 1)
-             printf("\"%s\"",pans[i].txt.txt[0]);
+           if (pans[i].txt.len < 65)
+             printf("\"%s\"",pans[i].txt.text);
            else
            {
-             printf("(");
-             for (size_t j = 0 ; j < pans[i].txt.items ; j++)
-               printf("\n\t\t\t\"%s\"",pans[i].txt.txt[j]);
-             printf("\n\t\t)");
+             size_t len;
+             int    max;
+             size_t off;
+             
+             printf("(\n");
+             len = pans[i].txt.len;
+             off = 0;
+             
+             while(len)
+             {
+               max = (len > 64) ? 64 : (int)len;
+               printf("\n\t\t\"%*.*s\"",max,max,&pans[i].txt.text[off]);
+               off += max;
+               len -= max;
+             }
+             
+             printf("\n\t\t)\n");
            }
            break;
       case RR_SOA:
@@ -302,7 +313,7 @@ int main(int argc,char *argv[])
   rc = dns_decode(bufresult,sizeof(bufresult),inbuffer,insize);
   if (rc != RCODE_OKAY)
   {
-    fprintf(stderr,"dns_decode() = %d\n",rc);
+    fprintf(stderr,"dns_decode() = (%d) %s\n",rc,dns_rcode_text(rc));
     return EXIT_FAILURE;
   }
   
