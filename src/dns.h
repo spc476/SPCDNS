@@ -290,6 +290,7 @@ typedef struct dns_txt_t	/* RFC-1035 */
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
+  size_t          total;	/* total size of all strings */
   size_t          items;
   const char    **txt;
 } dns_txt_t;

@@ -14,6 +14,15 @@
 
 #include "dns.h"
 
+/*----------------------------------------------------------------------------
+; the folowing are used for memory allocation.  uintptr_t is picked as the
+; alignment size, as it's good enough for alignment.  If some odd-ball
+; system comes up that requires more strict alignment, then I'll change this
+; to something like a long double or something silly like that.
+;
+; see the comment align_memory() for more details
+;-----------------------------------------------------------------------------*/
+
 #define MEM_ALIGN	sizeof(uintptr_t)
 #define MEM_MASK	~(sizeof(uintptr_t) - 1uL)
 
@@ -41,32 +50,33 @@ typedef struct idns_context
 {
   block_t      packet;
   block_t      parse;
-  block_t      dest;
+  block_t      dest;	/* see comments in align_memory() */
   dns_query_t *response;
 } idns_context;
 
 /***********************************************************************/
 
-static        bool	 align_memory	(block_t *const)				__attribute__ ((nonnull));
-static        void      *alloc_struct	(block_t *const,const size_t)			__attribute__ ((nonnull(1)));
-static inline uint16_t	 read_uint16	(block_t *const)				__attribute__ ((nonnull));
-static inline uint32_t	 read_uint32	(block_t *const)				__attribute__ ((nonnull));
+static        block_t	 dns_encode_domain(block_t,const dns_question_t *const restrict) __attribute__ ((nonnull(2)));
+
+static        bool	 align_memory	(block_t *const)		__attribute__ ((nonnull));
+static        void      *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nonnull(1)));
+static inline uint16_t	 read_uint16	(block_t *const)		__attribute__ ((nonnull));
+static inline uint32_t	 read_uint32	(block_t *const)		__attribute__ ((nonnull));
+
 static        int        read_raw       (idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nonnull(1,2)));
 static        int        read_string    (idns_context *const restrict,const char **restrict)              __attribute__ ((nonnull(1,2)));
 static        int        read_domain    (idns_context *const restrict,const char **restrict)	          __attribute__ ((nonnull));
 
-static        block_t  dns_encode_domain(block_t,const dns_question_t *const restrict)	__attribute__ ((nonnull(2)));
-
-static        int      decode_question	(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nonnull));
-static inline int      decode_rr_soa    (idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_mx     (idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_hinfo	(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_naptr  (idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int      decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static        int      decode_answer    (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
+static        int	 decode_question(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nonnull));
+static inline int	 decode_rr_soa	(idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_mx	(idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_hinfo(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_naptr(idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static inline int	 decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
+static        int	 decode_answer	(idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
 
 /***********************************************************************/
 
@@ -131,6 +141,14 @@ static        int      decode_answer    (idns_context *const restrict,dns_answer
 #ifndef NDEBUG
 # include <stdio.h>
 # include <cgilib6/util.h>
+
+  /*-------------------------------------------------------------------------
+  ; this routine is only used for development and is *not* needed for normal
+  ; operations.  You probably don't have the dump_memory() function defined
+  ; (it's in a separate library on my (sean@conman.org) development system)
+  ; so if you need to nuke this, go ahead.
+  ;------------------------------------------------------------------------*/
+  
   static void quick_dump(const char *,void *,size_t) __attribute__ ((unused));
   
   static void quick_dump(const char *tag,void *data,size_t len)
@@ -146,223 +164,7 @@ static        int      decode_answer    (idns_context *const restrict,dns_answer
 #  define quick_dump(t,d,l,o)
 #endif
 
-/******************************************************************/
-
-static bool align_memory(block_t *const pool)
-{
-  size_t newsize;
-  size_t delta;
-  
-  assert(pblock_okay(pool));
-  
-  if (pool->size < MEM_ALIGN)
-    return false;
-  
-  newsize = pool->size & MEM_MASK;
-  if (newsize == pool->size)
-    return true;
-  
-  assert(newsize < pool->size);
-  delta = (newsize + MEM_ALIGN) - pool->size;
-  assert(delta < pool->size);
-  
-  pool->ptr  += delta;
-  pool->size -= delta;
-  
-  return true;
-}
-
-/*************************************************************************/  
-
-static void *alloc_struct(block_t *const pool,const size_t size)
-{
-  uint8_t *ptr;
-  
-  assert(pblock_okay(pool));
-  
-  if (pool->size == 0)      return NULL;
-  if (!align_memory(pool))  return NULL;
-  if (pool->size < size)    return NULL;
-  
-  ptr         = pool->ptr;
-  pool->ptr  += size;
-  pool->size -= size;
-  return (void *)ptr;
-}
-
-/***********************************************************************/
-
-static inline uint16_t read_uint16(block_t *const parse)
-{
-  uint16_t val;
-  
-  assert(pblock_okay(parse));
-  assert(parse->size >= 2);
-  
-  val = (parse->ptr[0] << 8) 
-      | (parse->ptr[1]     );
-  parse->ptr  += 2;
-  parse->size -= 2;
-  return val;
-}
-
-/********************************************************************/  
-
-static inline uint32_t read_uint32(block_t *const parse)
-{
-  uint32_t val;
-  
-  assert(pblock_okay(parse));  
-  assert(parse->size >= 4);
-  
-  val = (parse->ptr[0] << 24) 
-      | (parse->ptr[1] << 16) 
-      | (parse->ptr[2] <<  8)
-      | (parse->ptr[3]      );
-  parse->ptr  += 4;
-  parse->size -= 4;
-  return val;
-}
-
-/********************************************************************/
-
-static int read_raw(
-	idns_context  *const restrict data,
-	uint8_t      **restrict       result,
-	const size_t                  len
-)
-{
-  assert(context_okay(data));
-  assert(result != NULL);
-  
-  if (len > 0)
-  {
-    if (len > data->parse.size)
-      return RCODE_FORMAT_ERROR;
-    
-    if (len > data->dest.size)
-      return RCODE_NO_MEMORY;
-    
-    *result = data->dest.ptr;
-    memcpy(data->dest.ptr,data->parse.ptr,len);
-    data->parse.ptr  += len;
-    data->parse.size -= len;
-  }
-  else
-    *result = NULL;
-    
-  return RCODE_OKAY;
-}
-
-/********************************************************************/
-
-static int read_string(
-	idns_context  *const restrict data,
-	const char   **restrict       result
-)
-{
-  size_t len;
-  
-  assert(context_okay(data));
-  assert(result != NULL);
-
-  len = *data->parse.ptr;
-  
-  if (data->dest.size < len + 1)
-    return RCODE_NO_MEMORY;
-  
-  if (data->parse.size < len + 1)
-    return RCODE_FORMAT_ERROR;
-  
-  *result = (char *)data->dest.ptr;
-  memcpy(data->dest.ptr,&data->parse.ptr[1],len);
-  
-  data->parse.ptr  += (len + 1);
-  data->parse.size -= (len + 1);
-  data->dest.ptr   += len;
-  data->dest.size  -= len;
-  *data->dest.ptr++ = '\0';
-  data->dest.size--;
-  
-  return RCODE_OKAY; 
-}
-
-/********************************************************************/
-
-static int read_domain(
-	idns_context  *const restrict data,
-	const char   **restrict       result
-)
-{
-  block_t *parse = &data->parse;
-  block_t  tmp;
-  size_t   len;
-  int      loop;	/* loop detection */
-  
-  assert(context_okay(data));
-  assert(result != NULL);
-  
-  *result = (char *)data->dest.ptr;
-  loop    = 0;
-  
-  do
-  {
-    if (*parse->ptr < 64)
-    {
-      len = *parse->ptr;
-      
-      if (parse->size < len + 1)
-        return RCODE_FORMAT_ERROR;
-
-      if (data->dest.size < len)
-        return RCODE_NO_MEMORY;
-      
-      if (len)
-      {
-        memcpy(data->dest.ptr,&parse->ptr[1],len);
-        parse->ptr         += (len + 1);
-        parse->size        -= (len + 1);
-      }
-
-      data->dest.size   -= (len + 1);
-      data->dest.ptr    += len;
-      *data->dest.ptr++  = '.';
-    }
-    else if (*parse->ptr >= 192)
-    {
-      if (++loop == 256)
-        return RCODE_FORMAT_ERROR;
-      
-      if (parse->size < 2)
-        return RCODE_FORMAT_ERROR;
-      
-      len = read_uint16(parse) & 0x3FFF;
-      
-      if (len >= data->packet.size)
-        return RCODE_FORMAT_ERROR;
-      
-      tmp.ptr = &data->packet.ptr[len];
-      tmp.size = data->packet.size - (size_t)(tmp.ptr - data->packet.ptr);
-      parse    = &tmp;
-    }
-    else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
-    {
-      /* XXX - see RFC2671 for details */
-      return RCODE_NOT_IMPLEMENTED;
-    }
-    else
-      return RCODE_FORMAT_ERROR;
-  } while(*parse->ptr);
-  
-  parse->ptr++;
-  parse->size--;
-  *data->dest.ptr++ = '\0';
-  data->dest.size--;
-  
-  return RCODE_OKAY;
-}
-
-/********************************************************************/
+/*****************************************************************************/
 
 int dns_encode(
 	uint8_t           *const restrict buffer,
@@ -378,6 +180,8 @@ int dns_encode(
   assert(*plen  >= 12);
   assert(query  != NULL);
   
+  memset(buffer,0,*plen);
+  
   header = (struct idns_header *)buffer;
   
   header->id      = htons(query->id);
@@ -387,14 +191,23 @@ int dns_encode(
   header->ancount = htons(query->ancount);
   header->nscount = htons(query->nscount);
   header->arcount = htons(query->arcount);
+
+  /*-----------------------------------------------------------------------
+  ; I'm not bothering with symbolic constants for the flags; they're only
+  ; used in two places in the code (the other being dns_encode()) and
+  ; they're not going to change.  It's also obvious from the context what
+  ; they're refering to.
+  ;-----------------------------------------------------------------------*/
   
   if (!query->query) header->opcode |= 0x80;
   if (query->aa)     header->opcode |= 0x04;
   if (query->tc)     header->opcode |= 0x02;
   if (query->rd)     header->opcode |= 0x01;
   if (query->ra)     header->rcode  |= 0x80;
+  if (query->ad)     header->rcode  |= 0x20;
+  if (query->cd)     header->rcode  |= 0x10;
   
-  data.size = *plen - 12;
+  data.size = *plen - sizeof(struct idns_header);
   data.ptr  = &buffer[sizeof(struct idns_header)];
   data.err  = RCODE_OKAY;
   
@@ -486,7 +299,255 @@ static block_t dns_encode_domain(
   return data;
 }
 
+/******************************************************************************
+*
+* Memory allocations are done quickly.  The dns_decode() routine is given a
+* block of memory to carve allocations out of (8k is more than enough for
+* UDP packets) and there's no real intelligence here---just a quick scheme. 
+* String information is just allocated starting at the next available
+* location (referenced in context->dest) whereas the few structures that do
+* need allocating require the free pointer to be adjusted to a proper memory
+* alignment.  If you need alignments, call alloc_struct(), otherwise for
+* strings, use context->dest directly.  You *can* use align_memory()
+* directly, just be sure you know what you are doing.
+*
+* If you are grabbing strings, just use context->dest directoy; othersise,
+* call alloc_struct(), and don't forget to check for NULL.
+*
+******************************************************************************/
+
+static bool align_memory(block_t *const pool)
+{
+  size_t newsize;
+  size_t delta;
+  
+  assert(pblock_okay(pool));
+  
+  if (pool->size < MEM_ALIGN)
+    return false;
+  
+  newsize = pool->size & MEM_MASK;
+  if (newsize == pool->size)
+    return true;
+  
+  assert(newsize < pool->size);
+  delta = (newsize + MEM_ALIGN) - pool->size;
+  assert(delta < pool->size);
+  
+  pool->ptr  += delta;
+  pool->size -= delta;
+  
+  return true;
+}
+
+/*************************************************************************/  
+
+static void *alloc_struct(block_t *const pool,const size_t size)
+{
+  uint8_t *ptr;
+  
+  assert(pblock_okay(pool));
+  
+  if (pool->size == 0)      return NULL;
+  if (!align_memory(pool))  return NULL;
+  if (pool->size < size)    return NULL;
+  
+  ptr         = pool->ptr;
+  pool->ptr  += size;
+  pool->size -= size;
+  return (void *)ptr;
+}
+
 /***********************************************************************/
+
+static inline uint16_t read_uint16(block_t *const parse)
+{
+  uint16_t val;
+  
+  /*------------------------------------------------------------------------
+  ; caller is reponsible for making sure there's at least two bytes to read
+  ;------------------------------------------------------------------------*/
+  
+  assert(pblock_okay(parse));
+  assert(parse->size >= 2);
+  
+  val = (parse->ptr[0] << 8) 
+      | (parse->ptr[1]     );
+  parse->ptr  += 2;
+  parse->size -= 2;
+  return val;
+}
+
+/********************************************************************/  
+
+static inline uint32_t read_uint32(block_t *const parse)
+{
+  uint32_t val;
+
+  /*------------------------------------------------------------------------
+  ; caller is reponsible for making sure there's at least four bytes to read
+  ;------------------------------------------------------------------------*/
+  
+  assert(pblock_okay(parse));  
+  assert(parse->size >= 4);
+  
+  val = (parse->ptr[0] << 24) 
+      | (parse->ptr[1] << 16) 
+      | (parse->ptr[2] <<  8)
+      | (parse->ptr[3]      );
+  parse->ptr  += 4;
+  parse->size -= 4;
+  return val;
+}
+
+/********************************************************************/
+
+static int read_raw(
+	idns_context  *const restrict data,
+	uint8_t      **restrict       result,
+	const size_t                  len
+)
+{
+  assert(context_okay(data));
+  assert(result != NULL);
+  
+  if (len > 0)
+  {  
+    if (len > data->parse.size)
+      return RCODE_FORMAT_ERROR;
+
+    /*-----------------------------------------------------------------------
+    ; read a raw block of data; the copy is structured aligned; this is really
+    ; used when we don't know the structure of the data we're reading, so why
+    ; not align it?
+    ;-----------------------------------------------------------------------*/
+    
+    if (!align_memory(&data->dest))
+      return RCODE_NO_MEMORY;
+
+    if (len > data->dest.size)
+      return RCODE_NO_MEMORY;
+    
+    *result = data->dest.ptr;
+    memcpy(data->dest.ptr,data->parse.ptr,len);
+    data->parse.ptr  += len;
+    data->parse.size -= len;
+  }
+  else
+    *result = NULL;
+    
+  return RCODE_OKAY;
+}
+
+/********************************************************************/
+
+static int read_string(
+	idns_context  *const restrict data,
+	const char   **restrict       result
+)
+{
+  size_t len;
+  
+  assert(context_okay(data));
+  assert(result != NULL);
+
+  len = *data->parse.ptr;
+  
+  if (data->dest.size < len + 1) /* adjust for NUL byte */
+    return RCODE_NO_MEMORY;
+  
+  if (data->parse.size < len + 1) /* adjust for length byte */
+    return RCODE_FORMAT_ERROR;
+  
+  *result = (char *)data->dest.ptr;
+  memcpy(data->dest.ptr,&data->parse.ptr[1],len);
+  
+  data->parse.ptr  += (len + 1);
+  data->parse.size -= (len + 1);
+  data->dest.ptr   += len;
+  data->dest.size  -= len;
+  *data->dest.ptr++ = '\0';
+  data->dest.size--;
+  
+  return RCODE_OKAY; 
+}
+
+/********************************************************************/
+
+static int read_domain(
+	idns_context  *const restrict data,
+	const char   **restrict       result
+)
+{
+  block_t *parse = &data->parse;
+  block_t  tmp;
+  size_t   len;
+  int      loop;	/* loop detection */
+  
+  assert(context_okay(data));
+  assert(result != NULL);
+  
+  *result = (char *)data->dest.ptr;
+  loop    = 0;
+  
+  do
+  {
+    if (*parse->ptr < 64)
+    {
+      len = *parse->ptr;
+      
+      if (parse->size < len + 1)
+        return RCODE_FORMAT_ERROR;
+
+      if (data->dest.size < len)
+        return RCODE_NO_MEMORY;
+      
+      if (len)
+      {
+        memcpy(data->dest.ptr,&parse->ptr[1],len);
+        parse->ptr         += (len + 1);
+        parse->size        -= (len + 1);
+      }
+
+      data->dest.size   -= (len + 1);
+      data->dest.ptr    += len;
+      *data->dest.ptr++  = '.';
+    }
+    else if (*parse->ptr >= 192)
+    {
+      if (++loop == 256)
+        return RCODE_FORMAT_ERROR;
+      
+      if (parse->size < 2)
+        return RCODE_FORMAT_ERROR;
+      
+      len = read_uint16(parse) & 0x3FFF;
+      
+      if (len >= data->packet.size)
+        return RCODE_FORMAT_ERROR;
+      
+      tmp.ptr = &data->packet.ptr[len];
+      tmp.size = data->packet.size - (size_t)(tmp.ptr - data->packet.ptr);
+      parse    = &tmp;
+    }
+    else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
+    {
+      /* XXX - see RFC2671 for details */
+      return RCODE_NOT_IMPLEMENTED;
+    }
+    else
+      return RCODE_FORMAT_ERROR;
+  } while(*parse->ptr);
+  
+  parse->ptr++;
+  parse->size--;
+  *data->dest.ptr++ = '\0';
+  data->dest.size--;
+  
+  return RCODE_OKAY;
+}
+
+/********************************************************************/
 
 static int decode_question(
 	idns_context   *const restrict data,
@@ -608,10 +669,17 @@ static inline int decode_rr_txt(
   assert(context_okay(data));
   assert(ptxt != NULL);
   
+  /*-----------------------------------------------------------------------
+  ; The spec allows for multiple strings in a TXT record.  Most libraries
+  ; just concat all the strings together, but I'm not sure I like that; so
+  ; here I just return each string as I find it in an array.  This may
+  ; change in the future
+  ;------------------------------------------------------------------------*/
+  
   tmp     = data->parse;
   worklen = len;
   
-  for (ptxt->items = 0 ; worklen ; )
+  for (ptxt->total = ptxt->items = 0 ; worklen ; )
   {
     size_t slen;
     
@@ -619,9 +687,10 @@ static inline int decode_rr_txt(
     if (tmp.size < slen)
       return RCODE_FORMAT_ERROR;
     ptxt->items++;
-    tmp.ptr  += slen;
-    tmp.size -= slen;
-    worklen  -= slen;
+    ptxt->total += slen;
+    tmp.ptr     += slen;
+    tmp.size    -= slen;
+    worklen     -= slen;
   }
   
   ptxt->txt = alloc_struct(&data->dest,sizeof(const char *) * ptxt->items);
@@ -800,6 +869,16 @@ int dns_decode(
   context.parse.size  = len - sizeof(struct idns_header);
   context.dest.ptr    = presponse;
   context.dest.size   = rsize;
+  
+  /*--------------------------------------------------------------------------
+  ; we use the block of data given to store the results.  context.dest
+  ; contains this block and allocations are doled out from this.  This odd
+  ; bit here sets the structure to the start of the block we're using, and
+  ; then "allocates" the size f the structure in the context variable.  I do
+  ; this as a test of the allocation routines when the address is already
+  ; aligned (an assumption I'm making)---the calls to assert() ensure this
+  ; behavior.
+  ;--------------------------------------------------------------------------*/
   
   response         = (dns_query_t *)context.dest.ptr;
   context.response = alloc_struct(&context.dest,sizeof(dns_query_t));
