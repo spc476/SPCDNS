@@ -1,7 +1,7 @@
 
 CC = gcc -g -std=c99
-#CFLAGS = -Wall -Wextra -pedantic
-CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
+CFLAGS = -Wall -Wextra -pedantic
+#CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
 LFLAGS = -lm -lcgi6
 
 all : built/dotest built/dns.so

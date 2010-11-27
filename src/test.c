@@ -231,6 +231,30 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	pans[i].naptr.replacement
            );
            break;
+      case RR_LOC:
+           printf(
+           	"(\n"
+           	"\t\t%3d %2d %2d %s ; Latitude\n"
+           	"\t\t%3d %2d %2d %s ; Longitude\n"
+           	"\t\t%11ld ; Altitude\n"
+           	"\t\t%11lu ; Size\n"
+           	"\t\t%11lu ; Horizontal Precision\n"
+           	"\t\t%11lu ; Vertical Precision\n"
+           	"\t\t)\n",
+           	pans[i].loc.latitude.deg,
+           	pans[i].loc.latitude.min,
+           	pans[i].loc.latitude.sec,
+           	pans[i].loc.latitude.nw ? "N" : "S",
+           	pans[i].loc.longitude.deg,
+           	pans[i].loc.longitude.min,
+           	pans[i].loc.longitude.sec,
+           	pans[i].loc.longitude.nw ? "E" : "W",
+           	pans[i].loc.altitude,
+           	pans[i].loc.size,
+           	pans[i].loc.horiz_pre,
+           	pans[i].loc.vert_pre
+           );
+           break;
       case RR_SRV:
            printf(
            	"%5d %5d %5d %s",

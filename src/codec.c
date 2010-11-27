@@ -945,9 +945,19 @@ static inline int decode_rr_gpos(
   return dloc_double(data,&pgpos->altitude);
 }
 
-/****************************************************************/
+/**************************************************************************
+*
+* You really, no, I mean it, *REALLY* need to read RFC-1876 to understand
+* all the crap that's going on for deciphering RR_LOC.
+*
+**************************************************************************/
 
-static int dloc_scale(unsigned long *const restrict,const int) __attribute__ ((pure,nonnull(1)));
+#define LOC_BIAS	(((unsigned long)INT32_MAX) + 1uL)
+#define LOC_LAT_MAX	((unsigned long)( 90uL * 3600000uL))
+#define LOC_LNG_MAX	((unsigned long)(180uL * 3600000uL))
+#define LOC_ALT_BIAS	(10000000L)
+
+static int dloc_scale(unsigned long *const restrict,const int) __attribute__ ((nonnull(1)));
 
 static int dloc_scale(
 	unsigned long *const restrict presult,
@@ -959,8 +969,8 @@ static int dloc_scale(
   
   assert(presult != NULL);
   
-  spow = scale >> 4;
-  smul = scale & 0x0F;
+  smul = scale >> 4;
+  spow = scale & 0x0F;
   
   if ((spow > 9) || (smul > 9))
     return RCODE_FORMAT_ERROR;
@@ -971,7 +981,7 @@ static int dloc_scale(
 
 /**************************************************************/
 
-static void dloc_angle(dnsloc_angle *const restrict,const long) __attribute__ ((pure,nonnull(1)));
+static void dloc_angle(dnsloc_angle *const restrict,const long) __attribute__ ((nonnull(1)));
 
 static void dloc_angle(
 	dnsloc_angle *const restrict pa,
@@ -998,15 +1008,18 @@ static inline int decode_rr_loc(
 )
 {
   enum dns_rcode rc;
-  long           lat;
-  long           lng;
+  unsigned long  lat;
+  unsigned long  lng;
   
   assert(context_okay(data));
   assert(ploc != NULL);
   
   if (len < 16) return RCODE_FORMAT_ERROR;
-  
+
   ploc->version = data->parse.ptr[0];
+  
+  if (ploc->version != 0)
+    return RCODE_FORMAT_ERROR;
   
   rc = dloc_scale(&ploc->size,data->parse.ptr[1]);
   if (rc != RCODE_OKAY) return rc;
@@ -1019,15 +1032,31 @@ static inline int decode_rr_loc(
   
   lat            = read_uint32(&data->parse);
   lng            = read_uint32(&data->parse);
-  ploc->altitude = read_uint32(&data->parse);
+  ploc->altitude = read_uint32(&data->parse) - LOC_ALT_BIAS;
   
-  if ((lat > (90L * 3600L * 1000L)) || (lat < -(90L * 3600L * 1000L)))
+  if (lat >= LOC_BIAS)	/* north */
+  {
+    ploc->latitude.nw = true;
+    lat -= LOC_BIAS;
+  }
+  else
+    lat = LOC_BIAS - lat;
+  
+  if (lng >= LOC_BIAS)	/* west */
+  {
+    ploc->longitude.nw = true;
+    lng -= LOC_BIAS;
+  }
+  else
+    lng = LOC_BIAS - lng;
+
+  if (lat > LOC_LAT_MAX)
     return RCODE_FORMAT_ERROR;
   
-  if ((lng > (180L * 3600L * 1000L)) || (lng < -(180L * 3600L * 1000L)))
+  if (lng > LOC_LNG_MAX)
     return RCODE_FORMAT_ERROR;
   
-  dloc_angle(&ploc->latitude,lat);
+  dloc_angle(&ploc->latitude ,lat);
   dloc_angle(&ploc->longitude,lng);
   
   return RCODE_OKAY;

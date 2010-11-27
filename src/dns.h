@@ -492,12 +492,13 @@ typedef struct dns_aaaa_t	/* RFC-1886 */
   struct in6_addr  address;
 } dns_aaaa_t;
 
-typedef struct dnsloc_angle
+typedef struct dnsloc_angle	/* RFC-1876 */
 {
-  int deg;
-  int min;
-  int sec;
-  int frac;
+  int  deg;
+  int  min;
+  int  sec;
+  int  frac;
+  bool nw;	/* Northern or Western Hemisphere */
 } dnsloc_angle;
 
 typedef struct dns_loc_t	/* RFC-1876 */
