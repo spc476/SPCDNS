@@ -95,16 +95,7 @@ for i = 1 , #results do
   local mx,ip
   
   mx = results[i].exchange
-  
-  if results[i].ADDRESS.ip then
-    ip = results[i].ADDRESS.ip
-  else
-    ip = results[i].ADDRESS.ipv6
-  end
-  
-  if ip == nil then
-    ip = "(none)"
-  end
+  ip = results[i].ADDRESS.address or "(none)"
   
   print(mx,ip)
 end

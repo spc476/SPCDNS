@@ -74,8 +74,8 @@ end
 local callbacks = 
 {
   NS    = function(rec) return rec.nsdname end,
-  A     = function(rec) return rec.ip end,
-  AAAA  = function(rec) return rec.ipv6 end,
+  A     = function(rec) return rec.address end,
+  AAAA  = function(rec) return rec.address end,
   CNAME = function(rec) return rec.cname end,
   MX    = function(rec) return string.format("%5d %s",rec.preference,rec.exchange) end,
   PTR   = function(rec) return rec.ptr end,

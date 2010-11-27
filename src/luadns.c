@@ -140,16 +140,16 @@ static void decode_answer(
       case RR_A:
            inet_ntop(AF_INET,&pans[i].a.address,ipaddr,sizeof(ipaddr));
            lua_pushstring(L,ipaddr);
-           lua_setfield(L,-2,"ip");
+           lua_setfield(L,-2,"address");
            lua_pushlstring(L,(char *)&pans[i].a.address,4);
-           lua_setfield(L,-2,"raw_ip");
+           lua_setfield(L,-2,"raw_address");
            break;
       case RR_AAAA:
-           inet_ntop(AF_INET6,&pans[i].aaaa.ipv6,ipaddr,sizeof(ipaddr));
+           inet_ntop(AF_INET6,&pans[i].aaaa.address,ipaddr,sizeof(ipaddr));
            lua_pushstring(L,ipaddr);
-           lua_setfield(L,-2,"ipv6");
-           lua_pushlstring(L,(char *)&pans[i].aaaa.ipv6,16);
-           lua_setfield(L,-2,"raw_ipv6");
+           lua_setfield(L,-2,"address");
+           lua_pushlstring(L,(char *)&pans[i].aaaa.address,16);
+           lua_setfield(L,-2,"raw_address");
            break;
       case RR_CNAME:
            lua_pushstring(L,pans[i].cname.cname);

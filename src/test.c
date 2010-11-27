@@ -159,7 +159,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            printf("%s",ipaddr);
            break;
       case RR_AAAA:
-           inet_ntop(AF_INET6,&pans[i].aaaa.ipv6,ipaddr,sizeof(ipaddr));
+           inet_ntop(AF_INET6,&pans[i].aaaa.address,ipaddr,sizeof(ipaddr));
            printf("%s",ipaddr);
            break;
       case RR_CNAME:

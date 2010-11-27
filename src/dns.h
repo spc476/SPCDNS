@@ -489,7 +489,7 @@ typedef struct dns_aaaa_t	/* RFC-1886 */
   enum dns_type    type;
   enum dns_class   class;
   TTL              ttl;
-  struct in6_addr  ipv6;
+  struct in6_addr  address;
 } dns_aaaa_t;
 
 typedef struct dnsloc_angle

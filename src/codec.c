@@ -659,7 +659,7 @@ static inline int decode_rr_aaaa(
   assert(pa != NULL);
   
   if (len != 16) return RCODE_FORMAT_ERROR;
-  memcpy(pa->ipv6.s6_addr,data->parse.ptr,16);
+  memcpy(pa->address.s6_addr,data->parse.ptr,16);
   data->parse.ptr  += 16;
   data->parse.size -= 16;
   return RCODE_OKAY;
