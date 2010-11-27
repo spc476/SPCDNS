@@ -519,6 +519,10 @@ static int read_domain(
   
   do
   {
+    /*----------------------------
+    ; read in a domain segment
+    ;-----------------------------*/
+    
     if (*parse->ptr < 64)
     {
       len = *parse->ptr;
@@ -540,6 +544,11 @@ static int read_domain(
       data->dest.ptr    += len;
       *data->dest.ptr++  = '.';
     }
+    
+    /*------------------------------------------
+    ; compressed segment---follow the pointer
+    ;------------------------------------------*/
+    
     else if (*parse->ptr >= 192)
     {
       if (++loop == 256)
@@ -557,11 +566,21 @@ static int read_domain(
       tmp.size = data->packet.size - (size_t)(tmp.ptr - data->packet.ptr);
       parse    = &tmp;
     }
+    
+    /*-------------------------------------------
+    ; EDNS0 OPT RR, not handled at this time
+    ;-------------------------------------------*/
+    
     else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
     {
       /* XXX - see RFC2671 for details */
       return RCODE_NOT_IMPLEMENTED;
     }
+    
+    /*------------------------------------
+    ; reserved for future developments
+    ;------------------------------------*/
+    
     else
       return RCODE_FORMAT_ERROR;
   } while(*parse->ptr);
@@ -897,6 +916,8 @@ static inline int decode_rr_rp(
 }
 
 /*****************************************************************/
+
+static enum dns_rcode dloc_double(idns_context *const restrict,double *const restrict) __attribute__ ((nonnull));
 
 static enum dns_rcode dloc_double(
 		idns_context *const restrict data,
