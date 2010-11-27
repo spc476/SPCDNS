@@ -56,27 +56,27 @@ typedef struct idns_context
 
 /***********************************************************************/
 
-static        block_t	 dns_encode_domain(block_t,const dns_question_t *const restrict) __attribute__ ((nonnull(2)));
+static        block_t	 dns_encode_domain(block_t,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull(2)));
 
-static        bool	 align_memory	(block_t *const)		__attribute__ ((nonnull));
-static        void      *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nonnull(1)));
-static inline uint16_t	 read_uint16	(block_t *const)		__attribute__ ((nonnull));
-static inline uint32_t	 read_uint32	(block_t *const)		__attribute__ ((nonnull));
+static        bool	 align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
+static        void      *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
+static inline uint16_t	 read_uint16	(block_t *const)		__attribute__ ((nothrow,nonnull));
+static inline uint32_t	 read_uint32	(block_t *const)		__attribute__ ((nothrow,nonnull));
 
-static        int        read_raw       (idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static        int        read_string    (idns_context *const restrict,const char **restrict)              __attribute__ ((nonnull(1,2)));
-static        int        read_domain    (idns_context *const restrict,const char **restrict)	          __attribute__ ((nonnull));
+static        int        read_raw       (idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static        int        read_string    (idns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull(1,2)));
+static        int        read_domain    (idns_context *const restrict,const char **restrict)	          __attribute__ ((nothrow,nonnull));
 
-static        int	 decode_question(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nonnull));
-static inline int	 decode_rr_soa	(idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_mx	(idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_hinfo(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_naptr(idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static inline int	 decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nonnull(1,2)));
-static        int	 decode_answer	(idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nonnull(1,2)));
+static        int	 decode_question(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nothrow,nonnull));
+static inline int	 decode_rr_soa	(idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_mx	(idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_hinfo(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_naptr(idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int	 decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static        int	 decode_answer	(idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
 
 /***********************************************************************/
 

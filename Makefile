@@ -1,5 +1,5 @@
 
-CC = cc -g -std=c99
+CC = gcc -g -std=c99
 CFLAGS = -Wall -Wextra -pedantic
 #CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
 LFLAGS = -lcgi6

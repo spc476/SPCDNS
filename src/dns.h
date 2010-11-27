@@ -820,13 +820,13 @@ int	dns_encode	(
 			  uint8_t           *restrict,
 			  size_t            *restrict,
 			  const dns_query_t *const restrict
-			) __attribute__ ((nonnull));
+			) __attribute__ ((nothrow,nonnull));
 
 int	dns_decode	(
                           void *const restrict,
                           const size_t,
 			  const uint8_t *const restrict,
 			  const size_t
-			) __attribute__ ((nonnull(1,3)));
+			) __attribute__ ((nothrow,nonnull(1,3)));
 
 #endif
