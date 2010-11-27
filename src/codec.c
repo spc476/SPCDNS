@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
+#include <math.h>
 #include <assert.h>
 
 #include <arpa/inet.h>
@@ -77,6 +79,10 @@ static inline int	 decode_rr_hinfo(idns_context *const restrict,dns_hinfo_t    *
 static inline int	 decode_rr_naptr(idns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline int	 decode_rr_aaaa	(idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline int	 decode_rr_srv	(idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int        decode_rr_sig  (idns_context *const restrict,dns_sig_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int        decode_rr_rp   (idns_context *const restrict,dns_rp_t       *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
+static inline int        decode_rr_gpos (idns_context *const restrict,dns_gpos_t     *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
+static inline int        decode_rr_loc  (idns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        int	 decode_answer	(idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
 
 /***********************************************************************/
@@ -720,7 +726,7 @@ static inline int decode_rr_txt(
     worklen   -= slen;
   }
   
-  ptxt->text = data->dest.ptr;
+  ptxt->text = (const char *)data->dest.ptr;
   
   for (size_t i = 0 ; i < items ; i++)
   {
@@ -812,6 +818,205 @@ static inline int decode_rr_naptr(
 
 /********************************************************************/
 
+static inline int decode_rr_sig(
+	idns_context *const restrict data,
+	dns_sig_t    *const restrict psig,
+	const size_t                 len
+)
+{
+  uint8_t        *start;
+  size_t          sofar;
+  enum dns_rcode  rc;
+  
+  assert(context_okay(data));
+  assert(psig != NULL);
+  
+  if (len < 18)
+    return RCODE_FORMAT_ERROR;
+  
+  /*-----------------------------------------------------------------------
+  ; The signature portion doesn't have a length code.  Because of that, we
+  ; need to track how much data is left so we can pull it out.  We record
+  ; the start of the parsing area, and once we get past the signer, we can
+  ; calculate the remainder data to pull out.
+  ;------------------------------------------------------------------------*/
+
+  start = data->parse.ptr;
+  
+  psig->covered      = read_uint16(&data->parse);
+  psig->algorithm    = *data->parse.ptr++; data->parse.size--;
+  psig->labels       = *data->parse.ptr++; data->parse.size--;
+  psig->originttl    = read_uint32(&data->parse);
+  psig->sigexpire    = read_uint32(&data->parse);
+  psig->timesigned   = read_uint32(&data->parse);
+  psig->keyfootprint = read_uint16(&data->parse);
+  
+  rc = read_domain(data,&psig->signer);
+  if (rc != RCODE_OKAY) return rc;
+  
+  sofar = (size_t)(data->parse.ptr - start);
+  if (sofar > len) return RCODE_FORMAT_ERROR;
+  
+  psig->sigsize = len - sofar;
+  return read_raw(data,&psig->signature,psig->sigsize);
+}
+
+/******************************************************************/
+
+static inline int decode_rr_rp(
+		idns_context *const restrict data,
+		dns_rp_t     *const restrict prp
+)
+{
+  enum dns_rcode rc;
+  
+  assert(context_okay(data));
+  assert(prp != NULL);
+  
+  rc = read_domain(data,&prp->mbox);
+  if (rc != RCODE_OKAY) return rc;
+  return read_domain(data,&prp->domain);
+}
+
+/*****************************************************************/
+
+static enum dns_rcode dloc_double(
+		idns_context *const restrict data,
+		double       *const restrict pvalue
+)
+{
+  size_t len;
+ 
+  assert(context_okay(data));
+  assert(pvalue != NULL);
+ 
+  len = *data->parse.ptr;
+  if (len > data->parse.size - 1)
+    return RCODE_FORMAT_ERROR;
+
+  char buffer[len + 1];
+  memcpy(buffer,&data->parse.ptr[1],len);
+  buffer[len++] = '\0';
+  
+  data->parse.ptr += len;
+  data->parse.size -= len;
+  
+  errno = 0;
+  *pvalue = strtod(buffer,NULL);
+  if (errno) return RCODE_FORMAT_ERROR;
+  
+  return RCODE_OKAY;
+}
+
+/*****************************************************************/
+
+static inline int decode_rr_gpos(
+		idns_context *const restrict data,
+		dns_gpos_t   *const restrict pgpos
+)
+{
+  enum dns_rcode rc;
+
+  assert(context_okay(data));
+  assert(pgpos != NULL);
+  
+  rc = dloc_double(data,&pgpos->longitude);
+  if (rc != RCODE_OKAY) return rc;
+  rc = dloc_double(data,&pgpos->latitude);
+  if (rc != RCODE_OKAY) return rc;
+  return dloc_double(data,&pgpos->altitude);
+}
+
+/****************************************************************/
+
+static int dloc_scale(unsigned long *const restrict,const int) __attribute__ ((pure,nonnull(1)));
+
+static int dloc_scale(
+	unsigned long *const restrict presult,
+	const int                     scale
+)
+{
+  int spow;
+  int smul;
+  
+  assert(presult != NULL);
+  
+  spow = scale >> 4;
+  smul = scale & 0x0F;
+  
+  if ((spow > 9) || (smul > 9))
+    return RCODE_FORMAT_ERROR;
+  
+  *presult = (unsigned long)(pow(10.0,spow) * smul);
+  return RCODE_OKAY;
+}
+
+/**************************************************************/
+
+static void dloc_angle(dnsloc_angle *const restrict,const long) __attribute__ ((pure,nonnull(1)));
+
+static void dloc_angle(
+	dnsloc_angle *const restrict pa,
+	const long                   v
+)
+{
+  ldiv_t partial;
+  
+  partial  = ldiv(v,1000L);
+  pa->frac = partial.rem;
+  partial  = ldiv(partial.quot,60L);
+  pa->sec  = partial.rem;
+  partial  = ldiv(partial.quot,60L);
+  pa->min  = partial.rem;
+  pa->deg  = partial.quot;
+}
+
+/*************************************************************/
+
+static inline int decode_rr_loc(
+		idns_context *const restrict data,
+		dns_loc_t    *const restrict ploc,
+		const size_t                 len
+)
+{
+  enum dns_rcode rc;
+  long           lat;
+  long           lng;
+  
+  assert(context_okay(data));
+  assert(ploc != NULL);
+  
+  if (len < 16) return RCODE_FORMAT_ERROR;
+  
+  ploc->version = data->parse.ptr[0];
+  
+  rc = dloc_scale(&ploc->size,data->parse.ptr[1]);
+  if (rc != RCODE_OKAY) return rc;
+  rc = dloc_scale(&ploc->horiz_pre,data->parse.ptr[2]);
+  if (rc != RCODE_OKAY) return rc;
+  rc = dloc_scale(&ploc->vert_pre,data->parse.ptr[3]);
+  if (rc != RCODE_OKAY) return rc;
+  
+  data->parse.ptr += 4;
+  
+  lat            = read_uint32(&data->parse);
+  lng            = read_uint32(&data->parse);
+  ploc->altitude = read_uint32(&data->parse);
+  
+  if ((lat > (90L * 3600L * 1000L)) || (lat < -(90L * 3600L * 1000L)))
+    return RCODE_FORMAT_ERROR;
+  
+  if ((lng > (180L * 3600L * 1000L)) || (lng < -(180L * 3600L * 1000L)))
+    return RCODE_FORMAT_ERROR;
+  
+  dloc_angle(&ploc->latitude,lat);
+  dloc_angle(&ploc->longitude,lng);
+  
+  return RCODE_OKAY;
+}
+
+/***************************************************************/
+
 static int decode_answer(
 		idns_context *const restrict data,
 		dns_answer_t *const restrict pans
@@ -848,26 +1053,34 @@ static int decode_answer(
     case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa ,len);
     case RR_SRV:   return decode_rr_srv  (data,&pans->srv  ,len);
     case RR_WKS:   return decode_rr_wks  (data,&pans->wks  ,len);
+    case RR_GPOS:  return decode_rr_gpos (data,&pans->gpos);
+    case RR_LOC:   return decode_rr_loc  (data,&pans->loc  ,len);
     
     /*----------------------------------------------------------------------	
     ; The following record types all share the same structure (although the
     ; last field name is different, depending upon the record), so they can
     ; share the same call site.  It's enough to shave some space in the
-    ; executable while being a cheap and non-obscure size optimization.
+    ; executable while being a cheap and non-obscure size optimization, or
+    ; a gross hack, depending upon your view.
     ;----------------------------------------------------------------------*/
     
+    case RR_PX:
+    case RR_RP: return decode_rr_rp(data,&pans->rp);
+    
     case RR_AFSDB:
-    case RR_MX:    return decode_rr_mx   (data,&pans->mx   ,len);
+    case RR_RT:
+    case RR_MX: return decode_rr_mx(data,&pans->mx,len);
     
-    
-    
-    case RR_RP:
+    case RR_NSAP:
+    case RR_ISDN:
     case RR_MINFO:
     case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);    
     
+    case RR_X25:
     case RR_SPF:
-    case RR_TXT:   return decode_rr_txt  (data,&pans->txt,len);
+    case RR_TXT: return decode_rr_txt(data,&pans->txt,len);
     
+    case RR_NSAP_PTR:
     case RR_MD:
     case RR_MF:
     case RR_MB:
@@ -875,10 +1088,16 @@ static int decode_answer(
     case RR_MR:
     case RR_NS:
     case RR_PTR:
-    case RR_CNAME: return read_domain    (data,&pans->cname.cname);
+    case RR_CNAME: return read_domain(data,&pans->cname.cname);
     
     case RR_NULL:
-    default:       return read_raw       (data,&pans->x.rawdata,len);
+    case RR_EID:
+    case RR_NIMLOC:
+    case RR_ATM:
+    case RR_KX:
+    case RR_CERT:
+    case RR_SINK:
+    default: return read_raw(data,&pans->x.rawdata,len);
   }
   
   assert(0);

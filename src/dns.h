@@ -450,8 +450,8 @@ typedef struct dns_px_t		/* RFC-2163 */
   enum dns_type   type;
   enum dns_class  class;
   TTL             ttl;
-  size_t          size;
-  uint8_t        *rawdata;
+  const char     *map822;
+  const char     *mapx400;
 } dns_px_t;
 
 typedef struct dns_gpos_t	/* RFC-1712 */
@@ -474,6 +474,14 @@ typedef struct dns_aaaa_t	/* RFC-1886 */
   struct in6_addr  ipv6;
 } dns_aaaa_t;
 
+typedef struct dnsloc_angle
+{
+  int deg;
+  int min;
+  int sec;
+  int frac;
+} dnsloc_angle;
+
 typedef struct dns_loc_t	/* RFC-1876 */
 {
   const char     *name;
@@ -484,12 +492,8 @@ typedef struct dns_loc_t	/* RFC-1876 */
   unsigned long   size;		/* plese see RFC-1876 for a discussion 	*/
   unsigned long   horiz_pre;	/* of these fields			*/
   unsigned long   vert_pre;
-  int             lat;
-  int             lat_min;
-  int             lat_sec;
-  int             lng;
-  int             lng_min;
-  int             lng_sec;
+  dnsloc_angle    latitude;
+  dnsloc_angle    longitude;
   long            altitude;
 } dns_loc_t;  
 
@@ -560,7 +564,7 @@ typedef struct dns_naptr_t	/* RFC-2915 */
   const char     *replacement;
 } dns_naptr_t;
 
-typedef struct dns_kx_t	/* (unknown) */
+typedef struct dns_kx_t		/* (unknown) */
 {
   const char      *name;
   enum dns_type    type;
