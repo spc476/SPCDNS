@@ -70,6 +70,7 @@ static        int        read_domain    (idns_context *const restrict,const char
 static        int	 decode_question(idns_context *const restrict,dns_question_t *const restrict)		   __attribute__ ((nothrow,nonnull));
 static inline int	 decode_rr_soa	(idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline int	 decode_rr_a	(idns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline int        decode_rr_wks  (idns_context *const restrict,dns_wks_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline int	 decode_rr_mx	(idns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline int	 decode_rr_txt	(idns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline int	 decode_rr_hinfo(idns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
@@ -432,6 +433,8 @@ static int read_raw(
     memcpy(data->dest.ptr,data->parse.ptr,len);
     data->parse.ptr  += len;
     data->parse.size -= len;
+    data->dest.ptr   += len;
+    data->dest.size  -= len;
   }
   else
     *result = NULL;
@@ -640,6 +643,28 @@ static inline int decode_rr_aaaa(
 
 /**********************************************************************/
 
+static inline int decode_rr_wks(
+	idns_context *const restrict data,
+	dns_wks_t    *const restrict pwks,
+	const size_t                 len
+)
+{
+  assert(context_okay(data));
+  assert(pwks != NULL);
+  
+  if (len < 6) return RCODE_FORMAT_ERROR;
+
+  memcpy(&pwks->address,data->parse.ptr,4);
+  data->parse.ptr  += 4;
+  data->parse.size -= 4;
+  pwks->protocol = read_uint16(&data->parse);
+  
+  pwks->numbits = len - 6;  
+  return read_raw(data,&pwks->bits,pwks->numbits);
+}
+
+/*********************************************************************/
+
 static inline int decode_rr_mx(
 	idns_context *const restrict data,
 	dns_mx_t     *const restrict pmx,
@@ -812,6 +837,7 @@ static int decode_answer(
     case RR_NAPTR: return decode_rr_naptr(data,&pans->naptr,len);
     case RR_AAAA:  return decode_rr_aaaa (data,&pans->aaaa ,len);
     case RR_SRV:   return decode_rr_srv  (data,&pans->srv  ,len);
+    case RR_WKS:   return decode_rr_wks  (data,&pans->wks  ,len);
     
     /*----------------------------------------------------------------------	
     ; The following record types all share the same structure (although the
@@ -836,7 +862,6 @@ static int decode_answer(
     case RR_CNAME: return read_domain    (data,&pans->cname.cname);
     
     case RR_NULL:
-    case RR_WKS:
     default:       return read_raw       (data,&pans->x.rawdata,len);
   }
   
