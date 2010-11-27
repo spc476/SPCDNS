@@ -104,6 +104,21 @@ static int dnslua_encode(lua_State *L)
 
 /********************************************************************/
 
+static void push_dnsloc_angle(lua_State *L,dnsloc_angle *pa)
+{
+  lua_createtable(L,0,4);
+  lua_pushinteger(L,pa->deg);
+  lua_setfield(L,-2,"deg");
+  lua_pushinteger(L,pa->min);
+  lua_setfield(L,-2,"min");
+  lua_pushnumber(L,(double)pa->sec + (1000.0 / (double)pa->frac));
+  lua_setfield(L,-2,"sec");
+  lua_pushboolean(L,pa->nw);
+  lua_setfield(L,-2,"nw");
+}
+
+/********************************************************************/
+
 static void decode_answer(
 	lua_State    *L,
 	int           tab,
@@ -133,10 +148,6 @@ static void decode_answer(
     
     switch(pans[i].generic.type)
     {
-      case RR_NS:
-           lua_pushstring(L,pans[i].ns.nsdname);
-           lua_setfield(L,-2,"nsdname");
-           break;
       case RR_A:
            inet_ntop(AF_INET,&pans[i].a.address,ipaddr,sizeof(ipaddr));
            lua_pushstring(L,ipaddr);
@@ -144,12 +155,97 @@ static void decode_answer(
            lua_pushlstring(L,(char *)&pans[i].a.address,4);
            lua_setfield(L,-2,"raw_address");
            break;
+
+      case RR_SOA:
+           lua_pushstring(L,pans[i].soa.mname);
+           lua_setfield(L,-2,"mname");
+           lua_pushstring(L,pans[i].soa.rname);
+           lua_setfield(L,-2,"rname");
+           lua_pushnumber(L,pans[i].soa.serial);
+           lua_setfield(L,-2,"serial");
+           lua_pushnumber(L,pans[i].soa.refresh);
+           lua_setfield(L,-2,"refresh");
+           lua_pushnumber(L,pans[i].soa.retry);
+           lua_setfield(L,-2,"retry");
+           lua_pushnumber(L,pans[i].soa.expire);
+           lua_setfield(L,-2,"expire");
+           lua_pushnumber(L,pans[i].soa.minimum);
+           lua_setfield(L,-2,"minimum");
+           break;
+
+      case RR_NAPTR:
+           lua_pushinteger(L,pans[i].naptr.order);
+           lua_setfield(L,-2,"order");
+           lua_pushinteger(L,pans[i].naptr.preference);
+           lua_setfield(L,-2,"preference");
+           lua_pushstring(L,pans[i].naptr.flags);
+           lua_setfield(L,-2,"flags");
+           lua_pushstring(L,pans[i].naptr.services);
+           lua_setfield(L,-2,"services");
+           lua_pushstring(L,pans[i].naptr.regexp);
+           lua_setfield(L,-2,"regexp");
+           lua_pushstring(L,pans[i].naptr.replacement);
+           lua_setfield(L,-2,"replacement");
+           break;
+
       case RR_AAAA:
            inet_ntop(AF_INET6,&pans[i].aaaa.address,ipaddr,sizeof(ipaddr));
            lua_pushstring(L,ipaddr);
            lua_setfield(L,-2,"address");
            lua_pushlstring(L,(char *)&pans[i].aaaa.address,16);
            lua_setfield(L,-2,"raw_address");
+           break;
+
+      case RR_SRV:
+           lua_pushinteger(L,pans[i].srv.priority);
+           lua_setfield(L,-2,"priority");
+           lua_pushinteger(L,pans[i].srv.weight);
+           lua_setfield(L,-2,"weight");
+           lua_pushinteger(L,pans[i].srv.port);
+           lua_setfield(L,-2,"port");
+           lua_pushstring(L,pans[i].srv.target);
+           lua_setfield(L,-2,"target");
+           break;
+           
+      case RR_WKS:
+           inet_ntop(AF_INET,&pans[i].wks.address,ipaddr,sizeof(ipaddr));
+           lua_pushstring(L,ipaddr);
+           lua_setfield(L,-2,"address");
+           lua_pushlstring(L,(char *)&pans[i].wks.address,4);
+           lua_setfield(L,-2,"raw_address");
+           lua_pushinteger(L,pans[i].wks.protocol);
+           lua_setfield(L,-2,"protocol");
+           lua_pushlstring(L,(char *)pans[i].wks.bits,pans[i].wks.numbits);
+           lua_setfield(L,-2,"bits");
+           break;
+           
+      case RR_GPOS:
+           lua_pushnumber(L,pans[i].gpos.longitude);
+           lua_setfield(L,-2,"longitude");
+           lua_pushnumber(L,pans[i].gpos.latitude);
+           lua_setfield(L,-2,"latitude");
+           lua_pushnumber(L,pans[i].gpos.altitude);
+           lua_setfield(L,-2,"altitude");
+           break;
+           
+      case RR_LOC:
+           lua_pushnumber(L,pans[i].loc.size);
+           lua_setfield(L,-2,"size");
+           lua_pushnumber(L,pans[i].loc.horiz_pre);
+           lua_setfield(L,-2,"horiz_pre");
+           lua_pushnumber(L,pans[i].loc.vert_pre);
+           lua_setfield(L,-2,"vert_pre");
+           push_dnsloc_angle(L,&pans[i].loc.latitude);
+           lua_setfield(L,-2,"latitude");
+           push_dnsloc_angle(L,&pans[i].loc.longitude);
+           lua_setfield(L,-2,"longitude");
+           lua_pushnumber(L,pans[i].loc.altitude);
+           lua_setfield(L,-2,"altitude");
+           break;
+
+      case RR_NS:
+           lua_pushstring(L,pans[i].ns.nsdname);
+           lua_setfield(L,-2,"nsdname");
            break;
       case RR_CNAME:
            lua_pushstring(L,pans[i].cname.cname);
@@ -175,46 +271,6 @@ static void decode_answer(
       case RR_TXT:
            lua_pushlstring(L,pans[i].txt.text,pans[i].txt.len);
            lua_setfield(L,-2,"txt");
-           break;
-      case RR_SOA:
-           lua_pushstring(L,pans[i].soa.mname);
-           lua_setfield(L,-2,"mname");
-           lua_pushstring(L,pans[i].soa.rname);
-           lua_setfield(L,-2,"rname");
-           lua_pushnumber(L,pans[i].soa.serial);
-           lua_setfield(L,-2,"serial");
-           lua_pushnumber(L,pans[i].soa.refresh);
-           lua_setfield(L,-2,"refresh");
-           lua_pushnumber(L,pans[i].soa.retry);
-           lua_setfield(L,-2,"retry");
-           lua_pushnumber(L,pans[i].soa.expire);
-           lua_setfield(L,-2,"expire");
-           lua_pushnumber(L,pans[i].soa.minimum);
-           lua_setfield(L,-2,"minimum");
-           break;
-      case RR_NAPTR:
-           lua_pushinteger(L,pans[i].naptr.order);
-           lua_setfield(L,-2,"order");
-           lua_pushinteger(L,pans[i].naptr.preference);
-           lua_setfield(L,-2,"preference");
-           lua_pushstring(L,pans[i].naptr.flags);
-           lua_setfield(L,-2,"flags");
-           lua_pushstring(L,pans[i].naptr.services);
-           lua_setfield(L,-2,"services");
-           lua_pushstring(L,pans[i].naptr.regexp);
-           lua_setfield(L,-2,"regexp");
-           lua_pushstring(L,pans[i].naptr.replacement);
-           lua_setfield(L,-2,"replacement");
-           break;
-      case RR_SRV:
-           lua_pushinteger(L,pans[i].srv.priority);
-           lua_setfield(L,-2,"priority");
-           lua_pushinteger(L,pans[i].srv.weight);
-           lua_setfield(L,-2,"weight");
-           lua_pushinteger(L,pans[i].srv.port);
-           lua_setfield(L,-2,"port");
-           lua_pushstring(L,pans[i].srv.target);
-           lua_setfield(L,-2,"target");
            break;
       default:
            break;
