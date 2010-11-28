@@ -1053,14 +1053,14 @@ static inline dns_rcode_t decode_rr_loc(
   else
     lat = LOC_BIAS - lat;
   
-  if (lng >= LOC_BIAS)	/* west */
+  if (lng >= LOC_BIAS)	/* east */
+    lng -= LOC_BIAS;
+  else
   {
     ploc->longitude.nw = true;
-    lng -= LOC_BIAS;
-  }
-  else
     lng = LOC_BIAS - lng;
-
+  }
+  
   if (lat > LOC_LAT_MAX)
     return RCODE_FORMAT_ERROR;
   
