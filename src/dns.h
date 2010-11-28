@@ -476,15 +476,24 @@ typedef struct dns_px_t		/* RFC-2163 */
   const char  *mapx400;
 } dns_px_t;
 
+typedef struct dnsgpos_angle	/* RFC-1712 , RFC1876 */
+{
+  int deg;
+  int min;
+  int sec;
+  int frac;
+  bool nw;	/* Northern or Western Hemisphere */
+} dnsgpos_angle;
+
 typedef struct dns_gpos_t	/* RFC-1712 */
 {
-  const char  *name;
-  dns_type_t   type;
-  dns_class_t  class;
-  TTL          ttl;
-  double       longitude;
-  double       latitude;
-  double       altitude;
+  const char   *name;
+  dns_type_t    type;
+  dns_class_t   class;
+  TTL           ttl;
+  dnsgpos_angle longitude;
+  dnsgpos_angle latitude;
+  double        altitude;
 } dns_gpos_t;
 
 typedef struct dns_aaaa_t	/* RFC-1886 */
@@ -496,15 +505,6 @@ typedef struct dns_aaaa_t	/* RFC-1886 */
   struct in6_addr  address;
 } dns_aaaa_t;
 
-typedef struct dnsloc_angle	/* RFC-1876 */
-{
-  int  deg;
-  int  min;
-  int  sec;
-  int  frac;
-  bool nw;	/* Northern or Western Hemisphere */
-} dnsloc_angle;
-
 typedef struct dns_loc_t	/* RFC-1876 */
 {
   const char     *name;
@@ -515,8 +515,8 @@ typedef struct dns_loc_t	/* RFC-1876 */
   unsigned long   size;		/* plese see RFC-1876 for a discussion 	*/
   unsigned long   horiz_pre;	/* of these fields			*/
   unsigned long   vert_pre;
-  dnsloc_angle    latitude;
-  dnsloc_angle    longitude;
+  dnsgpos_angle   latitude;
+  dnsgpos_angle   longitude;
   long            altitude;
 } dns_loc_t;  
 

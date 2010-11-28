@@ -937,6 +937,23 @@ static dns_rcode_t dloc_double(
   return RCODE_OKAY;
 }
 
+/****************************************************************/
+
+static void dgpos_angle(dnsgpos_angle *const restrict,double) __attribute__ ((nonnull(1)));
+
+static void dgpos_angle(
+	dnsgpos_angle *const restrict pa,
+	double                        v
+)
+{
+  double ip;
+  
+  v = modf(v,&ip) *   60.0; pa->deg = ip;
+  v = modf(v,&ip) *   60.0; pa->min = ip;
+  v = modf(v,&ip) * 1000.0; pa->sec = ip;
+  pa->frac = v;
+}
+
 /*****************************************************************/
 
 static inline dns_rcode_t decode_rr_gpos(
@@ -945,14 +962,31 @@ static inline dns_rcode_t decode_rr_gpos(
 )
 {
   dns_rcode_t rc;
+  double      lat;
+  double      lng;
 
   assert(context_okay(data));
   assert(pgpos != NULL);
   
-  rc = dloc_double(data,&pgpos->longitude);
+  rc = dloc_double(data,&lng);
   if (rc != RCODE_OKAY) return rc;
-  rc = dloc_double(data,&pgpos->latitude);
+  rc = dloc_double(data,&lat);
   if (rc != RCODE_OKAY) return rc;
+  
+  if (lng < 0.0)
+  {
+    pgpos->longitude.nw = true;
+    lng                 = fabs(lng);
+  }
+  
+  if (lat >= 0.0)
+    pgpos->latitude.nw = true;
+  else
+    lat = fabs(lat);
+    
+  dgpos_angle(&pgpos->longitude,lng);
+  dgpos_angle(&pgpos->latitude, lat);
+  
   return dloc_double(data,&pgpos->altitude);
 }
 
@@ -992,14 +1026,16 @@ static int dloc_scale(
 
 /**************************************************************/
 
-static void dloc_angle(dnsloc_angle *const restrict,const long) __attribute__ ((nonnull(1)));
+static void dloc_angle(dnsgpos_angle *const restrict,const long) __attribute__ ((nonnull(1)));
 
 static void dloc_angle(
-	dnsloc_angle *const restrict pa,
-	const long                   v
+	dnsgpos_angle *const restrict pa,
+	const long                    v
 )
 {
   ldiv_t partial;
+  
+  assert(pa != NULL);
   
   partial  = ldiv(v,1000L);
   pa->frac = partial.rem;

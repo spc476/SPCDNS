@@ -104,7 +104,7 @@ static int dnslua_encode(lua_State *L)
 
 /********************************************************************/
 
-static void push_dnsloc_angle(lua_State *L,dnsloc_angle *pa,bool lat)
+static void push_dnsgpos_angle(lua_State *L,dnsgpos_angle *pa,bool lat)
 {
   lua_createtable(L,0,4);
   lua_pushinteger(L,pa->deg);
@@ -225,9 +225,9 @@ static void decode_answer(
            break;
            
       case RR_GPOS:
-           lua_pushnumber(L,pans[i].gpos.longitude);
+           push_dnsgpos_angle(L,&pans[i].gpos.latitude,true);
            lua_setfield(L,-2,"longitude");
-           lua_pushnumber(L,pans[i].gpos.latitude);
+           push_dnsgpos_angle(L,&pans[i].gpos.longitude,false);
            lua_setfield(L,-2,"latitude");
            lua_pushnumber(L,pans[i].gpos.altitude);
            lua_setfield(L,-2,"altitude");
@@ -240,9 +240,9 @@ static void decode_answer(
            lua_setfield(L,-2,"horiz_pre");
            lua_pushnumber(L,pans[i].loc.vert_pre);
            lua_setfield(L,-2,"vert_pre");
-           push_dnsloc_angle(L,&pans[i].loc.latitude,true);
+           push_dnsgpos_angle(L,&pans[i].loc.latitude,true);
            lua_setfield(L,-2,"latitude");
-           push_dnsloc_angle(L,&pans[i].loc.longitude,false);
+           push_dnsgpos_angle(L,&pans[i].loc.longitude,false);
            lua_setfield(L,-2,"longitude");
            lua_pushnumber(L,pans[i].loc.altitude);
            lua_setfield(L,-2,"altitude");
