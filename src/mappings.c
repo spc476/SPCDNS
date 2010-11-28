@@ -302,49 +302,49 @@ static int stoidef(
 
 /*******************************************************************/
 
-const char *dns_rcode_text(const enum dns_rcode r)
+const char *dns_rcode_text(const dns_rcode_t r)
 {
   return itosdef(r,cm_dns_rcode,RCODE_COUNT,"Unknown error");
 }
 
 /*********************************************************************/
 
-const char *dns_type_text(const enum dns_type t)
+const char *dns_type_text(const dns_type_t t)
 {
   return itosdef(t,cm_dns_type,TYPE_COUNT,"X-UNKN");
 }
 
 /**********************************************************************/
 
-const char *dns_class_text(const enum dns_class c)
+const char *dns_class_text(const dns_class_t c)
 {
   return itosdef(c,cm_dns_class,CLASS_COUNT,"X-UNKN");
 }
 
 /*******************************************************************/
 
-const char *dns_op_text(const enum dns_op o)
+const char *dns_op_text(const dns_op_t o)
 {
   return itosdef(o,cm_dns_op,OP_COUNT,"X-UNKNOWN");
 }
 
 /********************************************************************/
 
-enum dns_type dns_type_value(const char *tag)
+dns_type_t dns_type_value(const char *tag)
 {
   return stoidef(tag,cm_dns_type_is,TYPE_COUNT,RR_A);
 }
 
 /*********************************************************************/
 
-enum dns_class dns_class_value(const char *tag)
+dns_class_t dns_class_value(const char *tag)
 {
   return stoidef(tag,cm_dns_class_is,CLASS_COUNT,CLASS_IN);
 }
 
 /**********************************************************************/
 
-enum dns_op dns_op_value(const char *tag)
+dns_op_t dns_op_value(const char *tag)
 {
   return stoidef(tag,cm_dns_op_is,OP_COUNT,OP_QUERY);
 }

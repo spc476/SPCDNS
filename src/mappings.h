@@ -28,14 +28,14 @@
 #  define __attribute__(x)
 #endif
 
-const char 	*dns_rcode_text		(const enum dns_rcode)	__attribute__ ((pure,nothrow));
-const char 	*dns_type_text 		(const enum dns_type)	__attribute__ ((pure,nothrow));
-const char 	*dns_class_text		(const enum dns_class)	__attribute__ ((pure,nothrow));
-const char 	*dns_op_text		(const enum dns_op)	__attribute__ ((pure,nothrow));
+const char 	*dns_rcode_text		(const dns_rcode_t)	__attribute__ ((pure,nothrow));
+const char 	*dns_type_text 		(const dns_type_t)	__attribute__ ((pure,nothrow));
+const char 	*dns_class_text		(const dns_class_t)	__attribute__ ((pure,nothrow));
+const char 	*dns_op_text		(const dns_op_t)	__attribute__ ((pure,nothrow));
 
-enum dns_type	 dns_type_value		(const char *const)	__attribute__ ((pure,nothrow,nonnull));
-enum dns_class	 dns_class_value	(const char *const)	__attribute__ ((pure,nothrow,nonnull));
-enum dns_op	 dns_op_value		(const char *const)	__attribute__ ((pure,nothrow,nonnull));
+dns_type_t	 dns_type_value		(const char *const)	__attribute__ ((pure,nothrow,nonnull));
+dns_class_t	 dns_class_value	(const char *const)	__attribute__ ((pure,nothrow,nonnull));
+dns_op_t	 dns_op_value		(const char *const)	__attribute__ ((pure,nothrow,nonnull));
 
 #ifdef __cplusplus
   }
