@@ -20,6 +20,10 @@
 #ifndef DNS_H
 #define DNS_H
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 #ifndef __GNUC__
 #  define __attribute__ (x)
 #endif
@@ -852,4 +856,7 @@ dns_rcode_t	dns_decode(
 			  const size_t
 			 ) __attribute__ ((nothrow,nonnull(1,3)));
 
+#ifdef __cpluscplus
+  }
+#endif
 #endif

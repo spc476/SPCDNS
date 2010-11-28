@@ -20,6 +20,10 @@
 #ifndef DNS_MAPPINGS_H
 #define DNS_MAPPINGS_H
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 #ifndef __GNUC__
 #  define __attribute__(x)
 #endif
@@ -33,4 +37,7 @@ enum dns_type	 dns_type_value		(const char *const)	__attribute__ ((pure,nothrow,
 enum dns_class	 dns_class_value	(const char *const)	__attribute__ ((pure,nothrow,nonnull));
 enum dns_op	 dns_op_value		(const char *const)	__attribute__ ((pure,nothrow,nonnull));
 
+#ifdef __cplusplus
+  }
+#endif
 #endif
