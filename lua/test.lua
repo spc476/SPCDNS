@@ -116,7 +116,29 @@ local callbacks =
 			rec.priority,
 			rec.weight,
 			rec.port,
-			rec.target) end
+			rec.target) end,
+  LOC = function(rec) return string.format([[
+(
+		%3d %2d %2d %s ; Latitude
+		%3d %2d %2d %s ; Longitude
+		%11d ; Altitude
+		%11d ; Size
+		%11d ; Horizontal Precision
+		%11d ; Vertical Precision
+		)
+]],
+		rec.latitude.deg,
+		rec.latitude.min,
+		rec.latitude.sec,
+		rec.latitude.hemasphere,
+		rec.longitude.deg,
+		rec.longitude.min,
+		rec.longitude.sec,
+		rec.longitude.hemasphere,
+		rec.altitude,
+		rec.size,
+		rec.horiz_pre,
+		rec.vert_pre ) end
 }
 
 local function print_answers(tag,recs)

@@ -248,7 +248,7 @@ void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	pans[i].loc.longitude.deg,
            	pans[i].loc.longitude.min,
            	pans[i].loc.longitude.sec,
-           	pans[i].loc.longitude.nw ? "E" : "W",
+           	pans[i].loc.longitude.nw ? "W" : "E",
            	pans[i].loc.altitude,
            	pans[i].loc.size,
            	pans[i].loc.horiz_pre,

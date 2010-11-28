@@ -104,17 +104,22 @@ static int dnslua_encode(lua_State *L)
 
 /********************************************************************/
 
-static void push_dnsloc_angle(lua_State *L,dnsloc_angle *pa)
+static void push_dnsloc_angle(lua_State *L,dnsloc_angle *pa,bool lat)
 {
   lua_createtable(L,0,4);
   lua_pushinteger(L,pa->deg);
   lua_setfield(L,-2,"deg");
   lua_pushinteger(L,pa->min);
   lua_setfield(L,-2,"min");
-  lua_pushnumber(L,(double)pa->sec + (1000.0 / (double)pa->frac));
+  lua_pushnumber(L,(double)pa->sec + ((double)pa->frac / 1000.0));
   lua_setfield(L,-2,"sec");
   lua_pushboolean(L,pa->nw);
   lua_setfield(L,-2,"nw");
+  if (lat)
+    lua_pushlstring(L,(pa->nw) ? "N" : "S" , 1);
+  else
+    lua_pushlstring(L,(pa->nw) ? "W" : "E" , 1);
+  lua_setfield(L,-2,"hemasphere");
 }
 
 /********************************************************************/
@@ -235,9 +240,9 @@ static void decode_answer(
            lua_setfield(L,-2,"horiz_pre");
            lua_pushnumber(L,pans[i].loc.vert_pre);
            lua_setfield(L,-2,"vert_pre");
-           push_dnsloc_angle(L,&pans[i].loc.latitude);
+           push_dnsloc_angle(L,&pans[i].loc.latitude,true);
            lua_setfield(L,-2,"latitude");
-           push_dnsloc_angle(L,&pans[i].loc.longitude);
+           push_dnsloc_angle(L,&pans[i].loc.longitude,false);
            lua_setfield(L,-2,"longitude");
            lua_pushnumber(L,pans[i].loc.altitude);
            lua_setfield(L,-2,"altitude");
