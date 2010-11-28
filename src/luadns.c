@@ -24,26 +24,15 @@
 #include <errno.h>
 #include <assert.h>
 
+#include <arpa/inet.h>
+
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
 
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include "../src/dns.h"
-#include "../src/mappings.h"
-
-typedef union sockaddr_all
-{
-  struct sockaddr     ss;
-  struct sockaddr_in  sin;
-  struct sockaddr_in6 sin6;
-} sockaddr_all;
+#include "dns.h"
+#include "mappings.h"
+#include "netsimple.h"
 
 /********************************************************************/
 
@@ -372,72 +361,26 @@ static int dnslua_query(lua_State *L)
   const char   *addr;
   const char   *data;
   size_t        size;
-  socklen_t     rsize;
   uint8_t       buffer[MAX_DNS_QUERY_SIZE];
   size_t        insize;
-  ssize_t       bytes;
-  int           sock;
-  int           err;
+  int           rc;
   
   addr = luaL_checkstring(L,1);  
   data = luaL_checklstring(L,2,&size);
-  memset(&remote,0,sizeof(remote));
   
-  if (inet_pton(AF_INET,addr,&remote.sin.sin_addr.s_addr) < 0)
-  {
-    if (inet_pton(AF_INET6,addr,&remote.sin6.sin6_addr.s6_addr) < 0)
-      luaL_error(L,"%s is not an IPv4/IPv6 address",addr);
-    remote.sin6.sin6_family = AF_INET6;
-    remote.sin6.sin6_port   = htons(53);
-    rsize                   = sizeof(struct sockaddr_in6);
-  }
-  else
-  {
-    remote.sin.sin_family = AF_INET;
-    remote.sin.sin_port   = htons(53);
-    rsize                 = sizeof(struct sockaddr_in);
-  }
-  
-  sock = socket(remote.ss.sa_family,SOCK_DGRAM,0);
-  if (sock < 0)
-  {
-    err = errno;
-    lua_pushnil(L);
-    lua_pushinteger(L,err);
-    return 2;
-  }
-  
-  bytes = sendto(sock,data,size,0,&remote.ss,rsize);
-  if (bytes < 0)
-  {
-    err = errno;
-    lua_pushnil(L);
-    lua_pushinteger(L,err);
-    close(sock);
-    return 2;
-  }
-  
-  if ((size_t)bytes < size)
-  {
-    err = errno;
-    lua_pushnil(L);
-    lua_pushinteger(L,ENODATA);
-    close(sock);
-    return 2;
-  }
+  if (net_server(&remote,addr) < 0)
+    luaL_error(L,"%s is not an IPv4/IPv6 address",addr);
   
   insize = sizeof(buffer);
-  bytes = recvfrom(sock,buffer,insize,0,NULL,NULL);
-  if (bytes < 0)
+  rc = net_request(&remote,buffer,&insize,(const uint8_t *)data,size);
+
+  if (rc != 0)
   {
-    err = errno;
     lua_pushnil(L);
-    lua_pushinteger(L,errno);
-    close(sock);
+    lua_pushinteger(L,rc);
     return 2;
   }
   
-  close(sock);
   lua_pushlstring(L,(char *)buffer,insize);
   return 1;
 }

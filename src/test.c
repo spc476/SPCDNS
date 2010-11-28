@@ -25,99 +25,17 @@
 #include <errno.h>
 #include <assert.h>
 
-#include <netdb.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <poll.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <syslog.h>
 
 #include <cgilib6/util.h>
 
 #include "dns.h"
 #include "mappings.h"
+#include "netsimple.h"
 
 #define DUMP 0
 
 /************************************************************************/
-
-typedef union sockaddr_all
-{
-  struct sockaddr    ss;
-  struct sockaddr_in sin;
-} sockaddr_all;
-
-/***********************************************************************/
-
-int send_request(
-	uint8_t                       *dest,
-	size_t                        *dsize,
-	const uint8_t *const restrict  src,
-	const size_t                   ssize
-)
-{
-  sockaddr_all srvaddr;
-  ssize_t      bytes;
-  int          sock;
-  int          err;
-  
-  assert(dest   != NULL);
-  assert(dsize  != NULL);
-  assert(*dsize >= 512);
-  assert(src    != NULL);
-  assert(ssize  >= 12);
-  
-  sock = socket(AF_INET,SOCK_DGRAM,0);
-  if (sock < 0)
-  {
-    err = errno;
-    fprintf(stderr,"socket(DGRAM) = %s",strerror(errno));
-    return err;
-  }
-
-  memset(&srvaddr,0,sizeof(srvaddr));
-  srvaddr.sin.sin_family = AF_INET;
-  srvaddr.sin.sin_port   = htons(53);
-  inet_pton(AF_INET,"127.0.0.1",&srvaddr.sin.sin_addr.s_addr);
-  
-  bytes = sendto(sock,src,ssize,0,&srvaddr.ss,sizeof(struct sockaddr_in));
-  if (bytes < 0)
-  {
-    err = errno;
-    fprintf(stderr,"sendto(127.0.0.1:53) = %s",strerror(errno));
-    close(sock);
-    return err;
-  }
-  
-  if ((size_t)bytes < ssize)
-  {
-    err = errno;
-    fprintf(stderr,"sendto(127.0.0.1:53) truncated");
-    close(sock);
-    return err;
-  }
-  
-  bytes = recvfrom(sock,dest,*dsize,0,NULL,NULL);
-  
-  if (bytes < 0)
-  {
-    err = errno;
-    fprintf(stderr,"recvfrom(127.0.0.1:53) = %s",strerror(errno));
-    close(sock);
-    return err;
-  }
-  
-  *dsize = bytes;
-  return 0;
-}
-
-/**********************************************************************/
 
 void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 {
@@ -281,7 +199,7 @@ int main(int argc,char *argv[])
     fprintf(stderr,"usage: %s type fqdn\n",argv[0]);
     return EXIT_FAILURE;
   }
-  
+
   dns_question_t domains[2];
   size_t         dcnt;
   dns_query_t    query;
@@ -334,11 +252,19 @@ int main(int argc,char *argv[])
   dump_memory(stdout,buffer,len,0);
 #endif
 
-  uint8_t inbuffer[MAX_DNS_QUERY_SIZE];
-  size_t  insize;
+  sockaddr_all server;
+  uint8_t      inbuffer[MAX_DNS_QUERY_SIZE];
+  size_t       insize;
 
+  rc = net_server(&server,"127.0.0.1");
+  if (rc != 0)
+  {
+    fprintf(stderr,"net_server() = %s",strerror(rc)); 
+    return EXIT_FAILURE;
+  }
+  
   insize = sizeof(inbuffer);
-  if (send_request(inbuffer,&insize,buffer,len) < 0)
+  if (net_request(&server,inbuffer,&insize,buffer,len) < 0)
   {
     fprintf(stderr,"failure\n");
     return EXIT_FAILURE;
