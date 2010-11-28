@@ -823,14 +823,14 @@ typedef struct dns_query_t	/* RFC-1035 */
 {
   int             id;
   bool            query;
-  dns_op_t          opcode;
+  dns_op_t        opcode;
   bool            aa;
   bool            tc;
   bool            rd;
   bool            ra;
   bool            ad;		/* RFC-2065 */
   bool            cd;		/* RFC-2065 */
-  dns_rcode_t       rcode;
+  dns_rcode_t     rcode;
   size_t          qdcount;
   size_t          ancount;
   size_t          nscount;
