@@ -130,7 +130,7 @@ local callbacks =
 		rec.latitude.deg,
 		rec.latitude.min,
 		rec.latitude.sec,
-		rec.latitude.hemasphere,
+		rec.latitude.hemisphere,
 		rec.longitude.deg,
 		rec.longitude.min,
 		rec.longitude.sec,
