@@ -134,7 +134,7 @@ local callbacks =
 		rec.longitude.deg,
 		rec.longitude.min,
 		rec.longitude.sec,
-		rec.longitude.hemasphere,
+		rec.longitude.hemisphere,
 		rec.altitude,
 		rec.size,
 		rec.horiz_pre,

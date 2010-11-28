@@ -119,7 +119,7 @@ static void push_dnsloc_angle(lua_State *L,dnsloc_angle *pa,bool lat)
     lua_pushlstring(L,(pa->nw) ? "N" : "S" , 1);
   else
     lua_pushlstring(L,(pa->nw) ? "W" : "E" , 1);
-  lua_setfield(L,-2,"hemasphere");
+  lua_setfield(L,-2,"hemisphere");
 }
 
 /********************************************************************/
