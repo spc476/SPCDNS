@@ -3,6 +3,7 @@ CC = gcc -g -std=c99
 CFLAGS = -Wall -Wextra -pedantic
 #CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
 LFLAGS = -lm -lcgi6
+LUA = /usr/local/lib/lua/5.1
 
 all : built/dotest built/dns.so
 
@@ -42,6 +43,10 @@ built/netsimple.o : src/netsimple.c src/netsimple.h
 built/luadns.o : src/luadns.c src/dns.h src/mappings.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+install-lua: built/dns.so
+	install -d $(LUA)/org/conman
+	install built/dns.so $(LUA)/org/conman
+	
 clean:
 	/bin/rm -rf built/*
 	/bin/rm -rf *~ src/*~ lua/*~
