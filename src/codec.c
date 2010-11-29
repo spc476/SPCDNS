@@ -17,6 +17,41 @@
 *
 **************************************************************************/
 
+/**********************************************************************
+*
+* Implements the code to encode a DNS query (*NOTE* only queries at this
+* time) and to decode responses from a DNS server.  This exports two
+* functions:
+*
+*  dns_encode()
+*
+*	This function takes a filled in dns_query_t structure (assumed to be
+*	filled out correctly and creates the wire representation of that
+*	query into a buffer supplied to the routine.
+*
+*	THIS ROUTINE DOES NOT ALLOCATE MEMORY, NOR DOES IT USE GLOBAL
+*	VARAIBLES. IT IS THEREFORE THREAD SAFE.
+*
+*	See test.c for an example of calling this routine.
+*
+*  dns_decode()
+*
+*	This function takes the wire representation of a response, decodes
+*	and returns a dns_query_t filled out with the various records.  You
+*	supply a block of memory sufficient enough to store the dns_query_t
+*	and any various strings/structures used in the dns_query_t (I've
+*	found 8K to be more than enough for decoding a UDP response but
+*	that's a very conservative value; 4K may be good enough).
+*
+*	THIS ROUTINE DOES NOT ALLOCATE MEMORY, NOR DOES IT USE GLOBAL
+*	VARIABLES.  IT IS THEREFORE THREAD SAFE.
+*
+*	See test.c for an example of calling this routine.
+*
+*	This code is written using C99.
+*
+****************************************************************************/
+
 #define _GNU_SOURCE
 
 #include <limits.h>
@@ -1185,12 +1220,6 @@ static dns_rcode_t decode_answer(
     case RR_CNAME: return read_domain(data,&pans->cname.cname);
     
     case RR_NULL:
-    case RR_EID:
-    case RR_NIMLOC:
-    case RR_ATM:
-    case RR_KX:
-    case RR_CERT:
-    case RR_SINK:
     default: return read_raw(data,&pans->x.rawdata,len);
   }
   

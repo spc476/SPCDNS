@@ -17,6 +17,27 @@
 *
 **************************************************************************/
 
+/************************************************************************
+*
+* Definitions for a simple network interface to send and receive DNS
+* queries.
+* 
+* This only suffices for simple applications; for anything that does a lot
+* of DNS queries, you probably want to use something else.
+*
+* This file assumes C99.  You must include the following files before 
+* including this one:
+*
+* #include <stdint.h>
+* #include <stddef.h>
+* #include <arpa/inet.h>
+*
+* And if you want to decode the return values (beyond success/failure):
+*
+* #include <errno.h>
+*
+*************************************************************************/
+
 #ifndef NETSIMPLE_H
 #define NETSIMPLE_H
 

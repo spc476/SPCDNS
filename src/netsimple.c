@@ -17,6 +17,32 @@
 *
 **************************************************************************/
 
+/*********************************************************************
+*
+* Implementation of the simple network interface for DNS queries.  Two
+* functions are exported:
+*
+*	net_server()
+*
+*		decode the IP address (IPv4/IPv6) from a text representation
+*		to a network format.
+*
+*	net_request()
+*
+*		Send a request to the given server and wait a reponse.  This
+*		function is stupid simple---it opens a socket, sends the
+*		request via sendto(), waits for up to 15 seconds for a
+*		reply.  If no reply is seen in 15 seconds, close the socket
+*		and return an error---otherwise, call recvfrom(), close the
+*		socket and return the data.
+*
+*		Like I said, stupid simple.  It's enough for testing and
+*		very simple programs.
+*
+* This code is written for C99.
+*
+**************************************************************************/
+
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>

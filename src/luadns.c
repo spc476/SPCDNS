@@ -17,6 +17,71 @@
 *
 **************************************************************************/
 
+/**********************************************************************
+*
+* Implements Lua bindings for my DNS library.  This exports four functions
+* in the org.conman.dns object:
+*
+*	encode(t)
+*
+*		Accepts a table in the form:
+*
+*			{
+*			  id       = some_number,
+*			  query    = true,	-- making a query
+*			  rd       = true,	-- for recursive queries
+*			  opcode   = 'query',
+*			  question = {
+*			  		name = 'www.example.com',
+*			  		type = 'loc',
+*			  		class = 'in'
+*			  	}
+*			  }
+*
+*		And returns a binary string that is the wire format of the
+*		query.  This binary string can then be sent over a UDP or
+*		TCP packet to a DNS server.
+*
+*		This returns a binary string on success, nil,rcode on
+*		failre.
+*
+*		See lua/test.lua for an example of using this function.
+*
+*	decode(bs)
+*
+*		Decodes a binary string into a table (similar to the table
+*		above) for easy use of the DNS response.
+*
+*		This returns a table on success, or nil,rcode on failure.
+*
+*		See lua/test.lua for an example of using this function.
+*
+*	query(server,bs)
+*
+*		Sends the encoded binary string to the given server.  The
+*		server variable is a string of the IP address (IPv4 or
+*		IPv6)---hostnames will fail.
+*
+*		This function is very stupid simple; it sends the request,
+*		and if it doesn't see a reply in 15 seconds, it returns a
+*		failure.  No restransmission of the packet is done.  This is
+*		probably fine for simple applications but not for anything
+*		heavy duty or rubust.
+*
+*		This returns a binary string of the reponse, or nil,rcode on
+*		failure.
+*
+*	strerror(rcode)
+*
+*		Returns a string representation of the server response, or 
+*		the return value from a failed query() call.  This function
+*		does not fail (if it does, there's more to worry about).
+*
+*
+* This code is written to C99.
+*
+***************************************************************************/
+
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>

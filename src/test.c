@@ -17,6 +17,16 @@
 *
 **************************************************************************/
 
+/**********************************************************************
+*
+* Sample application using my DNS library.  It's somewhat similar to dig,
+* but lacking features found in dig.  Still useful though, and gives an
+* example of how to use the DNS library.
+*
+* This code is C99.
+*
+***************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -37,7 +47,7 @@
 
 /************************************************************************/
 
-void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
+static void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 {
   printf("\n;;; %s\n\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
@@ -51,7 +61,7 @@ void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
   }
 }
 
-void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
+static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
   char ipaddr[INET6_ADDRSTRLEN];
   
@@ -216,6 +226,17 @@ int main(int argc,char *argv[])
   domains[0].class = CLASS_IN;
 
 #if 0
+
+  /*------------------------------------------------------------------------
+  ; I'm finding that many DNS servers only accept a single question in the
+  ; query.  If there are any DNS servers that accept more than one question,
+  ; I haven't located one yet.
+  ;
+  ; What I was attempting to do here was for A requests, include a request
+  ; for the AAAA record, and if given an AAAA record, request the A record
+  ; as well.
+  ;------------------------------------------------------------------*/
+  
   if (domains[0].type == RR_A)
   {
     dcnt++;

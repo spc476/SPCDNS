@@ -17,6 +17,35 @@
 *
 **************************************************************************/
 
+/*************************************************************************
+*
+* Definitions for all things related to the DNS protocol (and not to the
+* network transport thereof---that's for another episode).
+*
+* I've scoured the Internet and I think I've located every DNS RR type that
+* exists.  And for the majority of them, I've made an in-memory
+* representation of said record for easy access to the contents (for when I
+* do get around to decoding them from thier wire representation).  For
+* records that I do not decode (and you'll need to check codec.c to see
+* which ones aren't being decoded) you'll get back a dns_x_t, which has the
+* common portion of the RR decoded (which includes the ID, type, class and
+* TTL) plus the remainder of the raw packet.  
+*
+* My eventual intent is to decode those records that I can find definitions
+* for, and decipher the sometimes dry and dense RFCs that describe said RRs. 
+* I'm well on my way with support for about half the known records (which
+* includes the ones most likely to be found in 99% of all zone files).
+*
+* This file assumes C99.  You must include the following files before
+* including this one:
+*
+* #include <stdbool.h>
+* #include <stdint.h>
+* #include <stddef.h>
+* #incldue <arpa/inet.h>
+*
+***************************************************************************/
+
 #ifndef DNS_H
 #define DNS_H
 
@@ -32,79 +61,105 @@
 #define MAX_DOMAIN_SEGMENT	 64
 #define MAX_STRING_LEN		256
 
+/***************************************************************************
+* I've specified where each RR, Class and error codes are defined.  Also, 
+* for the RRs, I've marked if I have decode support as well as experimental
+* and obsolete information as follows:
+*
+*	+	Decoding support
+*	O	Obsolete 
+*	E	Experimental 
+*
+***************************************************************************/
+
 typedef enum dns_type
 {
-  RR_A        =  1,	/* IPv4 Address 		*/ /* RFC-1035 */
-  RR_NS       =  2,	/* Name server			*/ /* RFC-1035 */
-  RR_MD       =  3,	/* Mail Destination (obsolete)	*/ /* RFC-1035 */
-  RR_MF       =  4,	/* Mail Forwarder (obsolete)	*/ /* RFC-1035 */
-  RR_CNAME    =  5,	/* Canonical name		*/ /* RFC-1035 */
-  RR_SOA      =  6,	/* Start of Authority		*/ /* RFC-1035 */
-  RR_MB       =  7,	/* Mailbox (experimental)	*/ /* RFC-1035 */
-  RR_MG       =  8,	/* Mailgroup (experimental)	*/ /* RFC-1035 */
-  RR_MR       =  9,	/* Mailrename (experimental)	*/ /* RFC-1035 */
-  RR_NULL     = 10,	/* NULL resource (experimental)	*/ /* RFC-1035 */
-  RR_WKS      = 11,	/* Well Known Service		*/ /* RFC-1035 */
-  RR_PTR      = 12,	/* Pointer			*/ /* RFC-1035 */
-  RR_HINFO    = 13,	/* Host Info			*/ /* RFC-1035 */
-  RR_MINFO    = 14,	/* Mailbox/mail list info	*/ /* RFC-1035 */
-  RR_MX       = 15,	/* Mail Exchange		*/ /* RFC-1035 */
-  RR_TXT      = 16,	/* Text				*/ /* RFC-1035 */
-  RR_RP       = 17,	/* Responsible Person		*/ /* RFC-1183 */
-  RR_AFSDB    = 18,	/* Andrew File System DB	*/ /* RFC-1183 */
-  RR_X25      = 19,	/* X.25 address, route binding  */ /* RFC-1183 */
-  RR_ISDN     = 20,	/* ISDN address, route binding	*/ /* RFC-1183 */
-  RR_RT       = 21,	/* Route Through		*/ /* RFC-1183 */
-  RR_NSAP     = 22,	/* Network Service Access Proto	*/ /* RFC-1348 */
-  RR_NSAP_PTR = 23,	/* NSAP Pointer			*/ /* RFC-1348 */
-  RR_SIG      = 24,	/* Signature			*/ /* RFC-2065 */  
-  RR_KEY      = 25,	/* Key				*/ /* RFC-2065 */
-  RR_PX       = 26,	/* X.400 mail mapping		*/ /* RFC-2163 */
-  RR_GPOS     = 27,	/* Geographical position (obs)	*/ /* RFC-1712 */
-  RR_AAAA     = 28,	/* IPv6 Address			*/ /* RFC-1886 */
-  RR_LOC      = 29,	/* Location			*/ /* RFC-1876 */
-  RR_NXT      = 30,	/* Next RR			*/ /* RFC-2065 */
-  RR_EID      = 31,	/* Endpoint Identifier		*/ /* ???      */
-  RR_NIMLOC   = 32,	/* Nimrod Locator		*/ /* ???      */
-  RR_SRV      = 33,	/* Service			*/ /* RFC-2782 */
-  RR_ATM      = 34,	/* ATM Address			*/ /* ???      */
-  RR_NAPTR    = 35,	/* Naming Authority Pointer	*/ /* RFC-2915 */
-  RR_KX       = 36,	/* Key Exchange			*/ /* ???      */
-  RR_CERT     = 37,	/* Certification		*/ /* ???      */
-  RR_A6       = 38,	/* IPv6 Address			*/ /* RFC-2874 */
-  RR_DNAME    = 39,	/* Non-terminal DNAME (IPv6)	*/ /* RFC-2672 */
-  RR_SINK     = 40,	/* Kitchen sink (experiemental) */ /* ???      */
-  RR_OPT      = 41,	/* EDNS0 option (meta-RR)	*/ /* RFC-2673 */
-  RR_APL      = 42,	/* Address Prefix List		*/ /* RFC-3123 */
-  RR_DS       = 43,	/* Delegation Signer		*/ /* RFC-3658 */  
-  RR_RRSIG    = 46,	/* Resource Record Signature	*/ /* RFC-4034 */
-  RR_NSEC     = 47,	/* Next Security Record		*/ /* RFC-4034 */
-  RR_DNSKEY   = 48,	/* DNS Security	Key		*/ /* RFC-4034 */
-  RR_SPF      = 99,	/* Sender Policy Framework	*/ /* RFC-4408 */
+  RR_A          =   1,	/* IPv4 Address 		      + RFC-1035 */
+  RR_NS         =   2,	/* Name server			      + RFC-1035 */
+  RR_MD         =   3,	/* Mail Destination		     O+ RFC-1035 */
+  RR_MF         =   4,	/* Mail Forwarder		     O+ RFC-1035 */
+  RR_CNAME      =   5,	/* Canonical name		      + RFC-1035 */
+  RR_SOA        =   6,	/* Start of Authority		      + RFC-1035 */
+  RR_MB         =   7,	/* Mailbox			     E+ RFC-1035 */
+  RR_MG         =   8,	/* Mailgroup			     E+ RFC-1035 */
+  RR_MR         =   9,	/* Mailrename			     E+ RFC-1035 */
+  RR_NULL       =  10,	/* NULL resource		     E+ RFC-1035 */
+  RR_WKS        =  11,	/* Well Known Service		      + RFC-1035 */
+  RR_PTR        =  12,	/* Pointer			      + RFC-1035 */
+  RR_HINFO      =  13,	/* Host Info			      + RFC-1035 */
+  RR_MINFO      =  14,	/* Mailbox/mail list info	      + RFC-1035 */
+  RR_MX         =  15,	/* Mail Exchange		      + RFC-1035 */
+  RR_TXT        =  16,	/* Text				      + RFC-1035 */
+  RR_RP         =  17,	/* Responsible Person		      + RFC-1183 */
+  RR_AFSDB      =  18,	/* Andrew File System DB	      + RFC-1183 RFC-5864 */
+  RR_X25        =  19,	/* X.25 address, route binding        + RFC-1183 */
+  RR_ISDN       =  20,	/* ISDN address, route binding	      + RFC-1183 */
+  RR_RT         =  21,	/* Route Through		      + RFC-1183 */
+  RR_NSAP       =  22,	/* Network Service Access Proto	      + RFC-1348 RFC-1706 */
+  RR_NSAP_PTR   =  23,	/* NSAP Pointer			      + RFC-1348 */
+  RR_SIG        =  24,	/* Signature				RFC-2065 RFC-2535 RFC-3755 RFC-4034 */
+  RR_KEY        =  25,	/* Key					RFC-2065 RFC-2535 RFC-3755 RFC-4034 */
+  RR_PX         =  26,	/* X.400 mail mapping		      + RFC-2163 */
+  RR_GPOS       =  27,	/* Geographical position	     O+ RFC-1712 */
+  RR_AAAA       =  28,	/* IPv6 Address			      + RFC-1886 RFC-3596 */
+  RR_LOC        =  29,	/* Location			      + RFC-1876 */
+  RR_NXT        =  30,	/* Next RR				RFC-2065 RFC-2535 RFC-3755 */
+  RR_EID        =  31,	/* Endpoint Identifier			???      */
+  RR_NIMLOC     =  32,	/* Nimrod Locator			???      */
+  RR_SRV        =  33,	/* Service			      + RFC-2782 */
+  RR_ATM        =  34,	/* ATM Address				???      */
+  RR_NAPTR      =  35,	/* Naming Authority Pointer	      + RFC-2168 RFC-2915 RFC-3403 */
+  RR_KX         =  36,	/* Key Exchange				RFC-2230 */
+  RR_CERT       =  37,	/* Certification			RFC-4398 */
+  RR_A6         =  38,	/* IPv6 Address				RFC-2874 RFC-3658 */
+  RR_DNAME      =  39,	/* Non-terminal DNAME (IPv6)		RFC-2672 */
+  RR_SINK       =  40,	/* Kitchen sink			     E  ???      */
+  RR_OPT        =  41,	/* EDNS0 option (meta-RR)		RFC-2671 */
+  RR_APL        =  42,	/* Address Prefix List			RFC-3123 */
+  RR_DS         =  43,	/* Delegation Signer			RFC-3658 RFC-4034 */
+  RR_SSHFP      =  44,	/* SSH Key Fingerprint			RFC-4255 */
+  RR_ISECKEY    =  45,	/* IP Security Key			RFC-4025 */
+  RR_RRSIG      =  46,	/* Resource Record Signature		RFC-3755 RFC-4034 */
+  RR_NSEC       =  47,	/* Next Security Record		        RFC-3755 RFC-4034 */
+  RR_DNSKEY     =  48,	/* DNS Security Key			RFC-3755 RFC-4034 */
+  RR_DHCOD      =  49,	/* DHCID				RFC-4701 */
+  RR_NSEC3      =  50,	/* NSEC3				RFC-5155 */
+  RR_NSEC3PARAM =  51,	/* NSEC3PARAM				RFC-5155 */
+  RR_HIP        =  55,	/* Host Identity Protocol		RFC-5205 */
+  RR_NINFO      =  56,	/* NINFO				???      */
+  RR_RKEY       =  57,	/* RKEY					???      */
+  RR_TALINK     =  58,	/* Trust Anchor Link			???      */
+  RR_SPF        =  99,	/* Sender Policy Framework	      + RFC-4408 */
+  RR_UINFO      = 100,	/* IANA Reserved			???      */
+  RR_UID        = 101,	/* IANA Reserved			???      */
+  RR_GID        = 102,	/* IANA Reserved			???      */
+  RR_UNSPEC     = 103,	/* IANA Reserved			???      */
 
 	/* Query types, >= 128 */
   
-  RR_TSIG     = 250,	/* Transaction Signature	*/ /* RFC-2845 */
-  RR_IXFR     = 251,	/* Incremental zone transfer	*/ /* ???      */
-  RR_AXFR     = 252,	/* Transfer of zone		*/ /* RFC-1035 */
-  RR_MAILB    = 253,	/* Mailbox related records	*/ /* RFC-1035 */
-  RR_MAILA    = 254,	/* Mail agent RRs (obsolete)	*/ /* RFC-1035 */
-  RR_ANY      = 255,	/* All records			*/ /* RFC-1035 */
+  RR_TKEY       = 249,	/* Transaction Key			RFC-2930 */
+  RR_TSIG       = 250,	/* Transaction Signature		RFC-2845 */
+  RR_IXFR       = 251,	/* Incremental zone transfer		RFC-1995 */
+  RR_AXFR       = 252,	/* Transfer of zone			RFC-1035 RFC-5936 */
+  RR_MAILB      = 253,	/* Mailbox related records		RFC-1035 */
+  RR_MAILA      = 254,	/* Mail agent RRs (obsolete)	     O  RFC-1035 */
+  RR_ANY        = 255,	/* All records				RFC-1035 */
 } dns_type_t;
 
 typedef enum dns_class
 {
-  CLASS_IN   =   1,	/* Internet		*/ /* RFC-1035 */
-  CLASS_CS   =   2,	/* CSNET - obsolete	*/ /* RFC-1035 */
-  CLASS_CH   =   3,	/* CHAOS		*/ /* RFC-1035 */
-  CLASS_HS   =   4,	/* Hesiod		*/ /* RFC-1035 */
-  CLASS_NONE = 254,	/* 			*/ /* RFC-2136 */
+  CLASS_IN   =   1,	/* Internet	    	RFC-1035 */
+  CLASS_CS   =   2,	/* CSNET (obsolete)    	RFC-1035 */
+  CLASS_CH   =   3,	/* CHAOS		RFC-1035 */
+  CLASS_HS   =   4,	/* Hesiod		RFC-1035 */
+  CLASS_NONE = 254,	/* 			RFC-2136 */
+  CLASS_ANY  = 255,	/* All classes		RFC-1035 */
 } dns_class_t;
 
 typedef enum dns_op
 {
   OP_QUERY  = 0,	/* RFC-1035 */
-  OP_IQUERY = 1,	/* obsolete */	/* RFC-3425 */
+  OP_IQUERY = 1,	/* RFC-1035 RFC-3425 */ /* Obsolete */
   OP_STATUS = 2,	/* RFC-1035 */  
   OP_NOTIFY = 4,	/* RFC-1996 */
   OP_UPDATE = 5		/* RFC-2136 */  
@@ -609,12 +664,13 @@ typedef struct dns_cert_t	/* (unknown) */
 
 typedef struct dns_a6_t		/* RFC-2874 */
 {
-  const char  *name;
-  dns_type_t   type;
-  dns_class_t  class;
-  TTL          ttl;
-  uint8_t      address[16];
-  const char  *prefixname;
+  const char      *name;
+  dns_type_t       type;
+  dns_class_t      class;
+  TTL              ttl;
+  size_t           mask;
+  struct in6_addr  address;
+  const char      *prefixname;
 } dns_a6_t;
 
 typedef struct dns_dname_t	/* RFC-2672 */
@@ -723,10 +779,22 @@ typedef struct dns_dnskey_t	/* RFC-4034 */
   bool              zonekey;
   bool              sep;
   dnskey_protocol   protocol;	/* must be DNSKEYP_DNSSEC */
-  dnskey_algorithm  algoritm;
+  dnskey_algorithm  algorithm;
   size_t            keysize;
   uint8_t          *key;
 } dns_dnskey_t;  
+
+typedef struct dns_sshfp_t	/* RFC-4255 */
+{
+  const char       *name;
+  dns_type_t        type;
+  dns_class_t       class;
+  TTL               ttl;
+  dnskey_algorithm  algorithm;
+  dnsds_digest      fptype;
+  size_t            fpsize;
+  uint8_t          *fingerprint;
+} dns_sshfp_t;
 
 typedef struct dns_spf_t	/* RFC-4408 */
 {

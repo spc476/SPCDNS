@@ -17,6 +17,18 @@
 *
 **************************************************************************/
 
+/**************************************************************************
+*
+* Useful routines to convert error codes, RR, Class and Opcode values into
+* strings, and strings into their equivilent RR, Class or Opcode values.
+*
+* This file assumes C99.  You must include the following files before
+* including this one:
+*
+* #include "dns.h"
+*
+**************************************************************************/
+
 #ifndef DNS_MAPPINGS_H
 #define DNS_MAPPINGS_H
 

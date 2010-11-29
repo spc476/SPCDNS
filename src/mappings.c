@@ -17,6 +17,14 @@
 *
 **************************************************************************/
 
+/***********************************************************************
+*
+* Implementation of mapping values to strings, or strings to values.
+*
+* This code is written to C99.
+*
+************************************************************************/
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -31,13 +39,26 @@
 #include "dns.h"
 #include "mappings.h"
 
-/************************************************************************/
+/************************************************************************
+*
+* The following structure is used to map values to strings.  The arrays
+* defined by this structure *MUST* be sorted by value in ascending order.
+*
+*************************************************************************/
 
 struct int_string_map
 {
   const int         value;
   const char *const text;
 };
+
+/*******************************************************************
+*
+* The following structure is used to map strings to values.  The arrays
+* defined by this structure *MUST* be sorted by the strings in ascending
+* order.
+*
+*********************************************************************/
 
 struct string_int_map
 {
