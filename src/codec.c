@@ -114,9 +114,9 @@ static        dns_rcode_t  dns_encode_domain(block_t *const restrict,const dns_q
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
-static inline uint16_t	   read_uint16	(block_t *const)		__attribute__ ((nothrow,nonnull));
-static inline uint32_t	   read_uint32	(block_t *const)		__attribute__ ((nothrow,nonnull));
 
+static inline uint16_t	   read_uint16	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
+static inline uint32_t	   read_uint32	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static        dns_rcode_t  read_raw	(idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  read_string	(idns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  read_domain	(idns_context *const restrict,const char **restrict)	          __attribute__ ((nothrow,nonnull));
