@@ -242,7 +242,6 @@ dns_rcode_t dns_encode(
   block_t             data;
   dns_rcode_t         rc;
   
-  assert(buffer != NULL);
   assert(plen   != NULL);
   assert(*plen  >= 12);
   assert(query  != NULL);
