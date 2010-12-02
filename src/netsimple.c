@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #include <netdb.h>
@@ -55,6 +56,7 @@
 #include <poll.h>
 #include <unistd.h>
 
+#include "dns.h"
 #include "netsimple.h"
 
 /************************************************************************/
@@ -88,11 +90,11 @@ int net_server(
 /************************************************************************/
 
 int net_request(
-	sockaddr_all  *const restrict srvaddr,
-	uint8_t       *const restrict dest,
-	size_t        *const restrict dsize,
-	const uint8_t *const restrict src,
-	const size_t                  ssize
+	sockaddr_all      *const restrict srvaddr,
+	dns_align_t       *const restrict dest,
+	size_t            *const restrict dsize,
+	const dns_align_t *const restrict src,
+	const size_t                      ssize
 )
 {
   struct pollfd polldat;

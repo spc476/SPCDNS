@@ -213,7 +213,7 @@ int main(int argc,char *argv[])
   dns_question_t domains[2];
   size_t         dcnt;
   dns_query_t    query;
-  uint8_t        buffer[MAX_DNS_QUERY_SIZE];
+  dns_align_t    buffer[DNS_BUFFER_UDP];
   size_t         len;
   int            rc;
   
@@ -274,7 +274,7 @@ int main(int argc,char *argv[])
 #endif
 
   sockaddr_all server;
-  uint8_t      inbuffer[MAX_DNS_QUERY_SIZE];
+  dns_align_t  inbuffer[DNS_BUFFER_UDP];
   size_t       insize;
 
   rc = net_server(&server,"127.0.0.1");
@@ -296,7 +296,7 @@ int main(int argc,char *argv[])
   dump_memory(stdout,inbuffer,insize,0);
 #endif
 
-  uint8_t      bufresult[8192];
+  dns_align_t  bufresult[DNS_DECODEBUF_8K];
   dns_query_t *result;
   
   rc = dns_decode(bufresult,sizeof(bufresult),inbuffer,insize);

@@ -50,6 +50,8 @@
 *
 *	This code is written using C99.
 *
+* The code in here requires no other code from this project.
+*
 ****************************************************************************/
 
 #define _GNU_SOURCE
@@ -70,16 +72,16 @@
 #include "dns.h"
 
 /*----------------------------------------------------------------------------
-; the folowing are used for memory allocation.  uintptr_t is picked as the
-; alignment size, as it's good enough for alignment.  If some odd-ball
+; The folowing are used for memory allocation.  dns_align_t should be fine
+; for alignment size, as it's good enough for alignment.  If some odd-ball
 ; system comes up that requires more strict alignment, then I'll change this
 ; to something like a long double or something silly like that.
 ;
 ; see the comment align_memory() for more details
 ;-----------------------------------------------------------------------------*/
 
-#define MEM_ALIGN	sizeof(uintptr_t)
-#define MEM_MASK	~(sizeof(uintptr_t) - 1uL)
+#define MEM_ALIGN	sizeof(dns_align_t)
+#define MEM_MASK	~(sizeof(dns_align_t) - 1uL)
 
 /************************************************************************/
 
@@ -198,27 +200,31 @@ static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answ
 /*******************************************************************/
 
 #ifndef NDEBUG
-# include <stdio.h>
-# include <cgilib6/util.h>
+#  ifdef USE_CGILIB
+#    include <stdio.h>
+#    include <cgilib6/util.h>
 
-  /*-------------------------------------------------------------------------
-  ; this routine is only used for development and is *not* needed for normal
-  ; operations.  You probably don't have the dump_memory() function defined
-  ; (it's in a separate library on my (sean@conman.org) development system)
-  ; so if you need to nuke this, go ahead.
-  ;------------------------------------------------------------------------*/
+     /*-------------------------------------------------------------------------
+     ; this routine is only used for development and is *not* needed for
+     ; normal operations.  You probably don't have the dump_memory()
+     ; function defined (it's in a separate library on my (sean@conman.org)
+     ; development system) so if you need to nuke this, go ahead.
+     ;------------------------------------------------------------------------*/
   
-  static void quick_dump(const char *,void *,size_t) __attribute__ ((unused));
+     static void quick_dump(const char *,void *,size_t) __attribute__ ((unused));
   
-  static void quick_dump(const char *tag,void *data,size_t len)
-  {
-    assert(tag != NULL);
-    assert(data != NULL);
-    assert(len  >  0);
-    
-    printf("\n%s\n",tag);
-    dump_memory(stdout,data,len,0);
-  }
+     static void quick_dump(const char *tag,void *data,size_t len)
+     {
+       assert(tag != NULL);
+       assert(data != NULL);
+       assert(len  >  0);
+     
+       printf("\n%s\n",tag);
+       dump_memory(stdout,data,len,0);
+     }
+#  else
+#    define quick_dump(t,d,l,o)
+#  endif
 #else
 #  define quick_dump(t,d,l,o)
 #endif
@@ -226,12 +232,13 @@ static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answ
 /*****************************************************************************/
 
 dns_rcode_t dns_encode(
-	uint8_t           *const restrict buffer,
-	size_t            *restrict       plen,
+	dns_align_t       *const restrict dest,
+	size_t            *const restrict plen,
 	const dns_query_t *const restrict query
 )
 {
   struct idns_header *header;
+  uint8_t            *buffer;
   block_t             data;
   dns_rcode_t         rc;
   
@@ -240,8 +247,9 @@ dns_rcode_t dns_encode(
   assert(*plen  >= 12);
   assert(query  != NULL);
   
-  memset(buffer,0,*plen);
+  memset(dest,0,*plen);
   
+  buffer = (uint8_t *)dest;
   header = (struct idns_header *)buffer;
   
   header->id      = htons(query->id);
@@ -340,10 +348,10 @@ static dns_rcode_t dns_encode_domain(
   *back_ptr  = 0;
   data->ptr  = end + 1;
   
-  data->ptr[0] = (pquestion->type >> 8);
-  data->ptr[1] = (pquestion->type & 0xFF);
+  data->ptr[0] = (pquestion->type  >> 8);
+  data->ptr[1] = (pquestion->type  &  0xFF);
   data->ptr[2] = (pquestion->class >> 8);
-  data->ptr[3] = (pquestion->class & 0xFF);
+  data->ptr[3] = (pquestion->class &  0xFF);
   data->ptr += 4;
   
   return RCODE_OKAY;
@@ -352,14 +360,15 @@ static dns_rcode_t dns_encode_domain(
 /******************************************************************************
 *
 * Memory allocations are done quickly.  The dns_decode() routine is given a
-* block of memory to carve allocations out of (8k is more than enough for
-* UDP packets) and there's no real intelligence here---just a quick scheme. 
-* String information is just allocated starting at the next available
-* location (referenced in context->dest) whereas the few structures that do
-* need allocating require the free pointer to be adjusted to a proper memory
-* alignment.  If you need alignments, call alloc_struct(), otherwise for
-* strings, use context->dest directly.  You *can* use align_memory()
-* directly, just be sure you know what you are doing.
+* block of memory to carve allocations out of (4k appears to be good eough;
+* 8k is more than enough for UDP packets) and there's no real intelligence
+* here---just a quick scheme.  String information is just allocated starting
+* at the next available location (referenced in context->dest) whereas the
+* few structures that do need allocating require the free pointer to be
+* adjusted to a proper memory alignment.  If you need alignments, call
+* alloc_struct(), otherwise for strings, use context->dest directly.  You
+* *can* use align_memory() directly, just be sure you know what you are
+* doing.
 *
 * If you are grabbing strings, just use context->dest directoy; othersise,
 * call alloc_struct(), and don't forget to check for NULL.
@@ -1230,10 +1239,10 @@ static dns_rcode_t decode_answer(
 /***********************************************************************/
 
 dns_rcode_t dns_decode(
-	      void    *const restrict presponse,
-	const size_t                  rsize,
-	const uint8_t *const restrict buffer,
-	const size_t                  len
+	      dns_align_t *const restrict presponse,
+	const size_t                      rsize,
+	const dns_align_t *const restrict buffer,
+	const size_t                      len
 )
 {
   const struct idns_header *header;
@@ -1248,9 +1257,9 @@ dns_rcode_t dns_decode(
   
   context.packet.ptr  = (uint8_t *)buffer;
   context.packet.size = len;
-  context.parse.ptr   = (uint8_t *)&buffer[sizeof(struct idns_header)];
+  context.parse.ptr   = &context.packet.ptr[sizeof(struct idns_header)];
   context.parse.size  = len - sizeof(struct idns_header);
-  context.dest.ptr    = presponse;
+  context.dest.ptr    = (uint8_t *)presponse;
   context.dest.size   = rsize;
   
   /*--------------------------------------------------------------------------

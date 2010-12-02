@@ -105,7 +105,7 @@ static int dnslua_encode(lua_State *L)
 {
   dns_question_t domain;
   dns_query_t    query;
-  uint8_t        buffer[MAX_DNS_QUERY_SIZE];
+  dns_align_t    buffer[DNS_BUFFER_UDP];
   size_t         len;
   int            qidx;
   int            rc;
@@ -352,15 +352,24 @@ static void decode_answer(
 
 static int dnslua_decode(lua_State *L)
 {
-  uint8_t        bufresult[8192];
-  dns_query_t   *result;
-  const uint8_t *data;
-  size_t         size;
-  int            tab;
-  int            rc;
+  dns_align_t        bufresult[DNS_DECODEBUF_8K];
+  dns_align_t        data     [DNS_BUFFER_UDP];
+  const char        *luadata;
+  dns_query_t       *result;
+  size_t             size;
+  int                tab;
+  int                rc;
   
-  data = (const uint8_t *)luaL_checklstring(L,1,&size);
-  rc   = dns_decode(bufresult,sizeof(bufresult),data,size);
+  /*---------------------------------------------------------------------
+  ; We need to make sure our data is properly aligned.  And hey, this is
+  ; Lua---a scripting lanague.  We can afford a bit of waste 8-)
+  ;----------------------------------------------------------------------*/
+  
+  luadata = luaL_checklstring(L,1,&size);
+  if (size > MAX_DNS_QUERY_SIZE) size = MAX_DNS_QUERY_SIZE;
+  memcpy(data,luadata,size);
+  
+  rc = dns_decode(bufresult,sizeof(bufresult),data,size);
   
   if (rc != RCODE_OKAY)
   {
@@ -424,20 +433,23 @@ static int dnslua_query(lua_State *L)
 {
   sockaddr_all  remote;
   const char   *addr;
-  const char   *data;
+  const char   *luadata;
   size_t        size;
-  uint8_t       buffer[MAX_DNS_QUERY_SIZE];
+  dns_align_t   buffer[DNS_BUFFER_UDP];
+  dns_align_t   data  [DNS_BUFFER_UDP];
   size_t        insize;
   int           rc;
   
-  addr = luaL_checkstring(L,1);  
-  data = luaL_checklstring(L,2,&size);
+  addr    = luaL_checkstring(L,1);  
+  luadata = luaL_checklstring(L,2,&size);
   
   if (net_server(&remote,addr) < 0)
     luaL_error(L,"%s is not an IPv4/IPv6 address",addr);
   
+  if (size > MAX_DNS_QUERY_SIZE) size = MAX_DNS_QUERY_SIZE;
+  memcpy(data,luadata,size);
   insize = sizeof(buffer);
-  rc = net_request(&remote,buffer,&insize,(const uint8_t *)data,size);
+  rc = net_request(&remote,buffer,&insize,data,size);
 
   if (rc != 0)
   {

@@ -57,6 +57,40 @@
 #  define __attribute__(x)
 #endif
 
+/****************************************************************************
+* Buffers passed to these routines should be declared as of type dns_align_t
+* with one of the given sizes below, depending upon what the buffer is being
+* used for.  This is to ensure things work out fine and don't blow up (like
+* a segfault).  The 4K size *should* be okay for UDP packets, but if you are
+* worried, 8K is more than enough to handle responses from UDP.  Larger
+* sizes may be required for TCP.
+*
+* A declaration would looke something like:
+*
+*	dns_align_t query_packet    [DNS_BUFFER_UDP];
+*	dns_align_t decoded_response[DNS_DECODEBUF_4K];
+*
+* Alternatively, you can do this:
+*
+*	dns_align_t *pquery_packet;
+*	dns_align_t *pdecoded_response;
+*
+*	pquery_packet     = malloc(MAX_DNS_QUERY_SIZE);
+*	pdecoded_response = malloc(4192);
+*
+*************************************************************************/
+
+typedef uintptr_t dns_align_t;
+
+#define DNS_BUFFER_UDP		(  512uL / sizeof(dns_align_t))
+#define DNS_DECODEBUF_4K	( 4096uL / sizeof(dns_align_t))
+#define DNS_DECODEBUF_8K	( 8192uL / sizeof(dns_align_t))
+#define DNS_DECODEBUF_16k	(16384uL / sizeof(dns_align_t))
+
+/************************************************************************
+* Various upper limits in the DNS protocol
+************************************************************************/
+
 #define MAX_DNS_QUERY_SIZE	512
 #define MAX_DOMAIN_SEGMENT	 64
 #define MAX_STRING_LEN		256
@@ -912,15 +946,15 @@ typedef struct dns_query_t	/* RFC-1035 */
 /**********************************************************************/
 
 dns_rcode_t	dns_encode(
-			  uint8_t           *restrict,
-			  size_t            *restrict,
+			  dns_align_t       *const restrict,
+			  size_t            *const restrict,
 			  const dns_query_t *const restrict
 			 ) __attribute__ ((nothrow,nonnull));
 
 dns_rcode_t	dns_decode(
-                          void *const restrict,
+                          dns_align_t       *const restrict,
                           const size_t,
-			  const uint8_t *const restrict,
+			  const dns_align_t *const restrict,
 			  const size_t
 			 ) __attribute__ ((nothrow,nonnull(1,3)));
 
