@@ -431,25 +431,25 @@ static int dnslua_strerror(lua_State *L)
   
 static int dnslua_query(lua_State *L)
 {
-  sockaddr_all  remote;
-  const char   *addr;
-  const char   *luadata;
-  size_t        size;
-  dns_packet_t  buffer[DNS_BUFFER_UDP];
-  dns_packet_t  data  [DNS_BUFFER_UDP];
-  size_t        insize;
+  sockaddr_all  srvaddr;
+  const char   *server;
+  const char   *luaquery;
+  size_t        querysize;
+  dns_packet_t  query[DNS_BUFFER_UDP];
+  dns_packet_t  reply[DNS_BUFFER_UDP];
+  size_t        replysize;
   int           rc;
   
-  addr    = luaL_checkstring(L,1);  
-  luadata = luaL_checklstring(L,2,&size);
+  server   = luaL_checkstring(L,1);  
+  luaquery = luaL_checklstring(L,2,&querysize);
   
-  if (net_server(&remote,addr) < 0)
-    luaL_error(L,"%s is not an IPv4/IPv6 address",addr);
+  if (net_server(&srvaddr,server) < 0)
+    luaL_error(L,"%s is not an IPv4/IPv6 address",server);
   
-  if (size > MAX_DNS_QUERY_SIZE) size = MAX_DNS_QUERY_SIZE;
-  memcpy(data,luadata,size);
-  insize = sizeof(buffer);
-  rc = net_request(&remote,buffer,&insize,data,size);
+  if (querysize > MAX_DNS_QUERY_SIZE) querysize = MAX_DNS_QUERY_SIZE;
+  memcpy(query,luaquery,querysize);
+  replysize = sizeof(reply);
+  rc = net_request(&srvaddr,reply,&replysize,query,querysize);
 
   if (rc != 0)
   {
@@ -458,7 +458,7 @@ static int dnslua_query(lua_State *L)
     return 2;
   }
   
-  lua_pushlstring(L,(char *)buffer,insize);
+  lua_pushlstring(L,(char *)reply,replysize);
   return 1;
 }
 
