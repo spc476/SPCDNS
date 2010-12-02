@@ -37,8 +37,6 @@
 
 #include <arpa/inet.h>
 
-#include <cgilib6/util.h>
-
 #include "dns.h"
 #include "mappings.h"
 #include "netsimple.h"
