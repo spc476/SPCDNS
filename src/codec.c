@@ -72,7 +72,7 @@
 #include "dns.h"
 
 /*----------------------------------------------------------------------------
-; The folowing are used for memory allocation.  dns_align_t should be fine
+; The folowing are used for memory allocation.  dns_decoded_t should be fine
 ; for alignment size, as it's good enough for alignment.  If some odd-ball
 ; system comes up that requires more strict alignment, then I'll change this
 ; to something like a long double or something silly like that.
@@ -80,8 +80,8 @@
 ; see the comment align_memory() for more details
 ;-----------------------------------------------------------------------------*/
 
-#define MEM_ALIGN	sizeof(dns_align_t)
-#define MEM_MASK	~(sizeof(dns_align_t) - 1uL)
+#define MEM_ALIGN	sizeof(dns_decoded_t)
+#define MEM_MASK	~(sizeof(dns_decoded_t) - 1uL)
 
 /************************************************************************/
 
@@ -232,7 +232,7 @@ static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answ
 /*****************************************************************************/
 
 dns_rcode_t dns_encode(
-	dns_align_t       *const restrict dest,
+	dns_packet_t      *const restrict dest,
 	size_t            *const restrict plen,
 	const dns_query_t *const restrict query
 )
@@ -1238,10 +1238,10 @@ static dns_rcode_t decode_answer(
 /***********************************************************************/
 
 dns_rcode_t dns_decode(
-	      dns_align_t *const restrict presponse,
-	const size_t                      rsize,
-	const dns_align_t *const restrict buffer,
-	const size_t                      len
+	      dns_decoded_t *const restrict presponse,
+	const size_t                        rsize,
+	const dns_packet_t  *const restrict buffer,
+	const size_t                        len
 )
 {
   const struct idns_header *header;

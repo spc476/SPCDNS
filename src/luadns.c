@@ -105,7 +105,7 @@ static int dnslua_encode(lua_State *L)
 {
   dns_question_t domain;
   dns_query_t    query;
-  dns_align_t    buffer[DNS_BUFFER_UDP];
+  dns_packet_t   buffer[DNS_BUFFER_UDP];
   size_t         len;
   int            qidx;
   int            rc;
@@ -352,8 +352,8 @@ static void decode_answer(
 
 static int dnslua_decode(lua_State *L)
 {
-  dns_align_t        bufresult[DNS_DECODEBUF_8K];
-  dns_align_t        data     [DNS_BUFFER_UDP];
+  dns_decoded_t      bufresult[DNS_DECODEBUF_8K];
+  dns_packet_t       data     [DNS_BUFFER_UDP];
   const char        *luadata;
   dns_query_t       *result;
   size_t             size;
@@ -435,8 +435,8 @@ static int dnslua_query(lua_State *L)
   const char   *addr;
   const char   *luadata;
   size_t        size;
-  dns_align_t   buffer[DNS_BUFFER_UDP];
-  dns_align_t   data  [DNS_BUFFER_UDP];
+  dns_packet_t  buffer[DNS_BUFFER_UDP];
+  dns_packet_t  data  [DNS_BUFFER_UDP];
   size_t        insize;
   int           rc;
   

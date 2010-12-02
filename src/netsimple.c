@@ -90,10 +90,10 @@ int net_server(
 /************************************************************************/
 
 int net_request(
-	sockaddr_all      *const restrict srvaddr,
-	dns_align_t       *const restrict dest,
-	size_t            *const restrict dsize,
-	const dns_align_t *const restrict src,
+	sockaddr_all       *const restrict srvaddr,
+	dns_packet_t       *const restrict dest,
+	size_t             *const restrict dsize,
+	const dns_packet_t *const restrict src,
 	const size_t                      ssize
 )
 {

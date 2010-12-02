@@ -58,34 +58,35 @@
 #endif
 
 /****************************************************************************
-* Buffers passed to these routines should be declared as of type dns_align_t
-* with one of the given sizes below, depending upon what the buffer is being
-* used for.  This is to ensure things work out fine and don't blow up (like
-* a segfault).  The 4K size *should* be okay for UDP packets, but if you are
-* worried, 8K is more than enough to handle responses from UDP.  Larger
-* sizes may be required for TCP.
+* Buffers passed to these routines should be declared as one of these two
+* types with one of the given sizes below, depending upon what the buffer is
+* being used for.  This is to ensure things work out fine and don't blow up
+* (like a segfault).  The 4K size *should* be okay for UDP packets, but if
+* you are worried, 8K is more than enough to handle responses from UDP. 
+* Larger sizes may be required for TCP.
 *
 * A declaration would looke something like:
 *
-*	dns_align_t query_packet    [DNS_BUFFER_UDP];
-*	dns_align_t decoded_response[DNS_DECODEBUF_4K];
+*	dns_packet_t  query_packet    [DNS_BUFFER_UDP];
+*	dns_decoded_t decoded_response[DNS_DECODEBUF_4K];
 *
 * Alternatively, you can do this:
 *
-*	dns_align_t *pquery_packet;
-*	dns_align_t *pdecoded_response;
+*	dns_packet_t  *pquery_packet;
+*	dns_decoded_t *pdecoded_response;
 *
 *	pquery_packet     = malloc(MAX_DNS_QUERY_SIZE);
 *	pdecoded_response = malloc(4192);
 *
 *************************************************************************/
 
-typedef uintptr_t dns_align_t;
+typedef uintptr_t dns_packet_t;
+typedef uintptr_t dns_decoded_t;
 
-#define DNS_BUFFER_UDP		(  512uL / sizeof(dns_align_t))
-#define DNS_DECODEBUF_4K	( 4096uL / sizeof(dns_align_t))
-#define DNS_DECODEBUF_8K	( 8192uL / sizeof(dns_align_t))
-#define DNS_DECODEBUF_16k	(16384uL / sizeof(dns_align_t))
+#define DNS_BUFFER_UDP		(  512uL / sizeof(dns_packet_t))
+#define DNS_DECODEBUF_4K	( 4096uL / sizeof(dns_decoded_t))
+#define DNS_DECODEBUF_8K	( 8192uL / sizeof(dns_decoded_t))
+#define DNS_DECODEBUF_16k	(16384uL / sizeof(dns_decoded_t))
 
 /************************************************************************
 * Various upper limits in the DNS protocol
@@ -946,15 +947,15 @@ typedef struct dns_query_t	/* RFC-1035 */
 /**********************************************************************/
 
 dns_rcode_t	dns_encode(
-			  dns_align_t       *const restrict,
+			  dns_packet_t      *const restrict,
 			  size_t            *const restrict,
 			  const dns_query_t *const restrict
 			 ) __attribute__ ((nothrow,nonnull));
 
 dns_rcode_t	dns_decode(
-                          dns_align_t       *const restrict,
+                          dns_decoded_t      *const restrict,
                           const size_t,
-			  const dns_align_t *const restrict,
+			  const dns_packet_t *const restrict,
 			  const size_t
 			 ) __attribute__ ((nothrow,nonnull(1,3)));
 

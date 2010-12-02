@@ -62,10 +62,10 @@ int 	net_server	(
 			) __attribute__ ((nonnull));
 			
 int 	net_request	(
-			  sockaddr_all      *const restrict,
-			  dns_align_t       *const restrict,
-			  size_t            *const restrict,
-			  const dns_align_t *const restrict,
+			  sockaddr_all       *const restrict,
+			  dns_packet_t       *const restrict,
+			  size_t             *const restrict,
+			  const dns_packet_t *const restrict,
 			  const size_t
 			) __attribute__ ((nonnull(1,2,3,4)));
 
