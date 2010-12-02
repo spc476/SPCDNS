@@ -46,7 +46,7 @@
 #endif
 
 #ifndef __GNUC__
-#  define __attribute__ (x)
+#  define __attribute__(x)
 #endif
 
 typedef union sockaddr_all

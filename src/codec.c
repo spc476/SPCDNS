@@ -91,14 +91,14 @@ typedef struct block
 
 struct idns_header
 {
-  uint16_t id 		__attribute__ ((packed));
-  uint8_t  opcode	__attribute__ ((packed));
-  uint8_t  rcode	__attribute__ ((packed));
-  uint16_t qdcount	__attribute__ ((packed));
-  uint16_t ancount	__attribute__ ((packed));
-  uint16_t nscount	__attribute__ ((packed));
-  uint16_t arcount	__attribute__ ((packed));
-};
+  uint16_t id;
+  uint8_t  opcode;
+  uint8_t  rcode;
+  uint16_t qdcount;
+  uint16_t ancount;
+  uint16_t nscount;
+  uint16_t arcount;
+} __attribute ((packed));
 
 typedef struct idns_context
 {

@@ -54,7 +54,7 @@
 #endif
 
 #ifndef __GNUC__
-#  define __attribute__ (x)
+#  define __attribute__(x)
 #endif
 
 #define MAX_DNS_QUERY_SIZE	512
