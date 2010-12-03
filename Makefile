@@ -1,15 +1,61 @@
 
-CC = gcc -g -std=c99
+#######################################################################
+#
+# Copyright 2010 by Sean Conner.  All Rights Reserved.
+#
+# This library is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or (at your
+# option) any later version.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, see <http://www.gnu.org/licenses/>.
+#
+######################################################################
+
+#================================================
+# Linux
+#================================================
+
+CC     = gcc -g -std=c99
 CFLAGS = -Wall -Wextra -pedantic
 #CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
-PIC=-fpic
+PIC    = -fpic
 LFLAGS = -lm -lcgi6
-LUA = /usr/local/lib/lua/5.1
-AR = ar cr
+LUA    = /usr/local/lib/lua/5.1
+AR     = ar cr
 RANLIB = ranlib
 
+#=================================================
+# Solaris
+#=================================================
+
+#CC     = cc -g -xc99
+#CFLAGS =
+#PIC    = -fpic
+#LFLAGS = -lm -lnsl -lsocket
+#LUA    = /usr/local/lib/lua/5.1
+#AR     = ar cr
+#RANLIB = ranlib
+
+#=================================================
+
+dotest : built/dotest
+
+lua : built/dns.so
+
+lib : built/libspcdns.a
+
+so : built/libspcdns.so
 
 all : built/dotest built/dns.so built/libspcdns.a built/libspcdns.so
+
+#==================================================
 
 built/libspcdns.a : built/codec.o built/mappings.o
 	$(AR) $@ built/codec.o built/mappings.o
