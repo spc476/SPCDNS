@@ -26,7 +26,7 @@ CC     = gcc -g -std=c99
 CFLAGS = -Wall -Wextra -pedantic
 #CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
 PIC    = -fpic
-LFLAGS = -lm -lcgi6
+LFLAGS = -lm 
 LUA    = /usr/local/lib/lua/5.1
 AR     = ar cr
 RANLIB = ranlib

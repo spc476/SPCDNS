@@ -199,38 +199,6 @@ static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answ
 
 /*******************************************************************/
 
-#ifndef NDEBUG
-#  ifdef USE_CGILIB
-#    include <stdio.h>
-#    include <cgilib6/util.h>
-
-     /*-------------------------------------------------------------------------
-     ; this routine is only used for development and is *not* needed for
-     ; normal operations.  You probably don't have the dump_memory()
-     ; function defined (it's in a separate library on my (sean@conman.org)
-     ; development system) so if you need to nuke this, go ahead.
-     ;------------------------------------------------------------------------*/
-  
-     static void quick_dump(const char *,void *,size_t) __attribute__ ((unused));
-  
-     static void quick_dump(const char *tag,void *data,size_t len)
-     {
-       assert(tag != NULL);
-       assert(data != NULL);
-       assert(len  >  0);
-     
-       printf("\n%s\n",tag);
-       dump_memory(stdout,data,len,0);
-     }
-#  else
-#    define quick_dump(t,d,l,o)
-#  endif
-#else
-#  define quick_dump(t,d,l,o)
-#endif
-
-/*****************************************************************************/
-
 dns_rcode_t dns_encode(
 	dns_packet_t      *const restrict dest,
 	size_t            *const restrict plen,
