@@ -18,7 +18,6 @@
 --
 -- **************************************************************************
 
-show = org.conman.table.show
 dns  = require "org.conman.dns"
 
 e = dns.encode {
