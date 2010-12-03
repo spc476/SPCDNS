@@ -210,8 +210,9 @@ dns_rcode_t dns_encode(
   block_t             data;
   dns_rcode_t         rc;
   
+  assert(dest  != NULL);
   assert(plen  != NULL);
-  assert(*plen >= 12);
+  assert(*plen >= sizeof(struct idns_header));
   assert(query != NULL);
   
   memset(dest,0,*plen);
@@ -1218,7 +1219,7 @@ dns_rcode_t dns_decode(
   dns_rcode_t               rc;
 
   assert(presponse != NULL);
-  assert(rsize     >= 8192);
+  assert(rsize     >= sizeof(dns_query_t));
   assert(buffer    != NULL);
   assert(len       >= sizeof(struct idns_header));
   
