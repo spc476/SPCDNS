@@ -32,21 +32,231 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <errno.h>
+#include <ctype.h>
 #include <assert.h>
 
+#include <getopt.h>
 #include <arpa/inet.h>
 
 #include "dns.h"
 #include "mappings.h"
 #include "netsimple.h"
 
-#define DUMP 0
+enum
+{
+  OPT_NONE	= '\0',
+  OPT_HELP	= 'h',
+  OPT_SERVER	= 's',
+  OPT_DUMP	= 'd',
+  OPT_ERR	= '?'
+};
+
+/************************************************************************/
+
+static void print_question	(const char *,dns_question_t *,size_t);
+static void print_answer	(const char *,dns_answer_t   *,size_t);
+static void usage		(const char *);
+static void dump_memory		(FILE *,const void *,size_t,size_t);
+
+/************************************************************************/
+
+const struct option c_options[] =
+{
+  { "server"	, required_argument	, NULL	, OPT_SERVER 	} ,
+  { "dump"	, no_argument		, NULL	, OPT_DUMP	} ,
+  { "help"	, no_argument		, NULL	, OPT_HELP	} ,
+  { NULL	, 0			, NULL	, 0		}
+};
+
+/***********************************************************************/
+
+int main(int argc,char *argv[])
+{
+  const char *serverhost;
+  const char *host;
+  const char *type;
+  bool        fdump;
+  int         option;
+  int         rc;
+  
+  /*-------------------------------------------------------------------------
+  ; verbiage to parse the command line and set some sane defaults, yada yada
+  ; blah blah blah
+  ;------------------------------------------------------------------*/
+  
+  serverhost = "127.0.0.1";
+  host       = "examle.net";
+  type       = "A";
+  fdump      = false;
+  option     = 0;
+  opterr     = 0; /* prevent getopt_long() from printing error messages */
+  
+  while(true)
+  {
+    rc = getopt_long(argc,argv,"hds:",c_options,&option);
+    if (rc == EOF) break;
+    
+    switch(rc)
+    {
+      default:
+      case OPT_ERR:
+           fprintf(stderr,"unknown option '%c'\n",optopt);
+      case OPT_HELP:
+           usage(argv[0]);
+           return EXIT_FAILURE;
+      case OPT_SERVER:
+           serverhost = optarg;
+           break;
+      case OPT_DUMP:
+           fdump = true;
+           break;
+      case OPT_NONE:
+           break;
+    }
+  }
+  
+  if (optind == argc)
+  {
+    usage(argv[0]);
+    return EXIT_FAILURE;
+  }
+  
+  host = argv[optind++];
+  
+  if (optind < argc)
+    type = argv[optind];
+  
+  /*------------------------------------------------------------------------
+  ; Encoding of a DNS query.  I'm finding that many (if not all) DNS servers
+  ; only accept a single question, even though the protocol seems to allow
+  ; more than one question.  If there *is* a DNS server that can handle
+  ; multiple questions, then we can handle them, even if they don't exist
+  ; yet.
+  ;--------------------------------------------------------------------*/
+  
+  dns_question_t domain;
+  dns_query_t    query;
+  dns_packet_t   request[DNS_BUFFER_UDP];
+  size_t         reqsize;
+  
+  memset(&domain,0,sizeof(domain));
+  memset(&query, 0,sizeof(query));
+  
+  domain.name  = host;
+  domain.type  = dns_type_value(type);
+  domain.class = CLASS_IN;
+
+  query.id        = 1234;	/* should be a random value */
+  query.query     = true;
+  query.rd        = true;
+  query.opcode    = OP_QUERY;
+  query.qdcount   = 1;
+  query.questions = &domain;
+  
+  reqsize = sizeof(request);
+  rc      = dns_encode(request,&reqsize,&query);
+  if (rc != RCODE_OKAY)
+  {
+    fprintf(stderr,"dns_encode() = (%d) %s\n",rc,dns_rcode_text(rc));
+    return EXIT_FAILURE;
+  }
+  
+  if (fdump)
+  {  
+    printf("OUTGOING:\n\n");
+    dump_memory(stdout,request,reqsize,0);
+  }
+
+  /*-----------------------------------------------------------------------
+  ; Sending a DNS query.  This uses the simple interface provided and is
+  ; not good for much *except* as an example.  If you have any complex
+  ; requirements, do not look to this code.
+  ;-----------------------------------------------------------------------*/
+  
+  sockaddr_all server;
+  dns_packet_t reply[DNS_BUFFER_UDP];
+  size_t       replysize;
+
+  rc = net_server(&server,serverhost);
+  if (rc != 0)
+  {
+    fprintf(stderr,"net_server() = %s",strerror(rc)); 
+    return EXIT_FAILURE;
+  }
+  
+  replysize = sizeof(reply);
+  if (net_request(&server,reply,&replysize,request,reqsize) < 0)
+  {
+    fprintf(stderr,"failure\n");
+    return EXIT_FAILURE;
+  }
+
+  if (fdump)
+  {
+    printf("\nINCOMING:\n\n");
+    dump_memory(stdout,reply,replysize,0);
+  }
+
+  /*----------------------------------------------------------------------
+  ; Decode a DNS packet into something we can use.  dns_decoded_t is a type
+  ; to ensure proper alignment for stack based results---this must be big
+  ; enough to handle not only the dns_query_t but additional information as
+  ; well.  The 4K size so far seems good enough for decoding UDP packets,
+  ; although I'm using the 8K size just in case.
+  ;-----------------------------------------------------------------------*/
+  
+  dns_decoded_t  bufresult[DNS_DECODEBUF_8K];
+  dns_query_t   *result;
+  
+  rc = dns_decode(bufresult,sizeof(bufresult),reply,replysize);
+  if (rc != RCODE_OKAY)
+  {
+    fprintf(stderr,"dns_decode() = (%d) %s\n",rc,dns_rcode_text(rc));
+    return EXIT_FAILURE;
+  }
+  
+  result = (dns_query_t *)bufresult;
+
+  /*-------------------------------------------
+  ; Print the results out, ala dig
+  ;-------------------------------------------*/
+
+  printf(
+  	"; Questions            = %lu\n"
+  	"; Answers              = %lu\n"
+  	"; Name Servers         = %lu\n"
+  	"; Additional Records   = %lu\n"
+  	"; Authoritative Result = %s\n"
+  	"; Truncated Result     = %s\n"
+  	"; Recursion Desired    = %s\n"
+  	"; Recursion Available  = %s\n"
+  	"; Result               = %s\n",
+  	(unsigned long)result->qdcount,
+  	(unsigned long)result->ancount,
+  	(unsigned long)result->nscount,
+  	(unsigned long)result->arcount,
+  	result->aa ? "true" : "false",
+  	result->tc ? "true" : "false",
+  	result->rd ? "true" : "false",
+  	result->ra ? "true" : "false",
+  	dns_rcode_text(result->rcode)
+  );
+  	
+  print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
+  print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
+  print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
+  print_answer  ("ADDITIONAL"  ,result->additional  ,result->arcount);
+
+  return EXIT_SUCCESS;
+}
 
 /************************************************************************/
 
 static void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 {
+  assert(tag    != NULL);
+  assert(pquest != NULL);
+  
   printf("\n;;; %s\n\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
   {
@@ -59,9 +269,14 @@ static void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
   }
 }
 
+/***********************************************************************/
+
 static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 {
   char ipaddr[INET6_ADDRSTRLEN];
+  
+  assert(tag  != NULL);
+  assert(pans != NULL);
   
   printf("\n;;; %s\n\n",tag);
   
@@ -200,145 +415,73 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 
 /*********************************************************************/
 
-int main(int argc,char *argv[])
+static void usage(const char *prog)
 {
-  if (argc == 1)
-  {
-    fprintf(stderr,"usage: %s type fqdn\n",argv[0]);
-    return EXIT_FAILURE;
-  }
-
-  dns_question_t domains[2];
-  size_t         dcnt;
-  dns_query_t    query;
-  dns_packet_t   buffer[DNS_BUFFER_UDP];
-  size_t         len;
-  int            rc;
+  assert(prog != NULL);
   
-  memset(domains,0,sizeof(domains));
-  memset(&query,0,sizeof(query));
-  
-  dcnt             = 1;
-  domains[0].name  = argv[2];
-  domains[0].type  = dns_type_value(argv[1]);
-  domains[0].class = CLASS_IN;
-
-#if 0
-
-  /*------------------------------------------------------------------------
-  ; I'm finding that many DNS servers only accept a single question in the
-  ; query.  If there are any DNS servers that accept more than one question,
-  ; I haven't located one yet.
-  ;
-  ; What I was attempting to do here was for A requests, include a request
-  ; for the AAAA record, and if given an AAAA record, request the A record
-  ; as well.
-  ;------------------------------------------------------------------*/
-  
-  if (domains[0].type == RR_A)
-  {
-    dcnt++;
-    domains[1].name  = argv[2];
-    domains[1].type  = RR_AAAA;
-    domains[1].class = CLASS_IN;
-  }
-  else if (domains[0].type == RR_AAAA)
-  {
-    dcnt++;
-    domains[1].name  = argv[2];
-    domains[1].type  = RR_A;
-    domains[1].class = CLASS_IN;
-  }
-#endif
-
-  query.id        = 1234;
-  query.query     = true;
-  query.rd        = true;
-  query.opcode    = OP_QUERY;
-  query.qdcount   = dcnt;
-  query.questions = domains;
-  
-  len = sizeof(buffer);
-  rc  = dns_encode(buffer,&len,&query);
-  if (rc != RCODE_OKAY)
-  {
-    fprintf(stderr,"dns_encode() = (%d) %s\n",rc,dns_rcode_text(rc));
-    return EXIT_FAILURE;
-  }
-  
-#if DUMP
-  printf("OUTGOING:\n\n");
-  dump_memory(stdout,buffer,len,0);
-#endif
-
-  sockaddr_all server;
-  dns_packet_t inbuffer[DNS_BUFFER_UDP];
-  size_t       insize;
-
-  rc = net_server(&server,"127.0.0.1");
-  if (rc != 0)
-  {
-    fprintf(stderr,"net_server() = %s",strerror(rc)); 
-    return EXIT_FAILURE;
-  }
-  
-  insize = sizeof(inbuffer);
-  if (net_request(&server,inbuffer,&insize,buffer,len) < 0)
-  {
-    fprintf(stderr,"failure\n");
-    return EXIT_FAILURE;
-  }
-
-#if DUMP  
-  printf("\nINCOMING:\n\n");
-  dump_memory(stdout,inbuffer,insize,0);
-#endif
-
-  dns_decoded_t  bufresult[DNS_DECODEBUF_8K];
-  dns_query_t   *result;
-  
-  rc = dns_decode(bufresult,sizeof(bufresult),inbuffer,insize);
-  if (rc != RCODE_OKAY)
-  {
-    fprintf(stderr,"dns_decode() = (%d) %s\n",rc,dns_rcode_text(rc));
-    return EXIT_FAILURE;
-  }
-  
-  result = (dns_query_t *)bufresult;
-
-#if DUMP 
-  syslog(LOG_DEBUG,"id:      %d",result->id);
-  syslog(LOG_DEBUG,"qdcount: %lu",(unsigned long)result->qdcount);
-  syslog(LOG_DEBUG,"ancount: %lu",(unsigned long)result->ancount);
-  syslog(LOG_DEBUG,"nscount: %lu",(unsigned long)result->nscount);
-  syslog(LOG_DEBUG,"arcount: %lu",(unsigned long)result->arcount);
-#endif
-
-  printf(
-  	"; Questions            = %lu\n"
-  	"; Answers              = %lu\n"
-  	"; Name Servers         = %lu\n"
-  	"; Additional Records   = %lu\n"
-  	"; Authoritative Result = %s\n"
-  	"; Truncated Result     = %s\n"
-  	"; Recursion Desired    = %s\n"
-  	"; Recursion Available  = %s\n"
-  	"; Result               = %s\n",
-  	(unsigned long)result->qdcount,
-  	(unsigned long)result->ancount,
-  	(unsigned long)result->nscount,
-  	(unsigned long)result->arcount,
-  	result->aa ? "true" : "false",
-  	result->tc ? "true" : "false",
-  	result->rd ? "true" : "false",
-  	result->ra ? "true" : "false",
-  	dns_rcode_text(result->rcode)
+  fprintf(
+  	stderr,
+  	"usage: %s [-h] [-d] [-s server] host [type]\n"
+  	"\t-h\t\tusage text (this text)\n"
+  	"\t-d\t\tdump raw DNS queries\n"
+  	"\t-s server\tIP address of server\n"
+  	"\n"
+  	"\ttype\t\tRR DNS type\n",
+  	prog
   );
-  	
-  print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
-  print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
-  print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
-  print_answer  ("ADDITIONAL"  ,result->additional  ,result->arcount);
-
-  return EXIT_SUCCESS;
 }
+
+/**********************************************************************/
+
+#define LINESIZE	16
+
+static void dump_memory(FILE *out,const void *data,size_t size,size_t offset)
+{
+  const unsigned char *block = data;
+  char                 ascii[LINESIZE + 1];
+  int                  skip;
+  int                  j;
+  
+  assert(out   != NULL);
+  assert(block != NULL);
+  assert(size  >  0);
+  
+  while(size > 0)
+  {
+    fprintf(out,"%08lX: ",(unsigned long)offset);
+    
+    for (skip = offset % LINESIZE , j = 0 ; skip ; j++ , skip--)
+    {
+      fputs("   ",out);
+      ascii[j] = ' ';
+    }
+    
+    do
+    {
+      fprintf(out,"%02x ",*block);
+      if (isprint(*block))
+        ascii[j] = *block;
+      else
+        ascii[j] = '.';
+      
+      block++;
+      offset++;
+      j++;
+      size--;
+    } while((j < LINESIZE) && (size > 0));
+    
+    ascii[j] = '\0';
+
+    if (j < LINESIZE)
+    {
+      int i;
+      
+      for (i = j ; i < LINESIZE ; i++)
+        fputs("   ",out);
+    }
+    fprintf(out,"%s\n",ascii);
+  }
+}
+
+/**********************************************************************/
+
