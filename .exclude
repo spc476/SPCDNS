@@ -1,0 +1,10 @@
+.git
+.exclude
+rfc
+play
+notes
+built/.git-workaround
+*.o
+*.so
+*.a
+*~

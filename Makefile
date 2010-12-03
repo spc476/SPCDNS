@@ -123,3 +123,6 @@ install-lua: built/dns.so
 clean:
 	/bin/rm -rf built/*
 	/bin/rm -rf *~ src/*~ lua/*~
+
+tarball:
+	(cd .. ; tar czvf /tmp/spcdns.tar.gz -X spcdns/.exclude spcdns/ )
