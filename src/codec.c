@@ -1171,6 +1171,7 @@ static dns_rcode_t decode_answer(
     ;----------------------------------------------------------------------*/
     
     case RR_PX:
+    case RR_MINFO:
     case RR_RP: return decode_rr_rp(data,&pans->rp);
     
     case RR_AFSDB:
@@ -1179,7 +1180,6 @@ static dns_rcode_t decode_answer(
     
     case RR_NSAP:
     case RR_ISDN:
-    case RR_MINFO:
     case RR_HINFO: return decode_rr_hinfo(data,&pans->hinfo);    
     
     case RR_X25:
