@@ -1,0 +1,154 @@
+
+SPCDNS: The sane DNS encoding/decoding library
+
+SPCDNS implements a simple yet sane API to encode DNS queries and to decode
+DNS replies.  The library (v1.0) currently supports the decoding of 30 DNS
+resource records, which is more than just about all other DNS resolving
+libraries I've see (c-ares, udns, adns, libdns and djbdns [1]).
+
+SPCDNS is *NOT* a general purpose DNS resolving library (although code is
+provided to make DNS queries, it is simple and fairly stupid).  This code
+exists to provide a simple method of encoding and decoding the DNS protocol
+and thus the network side of things is a bit lacking I'll admit.  But that
+is beyond what I wanted for this project anyway.
+
+In the "src/" directory you'll find the following:
+
+	dns.h 
+
+		Defines the various DNS RR types, a structure for an
+		in-memory representation of each RR type (which is what
+		you'll get back when you call the decoding routine), and the
+		definitions for two functions, dns_encode() and dns_decode()
+		which pretty much do what they say.
+
+	codec.c
+
+		The actual implementations of dns_encode() and dns_decode().
+		This is the only file that's needed to encode and decode the
+		raw DNS protocol.  The routines are thread safe, do *not*
+		allocate memory (see below for more details) and do not use
+		signals.  It also does not use code from any other file in
+		this package.
+
+	mappings.h
+	mappings.c
+
+		These files provide definitions and implementation of a few
+		helpful routines that return string representations of the
+		DNS RR types, classes, opcodes and errors.  Again, thread
+		safe and no memory allocations made.
+
+	netsimple.h
+	netsimple.c
+
+		These files provide definitions and implementations for
+		making simple DNS queries to a given server.  This code is
+		*simple* and *dumb*, it may be good for light usage but was
+		written to get actual DNS packets from a DNS server for
+		testing.  This uses UDP and is thus limited to a query of
+		512 bytes or less.
+
+	luadns.c
+
+		Lua [2] bindings for this library.  It exports the routines
+		found in codec.c, mappings.c and netsimple.c.  Not all the
+		DNS RR types decoded are supported as of yet, but the major
+		ones commonly used are supported.  
+
+	test.c
+
+		An example program showing how to use the API to construct
+		and send a query, and to decode the response.  
+
+You'll probably want to check the Makefile to make sure the right compiler
+and locations are set.  Or not.  You don't *HAVE* to use the included
+Makefile.  It's really just a set of suggestions anyway.
+
+A NOTE ABOUT MEMORY ALLOCATIONS
+
+The dns_encode() and dns_decode() functions do no memory allocation; they
+use what you give them.  In the case of dns_decode(), the block of memory
+passed in must be big enough to handle not only the dns_query_t structure,
+but multiple dns_answer_t structures and text strings representing domain
+names and the occastional string or two (say, for TXT or NAPTR records).  In
+testing, I've found that 4K for decoding appears to be enough memory to
+handle DNS requests made via UDP (although the test.c program uses an 8K
+buffer).
+
+This block of memory should be properly aligned and to help make that easier
+I've defined two data types that should allow proper alignment, along with
+some useful constants to declare buffers of proper alignment and size.  
+
+	dns_packet_t   reply  [DNS_BUFFER_UDP];
+	dns_decoded_t  decoded[DNS_DECODEBUF_4K];
+	dns_query_t   *result;
+	dns_rcode      rc;
+        size_t         replysize;
+
+	/* assume reply contains a DNS packet, and replysize is set */
+
+	rc = dns_decode(decoded,sizeof(decoded),reply,replysize);
+
+	if (rc != RCODE_OKAY)
+	{
+	 /* handle error */
+	}
+
+	result = (dns_query_t *)decoded;
+
+	/* go with processing the result */
+
+Do *NOT* assume that DNS_DECODEBUF_4K is equal to 4096---it's not.  It
+*DOES*, however, result in at least a  4K block of memory made up of
+DNS_DECODEBUF_4K worth of dns_decoded_t types.  By the same token, do *NOT*
+assume that DNS_BUFFER_UDP is 512, but it too, does result in a buffer of at
+least 512 bytes made up of DNS_BUFFER_UDP dns_packet_t types.
+
+And while passing in a char * declared buffer to dns_decode() may appear to
+work, it only works you *YOUR* system; it may not work on other systems.
+
+A NOTE ABOUT DOMAIN NAMES
+
+The dns_encode() function assumes the domain passed in a a fully qualified
+domain name.  If you see an RCODE_NAME_ERROR when calling this function, you
+are probably not passing in a FQDN (if you are and are still getting that
+error, it's most likely a domain name segment exceeding the 63 character DNS
+limit).
+
+SOME NOTES ABOUT THE LUA BINDINGS
+
+The Lua bindings are loaded into a Lua script with the following:
+
+	require "org.conman.dns"
+
+This loads the bindings into a global Lua table called "org.conman.dns" to
+avoid name conflicts with other Lua DNS bindings and/or libraries.  Doing a
+"make install-lua" will install this file under:
+
+	/usr/local/lib/lua/5.1/org/conman/
+
+(assuming you didn't change the LUA setting in the Makefile)
+
+and thus place it under the appropriate namespace so Lua can find it.
+
+The file "lua/test.lua" shows the best use of the Lua bindings (and is close
+enough to what "src/test.c" does).  Better network handling could be done
+using LuaSocket, but for that, you are on your own.
+
+A FINAL NOTE
+
+If you have any problems, questions or enhancements, please send them my
+way, to sean@conman.org.  
+
+Thank you.
+
+[1]	http://c-ares.haxx.se/
+	http://www.corpit.ru/mjt/udns.html
+	http://www.chiark.greenend.org.uk/~ian/adns/
+	http://www.25thandclement.com/~william/projects/dns.c.html
+	http://cr.yp.to/djbdns.html
+
+[2]	http://www.lua.org/
+
+[3]	http://w3.impa.br/~diego/software/luasocket/
