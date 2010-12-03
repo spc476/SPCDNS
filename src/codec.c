@@ -134,7 +134,7 @@ static inline dns_rcode_t  decode_rr_naptr(idns_context *const restrict,dns_napt
 static inline dns_rcode_t  decode_rr_aaaa (idns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_srv  (idns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_sig  (idns_context *const restrict,dns_sig_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_rp   (idns_context *const restrict,dns_rp_t       *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
+static inline dns_rcode_t  decode_rr_minfo(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_gpos (idns_context *const restrict,dns_gpos_t     *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_loc  (idns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
@@ -902,19 +902,19 @@ static inline dns_rcode_t decode_rr_sig(
 
 /******************************************************************/
 
-static inline dns_rcode_t decode_rr_rp(
+static inline dns_rcode_t decode_rr_minfo(
 		idns_context *const restrict data,
-		dns_rp_t     *const restrict prp
+		dns_minfo_t  *const restrict pminfo
 )
 {
   dns_rcode_t rc;
   
   assert(context_okay(data));
-  assert(prp != NULL);
+  assert(pminfo != NULL);
   
-  rc = read_domain(data,&prp->mbox);
+  rc = read_domain(data,&pminfo->rmailbx);
   if (rc != RCODE_OKAY) return rc;
-  return read_domain(data,&prp->domain);
+  return read_domain(data,&pminfo->emailbx);
 }
 
 /*****************************************************************/
@@ -1171,8 +1171,8 @@ static dns_rcode_t decode_answer(
     ;----------------------------------------------------------------------*/
     
     case RR_PX:
-    case RR_MINFO:
-    case RR_RP: return decode_rr_rp(data,&pans->rp);
+    case RR_RP:
+    case RR_MINFO: return decode_rr_minfo(data,&pans->minfo);
     
     case RR_AFSDB:
     case RR_RT:
