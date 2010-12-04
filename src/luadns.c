@@ -301,37 +301,138 @@ static void decode_answer(
            lua_pushnumber(L,pans[i].loc.altitude);
            lua_setfield(L,-2,"altitude");
            break;
-
-      case RR_NS:
-           lua_pushstring(L,pans[i].ns.nsdname);
-           lua_setfield(L,-2,"nsdname");
+           
+      case RR_PX:
+           lua_pushstring(L,pans[i].px.map822);
+           lua_setfield(L,-2,"map822");
+           lua_pushstring(L,pans[i].px.mapx400);
+           lua_setfield(L,-2,"mapx400");
            break;
-      case RR_CNAME:
-           lua_pushstring(L,pans[i].cname.cname);
-           lua_setfield(L,-2,"cname");
+      
+      case RR_RP:
+           lua_pushstring(L,pans[i].rp.mbox);
+           lua_setfield(L,-2,"mbox");
+           lua_pushstring(L,pans[i].rp.domain);
+           lua_setfield(L,-2,"domain");
            break;
+      
+      case RR_MINFO:
+           lua_pushstring(L,pans[i].minfo.rmailbx);
+           lua_setfield(L,-2,"rmailbx");
+           lua_pushstring(L,pans[i].minfo.emailbx);
+           lua_setfield(L,-2,"emailbx");
+           break;
+           
+      case RR_AFSDB:
+           lua_pushinteger(L,pans[i].afsdb.subtype);
+           lua_setfield(L,-2,"subtype");
+           lua_pushstring(L,pans[i].afsdb.hostname);
+           lua_setfield(L,-2,"hostname");
+           break;
+      
+      case RR_RT:
+           lua_pushinteger(L,pans[i].rt.preference);
+           lua_setfield(L,-2,"preference");
+           lua_pushstring(L,pans[i].rt.host);
+           lua_setfield(L,-2,"host");
+           break;
+           
       case RR_MX:
-           lua_pushstring(L,pans[i].mx.exchange);
-           lua_setfield(L,-2,"exchange");
            lua_pushinteger(L,pans[i].mx.preference);
            lua_setfield(L,-2,"preference");
+           lua_pushstring(L,pans[i].mx.exchange);
+           lua_setfield(L,-2,"exchange");
            break;
-      case RR_PTR:
-           lua_pushstring(L,pans[i].ptr.ptr);
-           lua_setfield(L,-2,"ptr");
+           
+      case RR_NSAP:
+           lua_pushstring(L,pans[i].nsap.length);
+           lua_setfield(L,-2,"length");
+           lua_pushstring(L,pans[i].nsap.nsapaddress);
+           lua_setfield(L,-2,"address");
            break;
+           
+      case RR_ISDN:
+           lua_pushstring(L,pans[i].isdn.isdnaddress);
+           lua_setfield(L,-2,"address");
+           lua_pushstring(L,pans[i].isdn.sa);
+           lua_setfield(L,-2,"sa");
+           break;
+      
       case RR_HINFO:
            lua_pushstring(L,pans[i].hinfo.cpu);
            lua_setfield(L,-2,"cpu");
            lua_pushstring(L,pans[i].hinfo.os);
            lua_setfield(L,-2,"os");
            break;
+           
+      case RR_X25:
+           lua_pushlstring(L,pans[i].x25.psdnaddress,pans[i].x25.size);
+           lua_setfield(L,-2,"address");
+           break;
+           
       case RR_SPF:
+           lua_pushlstring(L,pans[i].spf.text,pans[i].spf.len);
+           lua_setfield(L,-2,"text");
+           break;
+           
       case RR_TXT:
            lua_pushlstring(L,pans[i].txt.text,pans[i].txt.len);
-           lua_setfield(L,-2,"txt");
+           lua_setfield(L,-2,"text");
            break;
+      
+      case RR_NSAP_PTR:
+           lua_pushstring(L,pans[i].nsap_ptr.owner);
+           lua_setfield(L,-2,"owner");
+           break;
+      
+      case RR_MD:
+           lua_pushstring(L,pans[i].md.madname);
+           lua_setfield(L,-2,"madname");
+           break;
+      
+      case RR_MF:
+           lua_pushstring(L,pans[i].mf.madname);
+           lua_setfield(L,-2,"madname");
+           break;
+      
+      case RR_MB:
+           lua_pushstring(L,pans[i].mb.madname);
+           lua_setfield(L,-2,"madname");
+           break;
+      
+      case RR_MG:
+           lua_pushstring(L,pans[i].mg.mgmname);
+           lua_setfield(L,-2,"mgmname");
+           break;
+      
+      case RR_MR:
+           lua_pushstring(L,pans[i].mr.newname);
+           lua_setfield(L,-2,"newname");
+           break;
+      
+      case RR_NS:
+           lua_pushstring(L,pans[i].ns.nsdname);
+           lua_setfield(L,-2,"nsdname");
+           break;
+
+      case RR_PTR:
+           lua_pushstring(L,pans[i].ptr.ptr);
+           lua_setfield(L,-2,"ptr");
+           break;
+
+      case RR_CNAME:
+           lua_pushstring(L,pans[i].cname.cname);
+           lua_setfield(L,-2,"cname");
+           break;
+           
+      case RR_NULL:
+           lua_pushlstring(L,(char *)pans[i].null.data,pans[i].null.size);
+           lua_setfield(L,-2,"data");
+           break;
+
       default:
+           lua_pushlstring(L,(char *)pans[i].x.rawdata,pans[i].x.size);
+           lua_setfield(L,-2,"rawdata");
            break;
     }
     
