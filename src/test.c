@@ -206,14 +206,19 @@ int main(int argc,char *argv[])
   ;-----------------------------------------------------------------------*/
   
   dns_decoded_t  bufresult[DNS_DECODEBUF_8K];
+  size_t         bufsize;
   dns_query_t   *result;
   
-  rc = dns_decode(bufresult,sizeof(bufresult),reply,replysize);
+  bufsize = sizeof(bufresult);
+  rc = dns_decode(bufresult,&bufsize,reply,replysize);
   if (rc != RCODE_OKAY)
   {
     fprintf(stderr,"dns_decode() = (%d) %s\n",rc,dns_rcode_text(rc));
     return EXIT_FAILURE;
   }
+  
+  if (fdump)
+    printf("\nBytes used: %lu\n\n",(unsigned long)bufsize);
   
   result = (dns_query_t *)bufresult;
 
@@ -314,6 +319,9 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            break;
       case RR_HINFO:
            printf("\"%s\" \"%s\"",pans[i].hinfo.cpu,pans[i].hinfo.os);
+           break;
+      case RR_MINFO:
+           printf("(\n\t\t\"%s\"\n\t\t\"%s\" )",pans[i].minfo.rmailbx,pans[i].minfo.emailbx);
            break;
       case RR_SPF:
       case RR_TXT:

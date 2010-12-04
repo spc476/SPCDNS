@@ -142,8 +142,6 @@ static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answ
 /***********************************************************************/
 
 #ifndef NDEBUG
-# include <syslog.h>
-
   static int query_okay  (const dns_query_t *const)  __attribute__ ((unused));
   static int pblock_okay (const block_t *const)      __attribute__ ((unused));
   static int block_okay  (const block_t)             __attribute__ ((unused));
@@ -1208,7 +1206,7 @@ static dns_rcode_t decode_answer(
 
 dns_rcode_t dns_decode(
 	      dns_decoded_t *const restrict presponse,
-	const size_t                        rsize,
+	      size_t        *const restrict prsize,
 	const dns_packet_t  *const restrict buffer,
 	const size_t                        len
 )
@@ -1219,7 +1217,8 @@ dns_rcode_t dns_decode(
   dns_rcode_t               rc;
 
   assert(presponse != NULL);
-  assert(rsize     >= sizeof(dns_query_t));
+  assert(prsize    != NULL);
+  assert(*prsize   >= sizeof(dns_query_t));
   assert(buffer    != NULL);
   assert(len       >= sizeof(struct idns_header));
   
@@ -1228,7 +1227,7 @@ dns_rcode_t dns_decode(
   context.parse.ptr   = &context.packet.ptr[sizeof(struct idns_header)];
   context.parse.size  = len - sizeof(struct idns_header);
   context.dest.ptr    = (uint8_t *)presponse;
-  context.dest.size   = rsize;
+  context.dest.size   = *prsize;
   
   /*--------------------------------------------------------------------------
   ; we use the block of data given to store the results.  context.dest
@@ -1315,14 +1314,7 @@ dns_rcode_t dns_decode(
       return rc;
   }
 
-#ifndef NDEBUG  
-  syslog(
-  	LOG_DEBUG,
-  	"used %lu bytes",
-  	(unsigned long)(context.dest.ptr - (uint8_t *)response)
-  );
-#endif
-
+  *prsize = (size_t)(context.dest.ptr - (uint8_t *)presponse);
   return RCODE_OKAY;
 }
 

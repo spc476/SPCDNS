@@ -954,10 +954,10 @@ dns_rcode_t	dns_encode(
 
 dns_rcode_t	dns_decode(
                           dns_decoded_t      *const restrict,
-                          const size_t,
+                          size_t             *const restrict,
 			  const dns_packet_t *const restrict,
 			  const size_t
-			 ) __attribute__ ((nothrow,nonnull(1,3)));
+			 ) __attribute__ ((nothrow,nonnull(1,2,3)));
 
 #ifdef __cpluscplus
   }

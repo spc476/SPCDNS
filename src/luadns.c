@@ -369,7 +369,7 @@ static int dnslua_decode(lua_State *L)
   if (size > MAX_DNS_QUERY_SIZE) size = MAX_DNS_QUERY_SIZE;
   memcpy(data,luadata,size);
   
-  rc = dns_decode(bufresult,sizeof(bufresult),data,size);
+  rc = dns_decode(bufresult,&(size_t){sizeof(bufresult)},data,size);
   
   if (rc != RCODE_OKAY)
   {

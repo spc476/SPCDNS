@@ -85,10 +85,12 @@ some useful constants to declare buffers of proper alignment and size.
 	dns_query_t   *result;
 	dns_rcode      rc;
         size_t         replysize;
+        size_t         decodesize;
 
 	/* assume reply contains a DNS packet, and replysize is set */
 
-	rc = dns_decode(decoded,sizeof(decoded),reply,replysize);
+	decodesize = sizeof(decoded);
+	rc = dns_decode(decoded,&decodesize,reply,replysize);
 
 	if (rc != RCODE_OKAY)
 	{
