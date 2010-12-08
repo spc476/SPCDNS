@@ -4,7 +4,7 @@ SPCDNS: The sane DNS encoding/decoding library
 SPCDNS implements a simple yet sane API to encode DNS queries and to decode
 DNS replies.  The library (v1.0) currently supports the decoding of 30 DNS
 resource records, which is more than just about all other DNS resolving
-libraries I've see (c-ares, udns, adns, libdns and djbdns [1]).
+libraries I've seen (c-ares, udns, adns, libdns and djbdns [1]).
 
 SPCDNS is *NOT* a general purpose DNS resolving library (although code is
 provided to make DNS queries, it is simple and fairly stupid).  This code
@@ -71,7 +71,7 @@ The dns_encode() and dns_decode() functions do no memory allocation; they
 use what you give them.  In the case of dns_decode(), the block of memory
 passed in must be big enough to handle not only the dns_query_t structure,
 but multiple dns_answer_t structures and text strings representing domain
-names and the occastional string or two (say, for TXT or NAPTR records).  In
+names and the occasional string or two (say, for TXT or NAPTR records).  In
 testing, I've found that 4K for decoding appears to be enough memory to
 handle DNS requests made via UDP (although the test.c program uses an 8K
 buffer).
@@ -108,11 +108,11 @@ assume that DNS_BUFFER_UDP is 512, but it too, does result in a buffer of at
 least 512 bytes made up of DNS_BUFFER_UDP dns_packet_t types.
 
 And while passing in a char * declared buffer to dns_decode() may appear to
-work, it only works you *YOUR* system; it may not work on other systems.
+work, it only works on *YOUR* system; it may not work on other systems.
 
 A NOTE ABOUT DOMAIN NAMES
 
-The dns_encode() function assumes the domain passed in a a fully qualified
+The dns_encode() function assumes the domain passed is a fully qualified
 domain name.  If you see an RCODE_NAME_ERROR when calling this function, you
 are probably not passing in a FQDN (if you are and are still getting that
 error, it's most likely a domain name segment exceeding the 63 character DNS

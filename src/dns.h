@@ -25,7 +25,7 @@
 * I've scoured the Internet and I think I've located every DNS RR type that
 * exists.  And for the majority of them, I've made an in-memory
 * representation of said record for easy access to the contents (for when I
-* do get around to decoding them from thier wire representation).  For
+* do get around to decoding them from their wire representation).  For
 * records that I do not decode (and you'll need to check codec.c to see
 * which ones aren't being decoded) you'll get back a dns_x_t, which has the
 * common portion of the RR decoded (which includes the ID, type, class and
