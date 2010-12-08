@@ -1,4 +1,14 @@
 
+On Ruby bindings:
+
+http://onlamp.com/pub/a/onlamp/2004/11/18/extending_ruby.html
+
+---
+
+Google: extending Ruby in C
+
+---
+
 https://github.com/avsm/melange/blob/master/lib/dns/dns_rr.mpl
 
 http://www.bind9.net/dns-parameters
