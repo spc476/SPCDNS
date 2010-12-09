@@ -151,12 +151,13 @@ static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answ
   {
     assert(query          != NULL);
     assert(query->id      >= 0);
+    assert(query->id      <= USHRT_MAX);
     assert(query->opcode  <= 2);
     assert(query->rcode   <= 5);
-    assert(query->qdcount <= SHRT_MAX);
-    assert(query->ancount <= SHRT_MAX);
-    assert(query->nscount <= SHRT_MAX);
-    assert(query->arcount <= SHRT_MAX);
+    assert(query->qdcount <= USHRT_MAX);
+    assert(query->ancount <= USHRT_MAX);
+    assert(query->nscount <= USHRT_MAX);
+    assert(query->arcount <= USHRT_MAX);
 
     if (query->query)
     {
@@ -211,7 +212,7 @@ dns_rcode_t dns_encode(
   assert(dest  != NULL);
   assert(plen  != NULL);
   assert(*plen >= sizeof(struct idns_header));
-  assert(query != NULL);
+  assert(query_okay(query));
   
   memset(dest,0,*plen);
   
