@@ -325,7 +325,7 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            break;
       case RR_SPF:
       case RR_TXT:
-           if (pans[i].txt.len < 65)
+           if (pans[i].txt.len < 30)
              printf("\"%s\"",pans[i].txt.text);
            else
            {
@@ -333,14 +333,14 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
              int    max;
              size_t off;
              
-             printf("(\n");
+             printf("(");
              len = pans[i].txt.len;
              off = 0;
              
              while(len)
              {
                max = (len > 64) ? 64 : (int)len;
-               printf("\n\t\t\"%*.*s\"",max,max,&pans[i].txt.text[off]);
+               printf("\n\t\"%*.*s\"",max,max,&pans[i].txt.text[off]);
                off += max;
                len -= max;
              }
