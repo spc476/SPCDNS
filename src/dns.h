@@ -50,7 +50,9 @@
 #define DNS_H
 
 #ifdef __cplusplus
-  extern "C" {
+#  define class dclass
+#  define restrict
+   extern "C" {
 #endif
 
 #ifndef __GNUC__
@@ -959,7 +961,9 @@ dns_rcode_t	dns_decode(
 			  const size_t
 			 ) __attribute__ ((nothrow,nonnull(1,2,3)));
 
-#ifdef __cpluscplus
-  }
+#ifdef __cplusplus
+   }
+#  undef class
+#  undef restrict
 #endif
 #endif
