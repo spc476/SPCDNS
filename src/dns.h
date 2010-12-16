@@ -181,25 +181,29 @@ typedef enum dns_type
   RR_MAILB      = 253,	/* Mailbox related records		RFC-1035 */
   RR_MAILA      = 254,	/* Mail agent RRs (obsolete)	     O  RFC-1035 */
   RR_ANY        = 255,	/* All records				RFC-1035 */
+
+  RR_UNKNOWN    = 65280	/* Unknown record type			RFC-2929 */
 } dns_type_t;
 
 typedef enum dns_class
 {
-  CLASS_IN   =   1,	/* Internet	    	RFC-1035 */
-  CLASS_CS   =   2,	/* CSNET (obsolete)    	RFC-1035 */
-  CLASS_CH   =   3,	/* CHAOS		RFC-1035 */
-  CLASS_HS   =   4,	/* Hesiod		RFC-1035 */
-  CLASS_NONE = 254,	/* 			RFC-2136 */
-  CLASS_ANY  = 255,	/* All classes		RFC-1035 */
+  CLASS_IN      =     1,	/* Internet	    	RFC-1035 */
+  CLASS_CS      =     2,	/* CSNET (obsolete)    	RFC-1035 */
+  CLASS_CH      =     3,	/* CHAOS		RFC-1035 */
+  CLASS_HS      =     4,	/* Hesiod		RFC-1035 */
+  CLASS_NONE    =   254,	/* 			RFC-2136 */
+  CLASS_ANY     =   255,	/* All classes		RFC-1035 */
+  CLASS_UNKNOWN = 65280		/* Unknown class 	RFC-2929 */
 } dns_class_t;
 
 typedef enum dns_op
 {
-  OP_QUERY  = 0,	/* RFC-1035 */
-  OP_IQUERY = 1,	/* RFC-1035 RFC-3425 */ /* Obsolete */
-  OP_STATUS = 2,	/* RFC-1035 */  
-  OP_NOTIFY = 4,	/* RFC-1996 */
-  OP_UPDATE = 5		/* RFC-2136 */  
+  OP_QUERY   = 0,	/* RFC-1035 */
+  OP_IQUERY  = 1,	/* RFC-1035 RFC-3425 */ /* Obsolete */
+  OP_STATUS  = 2,	/* RFC-1035 */  
+  OP_NOTIFY  = 4,	/* RFC-1996 */
+  OP_UPDATE  = 5,	/* RFC-2136 */  
+  OP_UNKNOWN = 1	/* Since OP_IQUERY is obsolete */
 } dns_op_t;
 
 typedef enum dns_rcode

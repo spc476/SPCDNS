@@ -353,21 +353,21 @@ const char *dns_op_text(const dns_op_t o)
 
 dns_type_t dns_type_value(const char *tag)
 {
-  return stoidef(tag,cm_dns_type_is,TYPE_COUNT,RR_A);
+  return stoidef(tag,cm_dns_type_is,TYPE_COUNT,RR_UNKNOWN);
 }
 
 /*********************************************************************/
 
 dns_class_t dns_class_value(const char *tag)
 {
-  return stoidef(tag,cm_dns_class_is,CLASS_COUNT,CLASS_IN);
+  return stoidef(tag,cm_dns_class_is,CLASS_COUNT,CLASS_UNKNOWN);
 }
 
 /**********************************************************************/
 
 dns_op_t dns_op_value(const char *tag)
 {
-  return stoidef(tag,cm_dns_op_is,OP_COUNT,OP_QUERY);
+  return stoidef(tag,cm_dns_op_is,OP_COUNT,OP_UNKNOWN);
 }
 
 /**********************************************************************/
