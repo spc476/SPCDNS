@@ -69,4 +69,7 @@ int 	net_request	(
 			  const size_t
 			) __attribute__ ((nonnull(1,2,3,4)));
 
+#ifdef __cplusplus
+  }
+#endif
 #endif
