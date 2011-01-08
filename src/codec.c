@@ -108,6 +108,7 @@ typedef struct idns_context
   block_t      parse;
   block_t      dest;	/* see comments in align_memory() */
   dns_query_t *response;
+  bool         edns;
 } idns_context;
 
 /***********************************************************************/
@@ -574,8 +575,14 @@ static dns_rcode_t read_domain(
     
     else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
     {
-      /* XXX - see RFC2671 for details */
-      return RCODE_NOT_IMPLEMENTED;
+      /*---------------------------------------------------------------------
+      ; this denotes an OPT RR (RFC-2671), which is a special RR and handled
+      ; differently, and more importantly, elsewhere.  If we get here,
+      ; something is wrong with the code.
+      ;--------------------------------------------------------------------*/
+      
+      assert(0);
+      return RCODE_FORMAT_ERROR;
     }
     
     /*------------------------------------
@@ -1130,9 +1137,61 @@ static dns_rcode_t decode_answer(
   size_t      len;
   size_t      rest;
   dns_rcode_t rc;
+  uint16_t    type;
   
   assert(context_okay(data));
   assert(pans != NULL);
+  
+  /*-------------------------------------------------------------------
+  ; check for an EDNSO OPT RR; it's best to do it here rather than in
+  ; read_domain()---separation of concerns and all that. (RFC-2671)
+  ;--------------------------------------------------------------------*/
+  
+  if ((*data->parse.ptr >= 64) && (*data->parse.ptr <= 127))
+  {
+    if (data->edns)	/* there can be only one */
+      return RCODE_FORMAT_ERROR;
+    
+    data->edns = true;
+    data->parse.ptr ++;
+    data->parse.size--;
+    
+    rc = read_domain(data,&pans->generic.name);
+    if (rc != RCODE_OKAY)
+      return rc;
+    
+    if (data->parse.size < 10)
+      return RCODE_FORMAT_ERROR;
+      
+    pans->generic.type  = RR_OPT;
+    pans->generic.class = CLASS_UNKNOWN;
+    pans->generic.ttl   = 0;
+    
+    type = read_uint16(&data->parse);
+    if (type != RR_OPT)
+      return RCODE_FORMAT_ERROR;
+    
+    pans->opt.udp_payload = read_uint16(&data->parse);
+    pans->opt.rcode       = (data->parse.ptr[0] << 4) | data->response->rcode;
+    
+    if (
+            (data->parse.ptr[1] != 0) 
+         || (data->parse.ptr[2] != 0) 
+         || (data->parse.ptr[3] != 0)
+    )
+      return RCODE_FORMAT_ERROR;
+    
+    pans->opt.version  = 0;
+    data->parse.ptr   += 4;
+    data->parse.size  -= 4;
+    len                = read_uint16(&data->parse);
+    
+    return read_raw(data,&pans->opt.rawdata,len);
+  }
+
+  /*---------------------------------------------------------
+  ; it's a regular RR
+  ;----------------------------------------------------------*/
   
   rc = read_domain(data,&pans->generic.name);
   if (rc != RCODE_OKAY)
@@ -1161,6 +1220,16 @@ static dns_rcode_t decode_answer(
     case RR_GPOS:  return decode_rr_gpos (data,&pans->gpos);
     case RR_LOC:   return decode_rr_loc  (data,&pans->loc  ,len);
     
+    /*---------------------------------------------------------------------
+    ; RR_OPT is handled differently from other RR types, so if we see one
+    ; here, it's an invalid packet.
+    ;--------------------------------------------------------------------*/
+    
+    case RR_OPT:
+         data->parse.ptr  += len;
+         data->parse.size -= len;
+         return RCODE_FORMAT_ERROR;
+         
     /*----------------------------------------------------------------------	
     ; The following record types all share the same structure (although the
     ; last field name is different, depending upon the record), so they can
@@ -1229,6 +1298,7 @@ dns_rcode_t dns_decode(
   context.parse.size  = len - sizeof(struct idns_header);
   context.dest.ptr    = (uint8_t *)presponse;
   context.dest.size   = *prsize;
+  context.edns        = false;
   
   /*--------------------------------------------------------------------------
   ; we use the block of data given to store the results.  context.dest
@@ -1301,12 +1371,21 @@ dns_rcode_t dns_decode(
       return rc;
   }
   
+  /*-------------------------------------------------------------
+  ; RR OPT can only appear once, and only in the additional info
+  ; section.  Check that we haven't seen one before.
+  ;-------------------------------------------------------------*/
+  
+  if (context.edns) return RCODE_FORMAT_ERROR;
+  
   for (size_t i = 0 ; i < response->nscount ; i++)
   {
     rc = decode_answer(&context,&response->nameservers[i]);
     if (rc != RCODE_OKAY)
       return rc;
   }
+  
+  if (context.edns) return RCODE_FORMAT_ERROR;
   
   for (size_t i = 0 ; i < response->arcount ; i++)
   {
