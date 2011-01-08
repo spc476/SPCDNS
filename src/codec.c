@@ -1184,9 +1184,9 @@ static dns_rcode_t decode_answer(
     pans->opt.version  = 0;
     data->parse.ptr   += 4;
     data->parse.size  -= 4;
-    len                = read_uint16(&data->parse);
+    pans->opt.size     = read_uint16(&data->parse);
     
-    return read_raw(data,&pans->opt.rawdata,len);
+    return read_raw(data,&pans->opt.rawdata,pans->opt.size);
   }
 
   /*---------------------------------------------------------
@@ -1265,7 +1265,9 @@ static dns_rcode_t decode_answer(
     case RR_CNAME: return read_domain(data,&pans->cname.cname);
     
     case RR_NULL:
-    default: return read_raw(data,&pans->x.rawdata,len);
+    default: 
+         pans->x.size = len;
+         return read_raw(data,&pans->x.rawdata,len);
   }
   
   assert(0);
