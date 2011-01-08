@@ -575,13 +575,13 @@ static dns_rcode_t read_domain(
     
     else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
     {
-      /*---------------------------------------------------------------------
-      ; this denotes an OPT RR (RFC-2671), which is a special RR and handled
-      ; differently, and more importantly, elsewhere.  If we get here,
-      ; something is wrong with the code.
-      ;--------------------------------------------------------------------*/
+      /*--------------------------------------------------------------
+      ; This is a bit of a mess really.  RFC-2671 and RFC-2673 give two
+      ; nearly different meanings to such strings.  Right now, we handle
+      ; RFC-2671 and if we hit here, we assume a format error, since we do
+      ; NOT handle RFC-2673 at this time.
+      ;-------------------------------------------------------------------*/
       
-      assert(0);
       return RCODE_FORMAT_ERROR;
     }
     
@@ -1152,10 +1152,24 @@ static dns_rcode_t decode_answer(
     if (data->edns)	/* there can be only one */
       return RCODE_FORMAT_ERROR;
     
+    /*----------------------------------------------------------------------
+    ; label ELT (RFC-2673) is marked as Experimental (RFC-3364) and is NOT
+    ; recommended for use (it denotes a domain label with arbitary binary
+    ; data, up to 256 bits (32 bytes) in size (yes, you can have a 3-bit
+    ; label under this scheme).  It can be fit into the parsing routine, but
+    ; I'm not sure if there's been much use of it.  We don't handle it at
+    ; this time and if we see such a label, we mark it as a format error.
+    ;----------------------------------------------------------------------*/
+
+    pans->opt.label = *data->parse.ptr & 0x3F;
+    
+    if (pans->opt.label == EDNS0_ELT)
+      return RCODE_FORMAT_ERROR;
+    
     data->edns = true;
     data->parse.ptr ++;
     data->parse.size--;
-    
+
     rc = read_domain(data,&pans->generic.name);
     if (rc != RCODE_OKAY)
       return rc;

@@ -236,7 +236,7 @@ typedef enum edns0_label	/* RFC-2673 */
 {
   EDNS0_ELT  = 0x01,
   EDNS0_RSVP = 0x3F,
-} ends0_label_t;
+} edns0_label_t;
 
 typedef uint32_t TTL;
 
@@ -737,15 +737,16 @@ typedef struct dns_sink_t	/* (unknown) */
 
 typedef struct dns_eds0opt_t	/* RFC-2673 */
 {
-  const char  *name;
-  dns_type_t   type;		
-  dns_class_t  class;		/* not applicable */
-  TTL          ttl;		/* not applicable */
-  size_t       udp_payload;
-  dns_rcode_t  rcode;
-  int          version;
-  size_t       size;
-  uint8_t     *rawdata;
+  const char    *name;
+  dns_type_t     type;		
+  dns_class_t    class;		/* not applicable --- set to CLASS_UNKNOWN */
+  TTL            ttl;		/* not applicable --- set to 0 */
+  edns0_label_t  label;
+  size_t         udp_payload;
+  dns_rcode_t    rcode;
+  int            version;
+  size_t         size;
+  uint8_t       *rawdata;
 } dns_edns0opt_t;
 
 typedef struct dnsapl_record	/* RFC-3123 */
