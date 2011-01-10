@@ -735,7 +735,14 @@ typedef struct dns_sink_t	/* (unknown) */
   uint8_t     *rawdata;
 } dns_sink_t;
 
-typedef struct dns_eds0opt_t	/* RFC-2673 */
+typedef struct edns0_opt_t	/* RFC-2671 */
+{
+  uint16_t  code;
+  size_t    len;
+  uint8_t  *data;
+} ednd0_opt_t;
+
+typedef struct dns_eds0opt_t	/* RFC-2671 */
 {
   const char    *name;
   dns_type_t     type;		
@@ -745,8 +752,9 @@ typedef struct dns_eds0opt_t	/* RFC-2673 */
   size_t         udp_payload;
   dns_rcode_t    rcode;
   int            version;
-  size_t         size;
-  uint8_t       *rawdata;
+  size_t         rawsize;
+  size_t         numopts;
+  edns0_opt_t   *opts;
 } dns_edns0opt_t;
 
 typedef struct dnsapl_record	/* RFC-3123 */
