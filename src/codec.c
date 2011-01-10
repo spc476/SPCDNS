@@ -569,9 +569,9 @@ static dns_rcode_t read_domain(
       parse    = &tmp;
     }
     
-    /*-------------------------------------------
-    ; EDNS0 OPT RR, not handled at this time
-    ;-------------------------------------------*/
+    /*----------------------------------------------
+    ; EDNS0 OPT RR, handled elsewhere in the code
+    ;----------------------------------------------*/
     
     else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
     {
