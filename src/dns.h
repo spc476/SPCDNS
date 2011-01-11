@@ -97,6 +97,7 @@ typedef uintptr_t dns_decoded_t;
 #define MAX_DNS_QUERY_SIZE	512
 #define MAX_DOMAIN_SEGMENT	 64
 #define MAX_STRING_LEN		256
+#define MAX_UDP_PACKET_SIZE    1492
 
 /***************************************************************************
 * I've specified where each RR, Class and error codes are defined.  Also, 
@@ -740,7 +741,7 @@ typedef struct edns0_opt_t	/* RFC-2671 */
   uint16_t  code;
   size_t    len;
   uint8_t  *data;
-} ednd0_opt_t;
+} edns0_opt_t;
 
 typedef struct dns_eds0opt_t	/* RFC-2671 */
 {
@@ -750,7 +751,6 @@ typedef struct dns_eds0opt_t	/* RFC-2671 */
   TTL            ttl;		/* not applicable --- set to 0 */
   edns0_label_t  label;
   size_t         udp_payload;
-  dns_rcode_t    rcode;
   int            version;
   size_t         rawsize;
   size_t         numopts;

@@ -114,10 +114,13 @@ typedef struct idns_context
 /***********************************************************************/
 
 static        dns_rcode_t  dns_encode_domain(block_t *const restrict,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull));
+static	      dns_rcode_t  encode_rr_opt    (block_t *const restrict,const dns_query_t *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
 
+static inline void         write_uint16 (block_t *const,uint16_t);
+static inline void         write_uint32 (block_t *const,uint32_t);
 static inline uint16_t	   read_uint16	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static inline uint32_t	   read_uint32	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static        dns_rcode_t  read_raw	(idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
@@ -221,8 +224,8 @@ dns_rcode_t dns_encode(
   header = (struct idns_header *)buffer;
   
   header->id      = htons(query->id);
-  header->opcode  = query->opcode << 3;
-  header->rcode   = query->rcode;
+  header->opcode  = (query->opcode & 0x0F) << 3;
+  header->rcode   = (query->rcode  & 0x0F);
   header->qdcount = htons(query->qdcount);
   header->ancount = htons(query->ancount);
   header->nscount = htons(query->nscount);
@@ -257,6 +260,20 @@ dns_rcode_t dns_encode(
   ; at some point we may want to encode answers, nameservers,
   ; and additional records, but for now, we skip 'em
   ;-----------------------------------------------------------*/
+  
+  if (query->arcount == 1)
+  {
+    assert(query->additional->generic.type == RR_OPT);
+    rc = encode_rr_opt(&data,query,&query->additional->opt);
+    if (rc != RCODE_OKAY)
+      return rc;
+  }
+  else
+  {
+    assert(query->ancount == 0);
+    assert(query->nscount == 0);
+    assert(query->arcount == 0);
+  }
   
   *plen = (size_t)(data.ptr - buffer);
   return RCODE_OKAY;
@@ -325,7 +342,68 @@ static dns_rcode_t dns_encode_domain(
   return RCODE_OKAY;
 }
 
-/******************************************************************************
+/*************************************************************************/
+
+static dns_rcode_t encode_rr_opt(
+	block_t              *const restrict data,
+	const dns_query_t    *const restrict query,
+	const dns_edns0opt_t *const restrict opt
+)
+{
+  size_t rdlen;
+  size_t i;
+  
+  assert(pblock_okay(data));
+  assert(query            != NULL);
+  assert(opt              != NULL);
+  assert(opt->class       == CLASS_UNKNOWN);
+  assert(opt->ttl         == 0);
+  assert(opt->label       <= 63);
+  assert(opt->version     == 0);
+  assert(opt->udp_payload <= UINT16_MAX);
+  
+  if (data->size < 12)
+    return RCODE_NO_MEMORY;
+    
+  data->ptr[0] = 0x40 | opt->label;	/* RR OPT marker */
+  data->ptr[1] = 0x00;			/* empty (root domain */
+  data->ptr  += 2;
+  data->size -= 2;
+  
+  write_uint16(data,RR_OPT);
+  write_uint16(data,opt->udp_payload);
+  data->ptr[0] = query->rcode >> 4;
+  data->ptr[1] = opt->version;
+  data->ptr[2] = 0;
+  data->ptr[3] = 0;
+  data->ptr  += 4;
+  data->size -= 4;
+  
+  for (i = 0 , rdlen = 0 ; i < opt->numopts ; i++)
+    rdlen += opt->opts[i].len 
+             + sizeof(uint16_t)	 /* OPTION-CODE */
+             + sizeof(uint16_t); /* OPTION-LENGTH */
+
+  if (data->size < rdlen + sizeof(uint16_t))
+    return RCODE_NO_MEMORY;
+  
+  write_uint16(data,rdlen);
+  
+  for (i = 0 ; i < opt->numopts ; i++)
+  {
+    assert(opt->opts[i].len <= UINT16_MAX);
+    
+    write_uint16(data,opt->opts[i].code);
+    write_uint16(data,opt->opts[i].len);
+    memcpy(data->ptr,opt->opts[i].data,opt->opts[i].len);
+    data->ptr  += opt->opts[i].len;
+    data->size -= opt->opts[i].len;
+  }
+  
+  return RCODE_OKAY;
+}
+
+/*************************************************************************
 *
 * Memory allocations are done quickly.  The dns_decode() routine is given a
 * block of memory to carve allocations out of (4k appears to be good eough;
@@ -383,6 +461,34 @@ static void *alloc_struct(block_t *const pool,const size_t size)
   pool->ptr  += size;
   pool->size -= size;
   return (void *)ptr;
+}
+
+/***********************************************************************/
+
+static inline void write_uint16(block_t *const parse,uint16_t value)
+{
+  assert(pblock_okay(parse));
+  assert(parse->size >= 2);
+  
+  parse->ptr[0] = (value >> 8) & 0xFF;
+  parse->ptr[1] = (value     ) & 0xFF;
+  parse->ptr  += 2;
+  parse->size -= 2;
+}
+
+/***********************************************************************/
+
+static inline void write_uint32(block_t *const parse,uint32_t value)
+{
+  assert(pblock_okay(parse));
+  assert(parse->size >= 4);
+  
+  parse->ptr[0] = (value >> 24) & 0xFF;
+  parse->ptr[1] = (value >> 16) & 0xFF;
+  parse->ptr[2] = (value >>  8) & 0xFF;
+  parse->ptr[3] = (value      ) & 0xFF;
+  parse->ptr  += 4;
+  parse->size -= 4;
 }
 
 /***********************************************************************/
@@ -1186,7 +1292,7 @@ static dns_rcode_t decode_answer(
       return RCODE_FORMAT_ERROR;
     
     pans->opt.udp_payload = read_uint16(&data->parse);
-    pans->opt.rcode       = (data->parse.ptr[0] << 4) | data->response->rcode;
+    data->response->rcode = (data->parse.ptr[0] << 4) | data->response->rcode;
     
     if (
             (data->parse.ptr[1] != 0) 
@@ -1198,9 +1304,10 @@ static dns_rcode_t decode_answer(
     pans->opt.version  = 0;
     data->parse.ptr   += 4;
     data->parse.size  -= 4;
-    pans->opt.size     = read_uint16(&data->parse);
+    pans->opt.udp_payload = read_uint16(&data->parse);
     
-    return read_raw(data,&pans->opt.rawdata,pans->opt.size);
+    /*return read_raw(data,&pans->opt.rawdata,pans->opt.size);*/
+    return RCODE_OKAY;
   }
 
   /*---------------------------------------------------------
