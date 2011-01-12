@@ -233,10 +233,10 @@ typedef enum dns_rcode
   RCODE_NO_MEMORY
 } dns_rcode_t;
 
-typedef enum edns0_label	/* RFC-2673 */
+typedef enum edns0_label
 {
-  EDNS0_ELT  = 0x01,
-  EDNS0_RSVP = 0x3F,
+  EDNS0_ELT  = 0x01,		/* RFC-2673 */
+  EDNS0_RSVP = 0x3F,		/* RFC-2671 */
 } edns0_label_t;
 
 typedef uint32_t TTL;
