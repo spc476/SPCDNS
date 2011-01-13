@@ -1246,9 +1246,37 @@ static inline dns_rcode_t decode_rr_opt(
   
   if (len)
   {
+    uint8_t *scan;
+    size_t   cnt;
+    size_t   length;
+    
     assert(context_okay(data));
     assert(opt != NULL);
-    assert(len == data->parse.size);  
+    assert(len == data->parse.size);
+    
+    for (scan = data->parse.ptr , opt->numopts = 0 , length = len ; length > 0 ; )
+    {
+      size_t size;
+      
+      opt->numopts++;
+      size    = ((scan[2] << 8) | (scan[3])) + 4;
+      scan   += size;
+      length -= size;
+    }
+    
+    opt->opts = alloc_struct(data->dest,sizeof(edns0_opt_t) * opt->numopts);
+    if (opt->opts == NULL)
+      return RCODE_NO_MEMORY;
+    
+    for (size_t i = 0 ; i < opt->numopts ; i++)
+    {
+      opt->opts[i].code = read_uint16(data->parse);
+      opt->opts[i].len  = read_uint16(data->parse);
+      opt->opts[i].data = data->dest.ptr;
+      memcpy(data->dest.ptr,data->parse.ptr,opt->opts[i].len);
+      data->dest.ptr  += opt->opts[i].len;
+      data->dest.size -= opt->opts[i].len;
+    } 
   }
   
   return RCODE_OKAY;
