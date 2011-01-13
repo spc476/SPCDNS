@@ -359,24 +359,25 @@ static dns_rcode_t encode_rr_opt(
   assert(opt              != NULL);
   assert(opt->class       == CLASS_UNKNOWN);
   assert(opt->ttl         == 0);
-  assert(opt->label       <= 63);
   assert(opt->version     == 0);
   assert(opt->udp_payload <= UINT16_MAX);
   
-  if (data->size < 12)
+  if (data->size < 11)
     return RCODE_NO_MEMORY;
-    
-  data->ptr[0] = 0x40 | opt->label;	/* RR OPT marker */
-  data->ptr[1] = 0x00;			/* empty (root domain */
-  data->ptr  += 2;
-  data->size -= 2;
-  
+
+  data->ptr[0] = 00;	/* root domain */
+  data->ptr++;
+  data->size--;
+
   write_uint16(data,RR_OPT);
   write_uint16(data,opt->udp_payload);
   data->ptr[0] = query->rcode >> 4;
   data->ptr[1] = opt->version;
   data->ptr[2] = 0;
   data->ptr[3] = 0;
+  
+  if (opt->fdo) data->ptr[2] |= 0x80;
+    
   data->ptr  += 4;
   data->size -= 4;
   
@@ -677,25 +678,16 @@ static dns_rcode_t read_domain(
     }
     
     /*----------------------------------------------
-    ; EDNS0 OPT RR, handled elsewhere in the code
+    ; EDNS0 extended labels (RFC-2671)
     ;----------------------------------------------*/
-    
+
     else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
-    {
-      /*--------------------------------------------------------------
-      ; This is a bit of a mess really.  RFC-2671 and RFC-2673 give two
-      ; nearly different meanings to such strings.  Right now, we handle
-      ; RFC-2671 and if we hit here, we assume a format error, since we do
-      ; NOT handle RFC-2673 at this time.
-      ;-------------------------------------------------------------------*/
-      
       return RCODE_FORMAT_ERROR;
-    }
-    
+
     /*------------------------------------
     ; reserved for future developments
     ;------------------------------------*/
-    
+
     else
       return RCODE_FORMAT_ERROR;
   } while(*parse->ptr);
@@ -1242,65 +1234,23 @@ static inline dns_rcode_t decode_rr_opt(
                 const size_t                   len
 )
 {
-  dns_rcode_t rc;
-  dns_type_t  type;
+  assert(data != NULL);
+  assert(opt  != NULL);
   
-  assert(context_okay(data));
-  assert(opt != NULL);
-  assert(len == data->parse.size);
-  
-  if (data->edns)	/* there can be only one */
-    return RCODE_FORMAT_ERROR;
-    
-  /*----------------------------------------------------------------------
-  ; label ELT (RFC-2673) is marked as Experimental (RFC-3364) and is NOT
-  ; recommended for use (it denotes a domain label with arbitary binary
-  ; data, up to 256 bits (32 bytes) in size (yes, you can have a 3-bit
-  ; label under this scheme).  It can be fit into the parsing routine, but
-  ; I'm not sure if there's been much use of it.  We don't handle it at
-  ; this time and if we see such a label, we mark it as a format error.
-  ;----------------------------------------------------------------------*/
-
-  opt->label = *data->parse.ptr & 0x3F;
-    
-  if (opt->label == EDNS0_ELT)
-    return RCODE_FORMAT_ERROR;
-    
-  data->edns = true;
-  data->parse.ptr ++;
-  data->parse.size--;
-
-  rc = read_domain(data,&opt->name);
-  if (rc != RCODE_OKAY)
-    return rc;
-    
-  if (data->parse.size < 10)
+  if (data->edns) /* there can be only one */
     return RCODE_FORMAT_ERROR;
   
-  opt->type  = RR_OPT;
-  opt->class = CLASS_UNKNOWN;
-  opt->ttl   = 0;    
-    
-  type = read_uint16(&data->parse);
-  if (type != RR_OPT)
-    return RCODE_FORMAT_ERROR;
-    
-  opt->udp_payload = read_uint16(&data->parse);
-  data->response->rcode = (data->parse.ptr[0] << 4) | data->response->rcode;
-    
-  if (
-          (data->parse.ptr[1] != 0) 
-       || (data->parse.ptr[2] != 0) 
-       || (data->parse.ptr[3] != 0)
-  )
-    return RCODE_FORMAT_ERROR;
-    
-  opt->version      = 0;
-  data->parse.ptr  += 4;
-  data->parse.size -= 4;
-  opt->udp_payload  = read_uint16(&data->parse);
-    
-  /*return read_raw(data,&pans->opt.rawdata,pans->opt.size);*/
+  data->edns   = true;
+  opt->numopts = 0;
+  opt->opts    = NULL;
+  
+  if (len)
+  {
+    assert(context_okay(data));
+    assert(opt != NULL);
+    assert(len == data->parse.size);  
+  }
+  
   return RCODE_OKAY;
 }
 
@@ -1318,18 +1268,6 @@ static dns_rcode_t decode_answer(
   assert(context_okay(data));
   assert(pans != NULL);
   
-  /*-------------------------------------------------------------------
-  ; check for an EDNSO OPT RR; it's best to do it here rather than in
-  ; read_domain()---separation of concerns and all that. (RFC-2671)
-  ;--------------------------------------------------------------------*/
-  
-  if ((*data->parse.ptr >= 64) && (*data->parse.ptr <= 127))
-    return decode_rr_opt(data,&pans->opt,data->parse.size);
-
-  /*---------------------------------------------------------
-  ; it's a regular RR
-  ;----------------------------------------------------------*/
-  
   rc = read_domain(data,&pans->generic.name);
   if (rc != RCODE_OKAY)
     return rc;
@@ -1337,12 +1275,43 @@ static dns_rcode_t decode_answer(
   if (data->parse.size < 10)
     return RCODE_FORMAT_ERROR;
     
-  pans->generic.type  = read_uint16(&data->parse);
-  pans->generic.class = read_uint16(&data->parse);
-  pans->generic.ttl   = read_uint32(&data->parse);
+  pans->generic.type = read_uint16(&data->parse);
+  
+  /*-----------------------------------------------------------------
+  ; RR_OPT is annoying, since the defined class and ttl fields are
+  ; interpreted completely differently.  Thanks a lot, Paul Vixie!  So we
+  ; need to special case this stuff a bit.
+  ;----------------------------------------------------------------*/
+  
+  if (pans->generic.type == RR_OPT)
+  {
+    pans->generic.class   = CLASS_UNKNOWN;
+    pans->generic.ttl     = 0;
+    pans->opt.udp_payload = read_uint16(&data->parse);
+    data->response->rcode = (data->parse.ptr[0] << 4) | data->response->rcode;
+
+    if (data->parse.ptr[1] != 0)	/* version */
+      return RCODE_FORMAT_ERROR;
+    
+    if ((data->parse.ptr[2] & 0x80) == 0x80) 
+      pans->opt.fdo = true;
+    if ((data->parse.ptr[2] & 0x7F) != 0)
+      return RCODE_FORMAT_ERROR;
+    if (data->parse.ptr[3] != 0)
+      return RCODE_FORMAT_ERROR;
+
+    data->parse.ptr  += 4;
+    data->parse.size -= 4;
+  }
+  else
+  {
+    pans->generic.class = read_uint16(&data->parse);
+    pans->generic.ttl   = read_uint32(&data->parse);
+  }
   
   len  = read_uint16(&data->parse);
   rest = data->packet.size - (data->parse.ptr - data->packet.ptr);
+  
   if (len > rest) 
     return RCODE_FORMAT_ERROR;
 
@@ -1356,17 +1325,8 @@ static dns_rcode_t decode_answer(
     case RR_WKS:   return decode_rr_wks  (data,&pans->wks  ,len);
     case RR_GPOS:  return decode_rr_gpos (data,&pans->gpos);
     case RR_LOC:   return decode_rr_loc  (data,&pans->loc  ,len);
+    case RR_OPT:   return decode_rr_opt  (data,&pans->opt  ,len);
     
-    /*---------------------------------------------------------------------
-    ; RR_OPT is handled differently from other RR types, so if we see one
-    ; here, it's an invalid packet.
-    ;--------------------------------------------------------------------*/
-    
-    case RR_OPT:
-         data->parse.ptr  += len;
-         data->parse.size -= len;
-         return RCODE_FORMAT_ERROR;
-         
     /*----------------------------------------------------------------------	
     ; The following record types all share the same structure (although the
     ; last field name is different, depending upon the record), so they can

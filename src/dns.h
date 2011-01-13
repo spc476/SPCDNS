@@ -749,10 +749,9 @@ typedef struct dns_edns0opt_t	/* RFC-2671 */
   dns_type_t     type;		
   dns_class_t    class;		/* not applicable --- set to CLASS_UNKNOWN */
   TTL            ttl;		/* not applicable --- set to 0 */
-  edns0_label_t  label;
   size_t         udp_payload;
   int            version;
-  size_t         rawsize;
+  bool           fdo;		/* RFC-3225 */
   size_t         numopts;
   edns0_opt_t   *opts;
 } dns_edns0opt_t;

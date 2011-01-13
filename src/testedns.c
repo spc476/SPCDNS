@@ -156,7 +156,6 @@ int main(int argc,char *argv[])
   edns.opt.type    = RR_OPT;
   edns.opt.class   = CLASS_UNKNOWN;
   edns.opt.ttl     = 0;
-  edns.opt.label   = 0;	/* ??? */
   edns.opt.version = 0;
   edns.opt.numopts = 1;
   edns.opt.opts    = &opt;
@@ -434,7 +433,17 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	pans[i].srv.target
            );
            break;
-           
+      case RR_OPT:
+           printf(
+             "; RR_OPT\n"
+             ";\tpayload: %lu\n"
+             ";\tDO = %s\n"
+             ";\t#opts = %lu\n",
+             (unsigned long)pans[i].opt.udp_payload,
+             pans[i].opt.fdo ? "true" : "false",
+             (unsigned long)pans[i].opt.numopts
+            );
+          break;
       default:
            break;
     }
