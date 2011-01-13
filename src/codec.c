@@ -141,6 +141,7 @@ static inline dns_rcode_t  decode_rr_sig  (idns_context *const restrict,dns_sig_
 static inline dns_rcode_t  decode_rr_minfo(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_gpos (idns_context *const restrict,dns_gpos_t     *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_loc  (idns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static inline dns_rcode_t  decode_rr_opt  (idns_context *const restirct,dns_edns0opt_t *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
 
 /***********************************************************************/
@@ -1235,6 +1236,76 @@ static inline dns_rcode_t decode_rr_loc(
 
 /***************************************************************/
 
+static inline dns_rcode_t decode_rr_opt(
+                idns_context   *const restrict data,
+                dns_edns0opt_t *const restrict opt,
+                const size_t                   len
+)
+{
+  dns_rcode_t rc;
+  dns_type_t  type;
+  
+  assert(context_okay(data));
+  assert(opt != NULL);
+  assert(len == data->parse.size);
+  
+  if (data->edns)	/* there can be only one */
+    return RCODE_FORMAT_ERROR;
+    
+  /*----------------------------------------------------------------------
+  ; label ELT (RFC-2673) is marked as Experimental (RFC-3364) and is NOT
+  ; recommended for use (it denotes a domain label with arbitary binary
+  ; data, up to 256 bits (32 bytes) in size (yes, you can have a 3-bit
+  ; label under this scheme).  It can be fit into the parsing routine, but
+  ; I'm not sure if there's been much use of it.  We don't handle it at
+  ; this time and if we see such a label, we mark it as a format error.
+  ;----------------------------------------------------------------------*/
+
+  opt->label = *data->parse.ptr & 0x3F;
+    
+  if (opt->label == EDNS0_ELT)
+    return RCODE_FORMAT_ERROR;
+    
+  data->edns = true;
+  data->parse.ptr ++;
+  data->parse.size--;
+
+  rc = read_domain(data,&opt->name);
+  if (rc != RCODE_OKAY)
+    return rc;
+    
+  if (data->parse.size < 10)
+    return RCODE_FORMAT_ERROR;
+  
+  opt->type  = RR_OPT;
+  opt->class = CLASS_UNKNOWN;
+  opt->ttl   = 0;    
+    
+  type = read_uint16(&data->parse);
+  if (type != RR_OPT)
+    return RCODE_FORMAT_ERROR;
+    
+  opt->udp_payload = read_uint16(&data->parse);
+  data->response->rcode = (data->parse.ptr[0] << 4) | data->response->rcode;
+    
+  if (
+          (data->parse.ptr[1] != 0) 
+       || (data->parse.ptr[2] != 0) 
+       || (data->parse.ptr[3] != 0)
+  )
+    return RCODE_FORMAT_ERROR;
+    
+  opt->version      = 0;
+  data->parse.ptr  += 4;
+  data->parse.size -= 4;
+  opt->udp_payload  = read_uint16(&data->parse);
+    
+  /*return read_raw(data,&pans->opt.rawdata,pans->opt.size);*/
+  return RCODE_OKAY;
+}
+
+/*************************************************************/
+
 static dns_rcode_t decode_answer(
 		idns_context *const restrict data,
 		dns_answer_t *const restrict pans
@@ -1243,7 +1314,6 @@ static dns_rcode_t decode_answer(
   size_t      len;
   size_t      rest;
   dns_rcode_t rc;
-  uint16_t    type;
   
   assert(context_okay(data));
   assert(pans != NULL);
@@ -1254,61 +1324,7 @@ static dns_rcode_t decode_answer(
   ;--------------------------------------------------------------------*/
   
   if ((*data->parse.ptr >= 64) && (*data->parse.ptr <= 127))
-  {
-    if (data->edns)	/* there can be only one */
-      return RCODE_FORMAT_ERROR;
-    
-    /*----------------------------------------------------------------------
-    ; label ELT (RFC-2673) is marked as Experimental (RFC-3364) and is NOT
-    ; recommended for use (it denotes a domain label with arbitary binary
-    ; data, up to 256 bits (32 bytes) in size (yes, you can have a 3-bit
-    ; label under this scheme).  It can be fit into the parsing routine, but
-    ; I'm not sure if there's been much use of it.  We don't handle it at
-    ; this time and if we see such a label, we mark it as a format error.
-    ;----------------------------------------------------------------------*/
-
-    pans->opt.label = *data->parse.ptr & 0x3F;
-    
-    if (pans->opt.label == EDNS0_ELT)
-      return RCODE_FORMAT_ERROR;
-    
-    data->edns = true;
-    data->parse.ptr ++;
-    data->parse.size--;
-
-    rc = read_domain(data,&pans->generic.name);
-    if (rc != RCODE_OKAY)
-      return rc;
-    
-    if (data->parse.size < 10)
-      return RCODE_FORMAT_ERROR;
-      
-    pans->generic.type  = RR_OPT;
-    pans->generic.class = CLASS_UNKNOWN;
-    pans->generic.ttl   = 0;
-    
-    type = read_uint16(&data->parse);
-    if (type != RR_OPT)
-      return RCODE_FORMAT_ERROR;
-    
-    pans->opt.udp_payload = read_uint16(&data->parse);
-    data->response->rcode = (data->parse.ptr[0] << 4) | data->response->rcode;
-    
-    if (
-            (data->parse.ptr[1] != 0) 
-         || (data->parse.ptr[2] != 0) 
-         || (data->parse.ptr[3] != 0)
-    )
-      return RCODE_FORMAT_ERROR;
-    
-    pans->opt.version  = 0;
-    data->parse.ptr   += 4;
-    data->parse.size  -= 4;
-    pans->opt.udp_payload = read_uint16(&data->parse);
-    
-    /*return read_raw(data,&pans->opt.rawdata,pans->opt.size);*/
-    return RCODE_OKAY;
-  }
+    return decode_rr_opt(data,&pans->opt,data->parse.size);
 
   /*---------------------------------------------------------
   ; it's a regular RR

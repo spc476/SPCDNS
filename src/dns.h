@@ -743,7 +743,7 @@ typedef struct edns0_opt_t	/* RFC-2671 */
   uint8_t  *data;
 } edns0_opt_t;
 
-typedef struct dns_eds0opt_t	/* RFC-2671 */
+typedef struct dns_edns0opt_t	/* RFC-2671 */
 {
   const char    *name;
   dns_type_t     type;		
