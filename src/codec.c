@@ -259,21 +259,23 @@ dns_rcode_t dns_encode(
   
   /*------------------------------------------------------------
   ; at some point we may want to encode answers, nameservers,
-  ; and additional records, but for now, we skip 'em
+  ; and additional records, but for now, we skip 'em, except
+  ; for EDNS stuff.
   ;-----------------------------------------------------------*/
   
-  if (query->arcount == 1)
+  assert(query->ancount == 0);
+  assert(query->nscount == 0);
+  
+  for (size_t i = 0 ; i < query->arcount ; i++)
   {
-    assert(query->additional->generic.type == RR_OPT);
-    rc = encode_rr_opt(&data,query,&query->additional->opt);
+    switch(query->additional[i].generic.type)
+    {
+      case RR_OPT: rc = encode_rr_opt(&data,query,&query->additional[i].opt); break;
+      default:     assert(0); break;
+    }
+    
     if (rc != RCODE_OKAY)
       return rc;
-  }
-  else
-  {
-    assert(query->ancount == 0);
-    assert(query->nscount == 0);
-    assert(query->arcount == 0);
   }
   
   *plen = (size_t)(data.ptr - buffer);
@@ -1247,12 +1249,10 @@ static inline dns_rcode_t decode_rr_opt(
   if (len)
   {
     uint8_t *scan;
-    size_t   cnt;
     size_t   length;
     
     assert(context_okay(data));
-    assert(opt != NULL);
-    assert(len == data->parse.size);
+    assert(len > 4);
     
     for (scan = data->parse.ptr , opt->numopts = 0 , length = len ; length > 0 ; )
     {
@@ -1261,18 +1261,26 @@ static inline dns_rcode_t decode_rr_opt(
       opt->numopts++;
       size    = ((scan[2] << 8) | (scan[3])) + 4;
       scan   += size;
+
+      if (size > length)
+        return RCODE_FORMAT_ERROR;
+
       length -= size;
     }
     
-    opt->opts = alloc_struct(data->dest,sizeof(edns0_opt_t) * opt->numopts);
+    opt->opts = alloc_struct(&data->dest,sizeof(edns0_opt_t) * opt->numopts);
     if (opt->opts == NULL)
       return RCODE_NO_MEMORY;
     
     for (size_t i = 0 ; i < opt->numopts ; i++)
     {
-      opt->opts[i].code = read_uint16(data->parse);
-      opt->opts[i].len  = read_uint16(data->parse);
+      opt->opts[i].code = read_uint16(&data->parse);
+      opt->opts[i].len  = read_uint16(&data->parse);
       opt->opts[i].data = data->dest.ptr;
+      
+      if (data->dest.size < opt->opts[i].len)
+        return RCODE_NO_MEMORY;
+        
       memcpy(data->dest.ptr,data->parse.ptr,opt->opts[i].len);
       data->dest.ptr  += opt->opts[i].len;
       data->dest.size -= opt->opts[i].len;
@@ -1321,7 +1329,7 @@ static dns_rcode_t decode_answer(
     if (data->parse.ptr[1] != 0)	/* version */
       return RCODE_FORMAT_ERROR;
     
-    if ((data->parse.ptr[2] & 0x80) == 0x80) 
+    if ((data->parse.ptr[2] & 0x80) == 0x80)	/* RFC-3225 */
       pans->opt.fdo = true;
     if ((data->parse.ptr[2] & 0x7F) != 0)
       return RCODE_FORMAT_ERROR;
