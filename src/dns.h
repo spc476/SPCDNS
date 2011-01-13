@@ -236,7 +236,7 @@ typedef enum dns_rcode
 typedef enum edns0_label
 {
   EDNS0_ELT  = 0x01,		/* RFC-2673 */
-  EDNS0_RSVP = 0x3F,		/* RFC-2671 */
+  EDNS0_RSVP = 0x3F		/* RFC-2671 */
 } edns0_label_t;
 
 typedef uint32_t TTL;
@@ -779,7 +779,7 @@ typedef struct dns_apl_t	/* RFC-3123 */
 
 typedef enum dnsds_digest	/* RFC-3658 */
 {
-  DNSDS_SHA1 = 1,
+  DNSDS_SHA1 = 1
 } dnsds_digest;
 
 typedef struct dns_ds_t		/* RFC-3658 */
