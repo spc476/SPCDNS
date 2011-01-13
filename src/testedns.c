@@ -152,13 +152,14 @@ int main(int argc,char *argv[])
   opt.data = (uint8_t *)"!^.*$!pstndata:cnam/+15619945527;;charset=us-ascii,Brian%20Yoder!";
   opt.len  = strlen((char *)opt.data);
 
-  edns.opt.name    = ".";
-  edns.opt.type    = RR_OPT;
-  edns.opt.class   = CLASS_UNKNOWN;
-  edns.opt.ttl     = 0;
-  edns.opt.version = 0;
-  edns.opt.numopts = 1;
-  edns.opt.opts    = &opt;
+  edns.opt.name        = ".";
+  edns.opt.type        = RR_OPT;
+  edns.opt.class       = CLASS_UNKNOWN;
+  edns.opt.ttl         = 0;
+  edns.opt.version     = 0;
+  edns.opt.udp_payload = 1464;
+  edns.opt.numopts     = 1;
+  edns.opt.opts        = &opt;
   
   domain.name  = "7.2.5.5.4.9.9.1.6.5.1.e164.arpa.";
   domain.type  = RR_NAPTR;
