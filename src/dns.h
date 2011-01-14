@@ -160,7 +160,7 @@ typedef enum dns_type
   RR_RRSIG      =  46,	/* Resource Record Signature		RFC-3755 RFC-4034 */
   RR_NSEC       =  47,	/* Next Security Record		        RFC-3755 RFC-4034 */
   RR_DNSKEY     =  48,	/* DNS Security Key			RFC-3755 RFC-4034 */
-  RR_DHCOD      =  49,	/* DHCID				RFC-4701 */
+  RR_DHCID      =  49,	/* DHCID				RFC-4701 */
   RR_NSEC3      =  50,	/* NSEC3				RFC-5155 */
   RR_NSEC3PARAM =  51,	/* NSEC3PARAM				RFC-5155 */
   RR_HIP        =  55,	/* Host Identity Protocol		RFC-5205 */
