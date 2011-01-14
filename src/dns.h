@@ -152,7 +152,7 @@ typedef enum dns_type
   RR_A6         =  38,	/* IPv6 Address				RFC-2874 RFC-3658 */
   RR_DNAME      =  39,	/* Non-terminal DNAME (IPv6)		RFC-2672 */
   RR_SINK       =  40,	/* Kitchen sink			     E  ???      */
-  RR_OPT        =  41,	/* EDNS0 option (meta-RR)		RFC-2671 */
+  RR_OPT        =  41,	/* EDNS0 option (meta-RR)	      + RFC-2671 */
   RR_APL        =  42,	/* Address Prefix List			RFC-3123 */
   RR_DS         =  43,	/* Delegation Signer			RFC-3658 RFC-4034 */
   RR_SSHFP      =  44,	/* SSH Key Fingerprint			RFC-4255 */
