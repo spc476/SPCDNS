@@ -724,6 +724,14 @@ static dns_rcode_t decode_question(
   pquest->type  = (dns_type_t) read_uint16(&data->parse);
   pquest->class = (dns_class_t)read_uint16(&data->parse);
   
+  /*-------------------------------------------------------
+  ; OPT RRs can never be the target of a question as it's
+  ; more of a pseudo RR than a real live boy, um, RR.
+  ;--------------------------------------------------------*/
+  
+  if (pquest->type == RR_OPT)
+    return RCODE_FORMAT_ERROR;
+    
   return RCODE_OKAY;
 }
 
