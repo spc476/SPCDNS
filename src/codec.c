@@ -64,6 +64,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 #include <math.h>
 #include <assert.h>
 
@@ -115,9 +116,9 @@ typedef struct idns_context
 /***********************************************************************/
 
 static        dns_rcode_t  dns_encode_domain	(block_t *const restrict,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull));
-static	      dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
-static	      dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
-static        dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
@@ -129,6 +130,9 @@ static inline uint32_t	   read_uint32	(block_t *const)		                        
 static        dns_rcode_t  read_raw	(idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  read_string	(idns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  read_domain	(idns_context *const restrict,const char **restrict)	          __attribute__ ((nothrow,nonnull));
+
+static inline dns_rcode_t  decode_edns0rr_nsid	(idns_context *const restrict,edns0_opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  decode_edns0rr_raw	(idns_context *const restrict,edns0_opt_t *const restrict) __attribute__ ((nothrow,nonnull));
 
 static        dns_rcode_t  decode_question(idns_context *const restrict,dns_question_t *const restrict)		     __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  decode_rr_soa  (idns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
@@ -146,6 +150,8 @@ static inline dns_rcode_t  decode_rr_gpos (idns_context *const restrict,dns_gpos
 static inline dns_rcode_t  decode_rr_loc  (idns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_opt  (idns_context *const restirct,dns_edns0opt_t *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
+
+
 
 /***********************************************************************/
 
@@ -350,7 +356,71 @@ static dns_rcode_t dns_encode_domain(
 
 /*************************************************************************/
 
-static dns_rcode_t encode_rr_opt(
+static inline dns_rcode_t encode_edns0rr_nsid(
+	block_t           *const restrict data,
+	const edns0_opt_t *const restrict opt
+)
+{
+  size_t newlen;
+  
+  assert(pblock_okay(data));
+  assert(opt       != NULL);
+  assert(opt->code == EDNS0RR_NSID);
+  assert(opt->len  <= UINT16_MAX);
+  
+  /*------------------------------------------------------------------------
+  ; RFC-5001 specifies that the data for an NSID RR is the hexstring of the
+  ; data, and no other meaning from the strings is to be inferred.  So we
+  ; encode the data to save you from doing it.
+  ;------------------------------------------------------------------------*/
+  
+  newlen = opt->len * 2;
+  if (data->size < newlen + sizeof(uint16_t) + sizeof(uint16_t))
+    return RCODE_NO_MEMORY;
+  
+  char   buffer[newlen + 1];
+  size_t nidx;
+  size_t i;
+  
+  for (i = nidx = 0 ; i < opt->len ; i++ , nidx += 2)
+    sprintf(&buffer[nidx],"%02X",opt->data[i]);
+  
+  assert(newlen == strlen(buffer));
+  
+  write_uint16(data,opt->code);
+  write_uint16(data,newlen);
+  memcpy(data->ptr,buffer,newlen);
+  data->ptr  += newlen;
+  data->size -= newlen;
+  return RCODE_OKAY;
+}
+
+/**********************************************************************/
+
+static inline dns_rcode_t encode_edns0rr_raw(
+	block_t           *const restrict data,
+	const edns0_opt_t *const restrict opt
+)
+{
+  assert(pblock_okay(data));
+  assert(opt       != NULL);
+  assert(opt->code <= UINT16_MAX);
+  assert(opt->len  <= UINT16_MAX);
+  
+  if (data->size < opt->len + sizeof(uint16_t) + sizeof(uint16_t))
+    return RCODE_NO_MEMORY;
+  
+  write_uint16(data,opt->code);
+  write_uint16(data,opt->len);
+  memcpy(data->ptr,opt->data,opt->len);
+  data->ptr  += opt->len;
+  data->size -= opt->len;
+  return RCODE_OKAY;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_opt(
 	block_t              *const restrict data,
 	const dns_query_t    *const restrict query,
 	const dns_edns0opt_t *const restrict opt
@@ -401,85 +471,17 @@ static dns_rcode_t encode_rr_opt(
     
     switch(opt->opts[i].code)
     {
-      case EDNS0RR_NSID:
-           rc = encode_edns0rr_nsid(data,&opt->opts[i]);
-           if (rc != RCODE_OKAY) return rc;
-           break;
-      default:
-           rc = encode_edns0rr_raw(data,&opt->opts[i]);
-           if (rc != RCODE_OKAY) return rc;
-           break;
+      case EDNS0RR_NSID: rc = encode_edns0rr_nsid(data,&opt->opts[i]); break;
+      default:           rc = encode_edns0rr_raw (data,&opt->opts[i]); break;
     }
+    
+    if (rc != RCODE_OKAY) return rc;
   }
   
   rdlen     = (size_t)(data->ptr - prdlen) - sizeof(uint16_t);
   prdlen[0] = (rdlen >> 8) & 0xFF;
   prdlen[1] = (rdlen     ) & 0xFF;
   
-  return RCODE_OKAY;
-}
-
-/**********************************************************************/
-
-static dns_rcode_t encode_edns0rr_nsid(
-	block_t           *const restrict data,
-	const edns0_opt_t *const restrict opt
-)
-{
-  size_t newlen;
-  
-  assert(pblock_okay(data));
-  assert(opt       != NULL);
-  assert(opt->code == EDNS0RR_NSID);
-  assert(opt->len  <= UINT16_MAX);
-  
-  /*------------------------------------------------------------------------
-  ; RFC-5001 specifies that the data for an NSID RR is the hexstring of the
-  ; data, and no other meaning from the strings is to be inferred.  So we
-  ; encode the data to save you from doing it.
-  ;------------------------------------------------------------------------*/
-  
-  newlen = opt->len * 2;
-  if (data->size < newlen + sizeof(uint16_t) + sizeof(uint16_t))
-    return RCODE_NO_MEMORY;
-  
-  char   buffer[newlen + 1];
-  size_t nidx;
-  size_t i;
-  
-  for (i = nidx = 0 ; i < opt->len ; i++ , nidx += 2)
-    sprintf(&buffer[nidx],"%02X",opt->data[i]);
-  
-  assert(newlen == strlen(buffer));
-  
-  write_uint16(data,opt->code);
-  write_uint16(data,newlen);
-  memcpy(data->ptr,buffer,newlen);
-  data->ptr  += newlen;
-  data->size -= newlen;
-  return RCODE_OKAY;
-}
-
-/**********************************************************************/
-
-static dns_rcode_t encode_edns0rr_raw(
-	block_t           *const restrict data,
-	const edns0_opt_t *const restrict opt
-)
-{
-  assert(pblock_okay(data));
-  assert(opt       != NULL);
-  assert(opt->code <= UINT16_MAX);
-  assert(opt->len  <= UINT16_MAX);
-  
-  if (data->size < opt->len + sizeof(uint16_t) + sizeof(uint16_t))
-    return RCODE_NO_MEMORY;
-  
-  write_uint16(data,opt->code);
-  write_uint16(data,opt->len);
-  memcpy(data->ptr,opt->data,opt->len);
-  data->ptr  += opt->len;
-  data->size -= opt->len;
   return RCODE_OKAY;
 }
 
@@ -781,6 +783,65 @@ static dns_rcode_t read_domain(
 }
 
 /********************************************************************/
+
+static inline dns_rcode_t decode_edns0rr_nsid(
+	idns_context *const restrict data,
+	edns0_opt_t  *const restrict opt
+)
+{
+  static const char hexdigits[] = "0123456789ABCDEF";
+  
+  if (opt->len % 2 == 1)
+    return RCODE_FORMAT_ERROR;
+    
+  if (data->dest.size < opt->len / 2)
+    return RCODE_NO_MEMORY;
+  
+  for (size_t i = 0 ; i < opt->len ; i += 2)
+  {
+    const char *phexh;
+    const char *phexl;
+    
+    if (!isxdigit(opt->data[i]))   return RCODE_FORMAT_ERROR;
+    if (!isxdigit(opt->data[i+1])) return RCODE_FORMAT_ERROR;
+    
+    phexh = memchr(hexdigits,toupper(opt->data[i])  ,16);
+    phexl = memchr(hexdigits,toupper(opt->data[i+1]),16);
+    
+    /*------------------------------------------------------------------
+    ; phexh and phexl should not be NULL, unless isxdigit() is buggy, and
+    ; that is something I'm not assuming.
+    ;--------------------------------------------------------------------*/
+    
+    assert(phexh != NULL);
+    assert(phexl != NULL);
+    
+    *data->dest.ptr = ((phexh - hexdigits) << 4)
+                    | ((phexl - hexdigits)     );
+    data->dest.ptr++;
+    data->dest.size--;
+  }
+  
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline dns_rcode_t decode_edns0rr_raw(
+	idns_context *const restrict data,
+	edns0_opt_t  *const restrict opt
+)
+{
+  if (data->dest.size < opt->len)
+    return RCODE_NO_MEMORY;
+  
+  memcpy(data->dest.ptr,data->parse.ptr,opt->len);
+  data->dest.ptr  += opt->len;
+  data->dest.size -= opt->len;
+  return RCODE_OKAY;
+}
+
+/*************************************************************/
 
 static dns_rcode_t decode_question(
 	idns_context   *const restrict data,
@@ -1360,6 +1421,8 @@ static inline dns_rcode_t decode_rr_opt(
     
     for (size_t i = 0 ; i < opt->numopts ; i++)
     {
+      dns_rcode_t rc;
+      
       opt->opts[i].code = read_uint16(&data->parse);
       opt->opts[i].len  = read_uint16(&data->parse);
       
@@ -1373,19 +1436,20 @@ static inline dns_rcode_t decode_rr_opt(
 
       opt->opts[i].data = data->dest.ptr;
       
-      if (data->dest.size < opt->opts[i].len)
-        return RCODE_NO_MEMORY;
-        
-      memcpy(data->dest.ptr,data->parse.ptr,opt->opts[i].len);
-      data->dest.ptr  += opt->opts[i].len;
-      data->dest.size -= opt->opts[i].len;
-    } 
+      switch(opt->opts[i].code)
+      {
+        case EDNS0RR_NSID: rc = decode_edns0rr_nsid(data,&opt->opts[i]); break;
+        default:           rc = decode_edns0rr_raw (data,&opt->opts[i]); break;
+      }
+      
+      if (rc != RCODE_OKAY) return rc;
+    }
   }
   
   return RCODE_OKAY;
 }
 
-/*************************************************************/
+/**********************************************************************/
 
 static dns_rcode_t decode_answer(
 		idns_context *const restrict data,
