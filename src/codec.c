@@ -1284,6 +1284,15 @@ static inline dns_rcode_t decode_rr_opt(
     {
       opt->opts[i].code = read_uint16(&data->parse);
       opt->opts[i].len  = read_uint16(&data->parse);
+      
+      /*-----------------------------------------------------------------
+      ; much like in read_raw(), we don't necessarily know the data we're
+      ; reading, so why not align it?
+      ;------------------------------------------------------------------*/
+
+      if (!align_memory(&data->dest))
+        return RCODE_NO_MEMORY;
+
       opt->opts[i].data = data->dest.ptr;
       
       if (data->dest.size < opt->opts[i].len)
