@@ -679,9 +679,11 @@ static dns_rcode_t read_domain(
       parse    = &tmp;
     }
     
-    /*----------------------------------------------
-    ; EDNS0 extended labels (RFC-2671)
-    ;----------------------------------------------*/
+    /*-----------------------------------------------------------------------
+    ; EDNS0 extended labeles, RFC-2671; the only extension proposed so far,
+    ; RFC-2673, was changed from Proposed to Experimental in RFC-3363, so
+    ; I'm not including support for it at this time.
+    ;-----------------------------------------------------------------------*/
 
     else if ((*parse->ptr >= 64) && (*parse->ptr <= 127))
       return RCODE_FORMAT_ERROR;
