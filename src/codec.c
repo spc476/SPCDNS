@@ -800,11 +800,11 @@ static inline dns_rcode_t decode_edns0rr_nsid(
     const char *phexh;
     const char *phexl;
     
-    if (!isxdigit(opt->data[i]))   return RCODE_FORMAT_ERROR;
-    if (!isxdigit(opt->data[i+1])) return RCODE_FORMAT_ERROR;
+    if (!isxdigit(data->parse.ptr[i]))   return RCODE_FORMAT_ERROR;
+    if (!isxdigit(data->parse.ptr[i+1])) return RCODE_FORMAT_ERROR;
     
-    phexh = memchr(hexdigits,toupper(opt->data[i])  ,16);
-    phexl = memchr(hexdigits,toupper(opt->data[i+1]),16);
+    phexh = memchr(hexdigits,toupper(data->parse.ptr[i])  ,16);
+    phexl = memchr(hexdigits,toupper(data->parse.ptr[i+1]),16);
     
     /*------------------------------------------------------------------
     ; phexh and phexl should not be NULL, unless isxdigit() is buggy, and
@@ -820,6 +820,9 @@ static inline dns_rcode_t decode_edns0rr_nsid(
     data->dest.size--;
   }
   
+  data->parse.ptr  += opt->len;
+  data->parse.size -= opt->len;
+  opt->len         /= 2;
   return RCODE_OKAY;
 }
 
@@ -834,8 +837,10 @@ static inline dns_rcode_t decode_edns0rr_raw(
     return RCODE_NO_MEMORY;
   
   memcpy(data->dest.ptr,data->parse.ptr,opt->len);
-  data->dest.ptr  += opt->len;
-  data->dest.size -= opt->len;
+  data->parse.ptr  += opt->len;
+  data->parse.size -= opt->len;
+  data->dest.ptr   += opt->len;
+  data->dest.size  -= opt->len;
   return RCODE_OKAY;
 }
 
