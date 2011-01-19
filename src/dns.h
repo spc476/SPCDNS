@@ -186,6 +186,11 @@ typedef enum dns_type
   RR_UNKNOWN    = 65280	/* Unknown record type			RFC-2929 */
 } dns_type_t;
 
+typedef enum edns0_type
+{
+  EDNS0RR_NSID = 3	/* Name Server ID		      + RFC-5001 */
+} edns0_type_t;
+
 typedef enum dns_class
 {
   CLASS_IN      =     1,	/* Internet	    	RFC-1035 */
@@ -235,7 +240,7 @@ typedef enum dns_rcode
 
 typedef enum edns0_label
 {
-  EDNS0_ELT  = 0x01,		/* RFC-2673 */
+  EDNS0_ELT  = 0x01,		/* RFC-2673 (experimental RFC-3363) */
   EDNS0_RSVP = 0x3F		/* RFC-2671 */
 } edns0_label_t;
 
@@ -738,9 +743,9 @@ typedef struct dns_sink_t	/* (unknown) */
 
 typedef struct edns0_opt_t	/* RFC-2671 */
 {
-  uint16_t  code;
-  size_t    len;
-  uint8_t  *data;
+  edns0_type_t code;		/* 0 <= code <= UINT16_MAX */
+  size_t       len;		/* 0 <= len  <= UINT16_MAX */
+  uint8_t     *data;		/* encoded per RFC specification */
 } edns0_opt_t;
 
 typedef struct dns_edns0opt_t	/* RFC-2671 */
