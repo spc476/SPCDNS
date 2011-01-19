@@ -116,15 +116,15 @@ typedef struct idns_context
 /***********************************************************************/
 
 static        dns_rcode_t  dns_encode_domain	(block_t *const restrict,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t    *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t    *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
 
-static inline void         write_uint16 (block_t *const,uint16_t);
-static inline void         write_uint32 (block_t *const,uint32_t);
+static inline void         write_uint16 (block_t *const,uint16_t)                                         __attribute__ ((nothrow,nonnull(1)));
+static inline void         write_uint32 (block_t *const,uint32_t)                                         __attribute__ ((nothrow,nonnull(1)));
 static inline uint16_t	   read_uint16	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static inline uint32_t	   read_uint32	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static        dns_rcode_t  read_raw	(idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
@@ -150,8 +150,6 @@ static inline dns_rcode_t  decode_rr_gpos (idns_context *const restrict,dns_gpos
 static inline dns_rcode_t  decode_rr_loc  (idns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_opt  (idns_context *const restirct,dns_edns0opt_t *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
-
-
 
 /***********************************************************************/
 
