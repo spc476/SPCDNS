@@ -57,6 +57,7 @@
 #define _GNU_SOURCE
 
 #include <limits.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -113,8 +114,10 @@ typedef struct idns_context
 
 /***********************************************************************/
 
-static        dns_rcode_t  dns_encode_domain(block_t *const restrict,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull));
-static	      dns_rcode_t  encode_rr_opt    (block_t *const restrict,const dns_query_t *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_domain	(block_t *const restrict,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull));
+static	      dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static	      dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t *const restrict)    __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
@@ -353,8 +356,9 @@ static dns_rcode_t encode_rr_opt(
 	const dns_edns0opt_t *const restrict opt
 )
 {
-  size_t rdlen;
-  size_t i;
+  uint8_t *prdlen;
+  size_t   rdlen;
+  size_t   i;
   
   assert(pblock_okay(data));
   assert(query            != NULL);
@@ -383,27 +387,99 @@ static dns_rcode_t encode_rr_opt(
   data->ptr  += 4;
   data->size -= 4;
   
-  for (i = 0 , rdlen = 0 ; i < opt->numopts ; i++)
-    rdlen += opt->opts[i].len 
-             + sizeof(uint16_t)	 /* OPTION-CODE */
-             + sizeof(uint16_t); /* OPTION-LENGTH */
-
-  if (data->size < rdlen + sizeof(uint16_t))
-    return RCODE_NO_MEMORY;
+  /*----------------------------------------------------------------------
+  ; save the location for RDLEN, and set it to 0 for now.  After we encode
+  ; the rest of the packet, we'll patch this with the correct length.
+  ;----------------------------------------------------------------------*/
   
-  write_uint16(data,rdlen);
+  prdlen = data->ptr;
+  write_uint16(data,0);	/* place holder for now */
   
-  for (i = 0 ; i < opt->numopts ; i++)
+  for (i = 0 ; i < opt->numopts; i++)
   {
-    assert(opt->opts[i].len <= UINT16_MAX);
+    dns_rcode_t rc;
     
-    write_uint16(data,opt->opts[i].code);
-    write_uint16(data,opt->opts[i].len);
-    memcpy(data->ptr,opt->opts[i].data,opt->opts[i].len);
-    data->ptr  += opt->opts[i].len;
-    data->size -= opt->opts[i].len;
+    switch(opt->opts[i].code)
+    {
+      case EDNS0RR_NSID:
+           rc = encode_edns0rr_nsid(data,&opt->opts[i]);
+           if (rc != RCODE_OKAY) return rc;
+           break;
+      default:
+           rc = encode_edns0rr_raw(data,&opt->opts[i]);
+           if (rc != RCODE_OKAY) return rc;
+           break;
+    }
   }
   
+  rdlen     = (size_t)(data->ptr - prdlen) - sizeof(uint16_t);
+  prdlen[0] = (rdlen >> 8) & 0xFF;
+  prdlen[1] = (rdlen     ) & 0xFF;
+  
+  return RCODE_OKAY;
+}
+
+/**********************************************************************/
+
+static dns_rcode_t encode_edns0rr_nsid(
+	block_t           *const restrict data,
+	const edns0_opt_t *const restrict opt
+)
+{
+  size_t newlen;
+  
+  assert(pblock_okay(data));
+  assert(opt       != NULL);
+  assert(opt->code == EDNS0RR_NSID);
+  assert(opt->len  <= UINT16_MAX);
+  
+  /*------------------------------------------------------------------------
+  ; RFC-5001 specifies that the data for an NSID RR is the hexstring of the
+  ; data, and no other meaning from the strings is to be inferred.  So we
+  ; encode the data to save you from doing it.
+  ;------------------------------------------------------------------------*/
+  
+  newlen = opt->len * 2;
+  if (data->size < newlen + sizeof(uint16_t) + sizeof(uint16_t))
+    return RCODE_NO_MEMORY;
+  
+  char   buffer[newlen + 1];
+  size_t nidx;
+  size_t i;
+  
+  for (i = nidx = 0 ; i < opt->len ; i++ , nidx += 2)
+    sprintf(&buffer[nidx],"%02X",opt->data[i]);
+  
+  assert(newlen == strlen(buffer));
+  
+  write_uint16(data,opt->code);
+  write_uint16(data,newlen);
+  memcpy(data->ptr,buffer,newlen);
+  data->ptr  += newlen;
+  data->size -= newlen;
+  return RCODE_OKAY;
+}
+
+/**********************************************************************/
+
+static dns_rcode_t encode_edns0rr_raw(
+	block_t           *const restrict data,
+	const edns0_opt_t *const restrict opt
+)
+{
+  assert(pblock_okay(data));
+  assert(opt       != NULL);
+  assert(opt->code <= UINT16_MAX);
+  assert(opt->len  <= UINT16_MAX);
+  
+  if (data->size < opt->len + sizeof(uint16_t) + sizeof(uint16_t))
+    return RCODE_NO_MEMORY;
+  
+  write_uint16(data,opt->code);
+  write_uint16(data,opt->len);
+  memcpy(data->ptr,opt->data,opt->len);
+  data->ptr  += opt->len;
+  data->size -= opt->len;
   return RCODE_OKAY;
 }
 
