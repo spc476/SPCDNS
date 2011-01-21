@@ -138,20 +138,31 @@ int main(int argc,char *argv[])
   dns_query_t    query;
   dns_packet_t   request[DNS_BUFFER_UDP];
   size_t         reqsize;
-  
-  memset(&domain,0,sizeof(domain));
-  memset(&query, 0,sizeof(query));
+  edns0_opt_t    opt;
+  dns_answer_t   edns;
   
   domain.name  = host;
   domain.type  = dns_type_value(type);
   domain.class = CLASS_IN;
 
-  query.id        = 1234;	/* should be a random value */
-  query.query     = true;
-  query.rd        = true;
-  query.opcode    = OP_QUERY;
-  query.qdcount   = 1;
-  query.questions = &domain;
+  query.id        =   1234;	/* should be a random value */
+  query.query       = true;
+  query.opcode      = OP_QUERY;
+  query.aa          = false;
+  query.tc          = false;
+  query.rd          = true;
+  query.ra          = false;
+  query.ad          = false;
+  query.cd          = false;
+  query.rcode       = RCODE_OKAY;
+  query.qdcount     = 1;
+  query.questions   = &domain;
+  query.ancount     = 0;
+  query.answers     = NULL;
+  query.nscount     = 0;
+  query.nameservers = NULL;
+  query.arcount     = 0;
+  query.additional  = NULL;
   
   reqsize = sizeof(request);
   rc      = dns_encode(request,&reqsize,&query);
