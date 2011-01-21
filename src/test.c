@@ -174,10 +174,7 @@ int main(int argc,char *argv[])
   if (fedns)
   {
     /*----------------------------------------------------------------------
-    ; EDNS0RR_NSID is only sent on request, and that's the only OPT RR I've
-    ; found so far.  I'm using 0 here just as a request for further
-    ; information, which if a DNS server understands, will return further
-    ; information.
+    ; Test EDNS0 by sending an NSID OPT RR type query.  
     ;
     ; The udp_payload is the largest UDP packet we can reasonably expect to
     ; receive.  I'm using the value 1464 since that's about the largest UDP
@@ -185,9 +182,9 @@ int main(int argc,char *argv[])
     ; bytes UDP header; RFC-1042 based Ethernet frame).
     ;----------------------------------------------------------------------*/
     
-    opt.code = 0;
-    opt.len  = 0;
-    opt.data = NULL;
+    opt.code = EDNS0RR_NSID;
+    opt.data = (uint8_t *)"MY-DNS-SERVER-ID";
+    opt.len  = strlen((char *)opt.data);
     
     edns.opt.name        = ".";
     edns.opt.type        = RR_OPT;
