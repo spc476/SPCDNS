@@ -496,9 +496,6 @@ static inline dns_rcode_t encode_rr_opt(
 * *can* use align_memory() directly, just be sure you know what you are
 * doing.
 *
-* If you are grabbing strings, just use context->dest directoy; othersise,
-* call alloc_struct(), and don't forget to check for NULL.
-*
 ******************************************************************************/
 
 static bool align_memory(block_t *const pool)
@@ -629,11 +626,11 @@ static dns_rcode_t read_raw(
     if (len > data->parse.size)
       return RCODE_FORMAT_ERROR;
 
-    /*-----------------------------------------------------------------------
-    ; read a raw block of data; the copy is structured aligned; this is really
-    ; used when we don't know the structure of the data we're reading, so why
-    ; not align it?
-    ;-----------------------------------------------------------------------*/
+    /*--------------------------------------------------------------------
+    ; Called when we don't know the contents of the data; it's aligned so
+    ; that if the data is actually structured, it can probably be read
+    ; directly by the clients of this code.
+    ;--------------------------------------------------------------------*/
     
     if (!align_memory(&data->dest))
       return RCODE_NO_MEMORY;
