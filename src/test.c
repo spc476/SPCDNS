@@ -152,7 +152,7 @@ int main(int argc,char *argv[])
   domain.type  = dns_type_value(type);
   domain.class = CLASS_IN;
 
-  query.id        =   1234;	/* should be a random value */
+  query.id          = 1234;	/* should be a random value */
   query.query       = true;
   query.opcode      = OP_QUERY;
   query.aa          = false;
@@ -180,6 +180,10 @@ int main(int argc,char *argv[])
     ; receive.  I'm using the value 1464 since that's about the largest UDP
     ; packet that can fit into an Ethernet frame (20 bytes IP header, 8
     ; bytes UDP header; RFC-1042 based Ethernet frame).
+    ;
+    ; Additionally, OPT RRs *MUST* be in the additional section of a DNS
+    ; packet, and there can be only one (Highlander 2 & 3?  Never happened;
+    ; neither did the TV series) OPT RR.
     ;----------------------------------------------------------------------*/
     
     opt.code = EDNS0RR_NSID;
