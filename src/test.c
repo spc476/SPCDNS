@@ -46,6 +46,7 @@ enum
 {
   OPT_NONE	= '\0',
   OPT_HELP	= 'h',
+  OPT_EDNS      = 'e',
   OPT_SERVER	= 's',
   OPT_DUMP	= 'd',
   OPT_ERR	= '?'
@@ -63,6 +64,7 @@ static void dump_memory		(FILE *,const void *,size_t,size_t);
 const struct option c_options[] =
 {
   { "server"	, required_argument	, NULL	, OPT_SERVER 	} ,
+  { "edns"	, no_argument		, NULL  , OPT_EDNS	} ,
   { "dump"	, no_argument		, NULL	, OPT_DUMP	} ,
   { "help"	, no_argument		, NULL	, OPT_HELP	} ,
   { NULL	, 0			, NULL	, 0		}
@@ -76,6 +78,7 @@ int main(int argc,char *argv[])
   const char *host;
   const char *type;
   bool        fdump;
+  bool        fedns;
   int         option;
   int         rc;
   
@@ -88,12 +91,13 @@ int main(int argc,char *argv[])
   host       = "examle.net";
   type       = "A";
   fdump      = false;
+  fedns      = false;
   option     = 0;
   opterr     = 0; /* prevent getopt_long() from printing error messages */
   
   while(true)
   {
-    rc = getopt_long(argc,argv,"hds:",c_options,&option);
+    rc = getopt_long(argc,argv,"hdes:",c_options,&option);
     if (rc == EOF) break;
     
     switch(rc)
@@ -106,6 +110,9 @@ int main(int argc,char *argv[])
            return EXIT_FAILURE;
       case OPT_SERVER:
            serverhost = optarg;
+           break;
+      case OPT_EDNS:
+           fedns = true;
            break;
       case OPT_DUMP:
            fdump = true;
@@ -164,6 +171,38 @@ int main(int argc,char *argv[])
   query.arcount     = 0;
   query.additional  = NULL;
   
+  if (fedns)
+  {
+    /*----------------------------------------------------------------------
+    ; EDNS0RR_NSID is only sent on request, and that's the only OPT RR I've
+    ; found so far.  I'm using 0 here just as a request for further
+    ; information, which if a DNS server understands, will return further
+    ; information.
+    ;
+    ; The udp_payload is the largest UDP packet we can reasonably expect to
+    ; receive.  I'm using the value 1464 since that's about the largest UDP
+    ; packet that can fit into an Ethernet frame (20 bytes IP header, 8
+    ; bytes UDP header; RFC-1042 based Ethernet frame).
+    ;----------------------------------------------------------------------*/
+    
+    opt.code = 0;
+    opt.len  = 0;
+    opt.data = NULL;
+    
+    edns.opt.name        = ".";
+    edns.opt.type        = RR_OPT;
+    edns.opt.class       = CLASS_UNKNOWN;
+    edns.opt.ttl         = 0;
+    edns.opt.udp_payload = 1464;
+    edns.opt.version     = 0;
+    edns.opt.fdo         = false;
+    edns.opt.numopts     = 1;
+    edns.opt.opts        = &opt;
+    
+    query.arcount    = 1;
+    query.additional = &edns;
+  }
+ 
   reqsize = sizeof(request);
   rc      = dns_encode(request,&reqsize,&query);
   if (rc != RCODE_OKAY)
@@ -298,13 +337,18 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
   
   for (size_t i = 0 ; i < cnt ; i++)
   {
-    printf(
+    if (pans[i].generic.type != RR_OPT)
+    {
+      printf(
     	"%-16s\t%lu\t%s\t%s\t",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
     	dns_class_text(pans[i].generic.class),
     	dns_type_text (pans[i].generic.type)
-    );
+      );
+    }
+    else
+      printf("; OPT RR");
     
     switch(pans[i].generic.type)
     {
@@ -422,6 +466,17 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
            	pans[i].srv.weight,
            	pans[i].srv.port,
            	pans[i].srv.target
+           );
+           break;
+      case RR_OPT:
+           printf(
+           	"\n"
+           	";\tpayload = %lu\n"
+           	";\tDO      = %s\n"
+           	";\t#opts   = %lu\n",
+           	(unsigned long)pans[i].opt.udp_payload,
+           	pans[i].opt.fdo ? "true" : "false",
+           	(unsigned long)pans[i].opt.numopts
            );
            break;
            
