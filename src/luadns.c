@@ -35,8 +35,21 @@
 *			  		name = 'www.example.com',
 *			  		type = 'loc',
 *			  		class = 'in'
-*			  	}
+*			  	}, -- and optionally
+*			  additional = {
+*				name = '.',
+*				type = 'opt',
+*				udp_payload = 1464,
+*				version     = 0,
+*				fdo         = false,
+*				opts        = {
+*					{
+*					  type = 'nsid', -- or a number
+*					  data = "..."
+*					} -- and more, if required 
+*				}
 *			  }
+*			}
 *
 *		And returns a binary string that is the wire format of the
 *		query.  This binary string can then be sent over a UDP or
@@ -101,6 +114,40 @@
 
 /********************************************************************/
 
+static bool parse_edns0_opt(lua_State *L,edns0_opt_t *opt)
+{
+  const char *type;
+  size_t      size;
+  bool        rc;
+  
+  rc = true;
+  
+  lua_getfield(L,-1,"data");
+  opt->len = 0;
+  opt->data = (uint8_t *)lua_tolstring(L,-1,&opt->len);
+  lua_pop(L,1);
+  
+  lua_getfield(L,-1,"code");
+  if (lua_isnumber(L,-1))
+    opt->code = lua_tointeger(L,-1);
+  else if (lua_isstring(L,-1))
+  {
+    type = lua_tolstring(L,-1,&size);
+    
+    if ((memcmp(type,"nsid",size) == 0) || (memcmp(type,"NSID",size) == 0))
+      opt->code = EDNS0RR_NSID;
+    else
+      rc = false;
+  }
+  else
+    rc = false;
+  lua_pop(L,1);
+  
+  return rc;
+}
+
+/********************************************************************/  
+
 static int dnslua_encode(lua_State *L)
 {
   dns_question_t domain;
@@ -115,10 +162,19 @@ static int dnslua_encode(lua_State *L)
   
   memset(&domain,0,sizeof(domain));
   memset(&query, 0,sizeof(query));
-  
+
   lua_getfield(L,1,"question");
   
+  /*----------------------------------------------------------------------
+  ; the user could have passed in multiple parameters; this way, we know
+  ; where the table we just referenced got stashed on the stack.
+  ;---------------------------------------------------------------------*/
+  
   qidx = lua_gettop(L);
+  
+  /*-----------------------------------------------------------------
+  ; process the question
+  ;----------------------------------------------------------------*/
   
   if (!lua_istable(L,qidx))
     luaL_typerror(L,qidx,lua_typename(L,LUA_TTABLE));
@@ -131,6 +187,8 @@ static int dnslua_encode(lua_State *L)
   domain.type  = dns_type_value (luaL_optstring(L,-2,"A"));
   domain.class = dns_class_value(luaL_optstring(L,-1,"IN"));
 
+  lua_pop(L,4);
+  
   lua_getfield(L,1,"id");
   lua_getfield(L,1,"query");
   lua_getfield(L,1,"rd");
@@ -142,8 +200,100 @@ static int dnslua_encode(lua_State *L)
   query.opcode    = dns_op_value(luaL_optstring(L,-1,"QUERY"));  
   query.qdcount   = 1;
   query.questions = &domain;
-  len             = sizeof(buffer);
-  rc              = dns_encode(buffer,&len,&query);
+  
+  lua_pop(L,4);
+  
+  /*----------------------------------------------------------------
+  ; OPT RR support---gring grind grind
+  ;-----------------------------------------------------------------*/
+  
+  lua_getfield(L,1,"additional");
+  if (lua_isnil(L,-1))
+  {
+    len = sizeof(buffer);
+    rc  = dns_encode(buffer,&len,&query);
+  }
+  else
+  {
+    dns_answer_t edns;
+    
+    qidx = lua_gettop(L);
+    if (!lua_istable(L,qidx))
+      luaL_typerror(L,qidx,lua_typename(L,LUA_TTABLE));
+    
+    query.arcount    = 1;
+    query.additional = &edns;
+    
+    memset(&edns,0,sizeof(edns));
+    
+    lua_getfield(L,qidx,"name");
+    lua_getfield(L,qidx,"type");
+    lua_getfield(L,qidx,"udp_payload");
+    lua_getfield(L,qidx,"version");
+    lua_getfield(L,qidx,"fdo");
+    
+    edns.opt.name        = luaL_optstring(L,-5,".");
+    edns.opt.type        = dns_type_value(luaL_optstring(L,-4,"OPT"));
+    edns.opt.udp_payload = luaL_optint   (L,-3,1464);
+    edns.opt.version     = luaL_optint   (L,-2,0);
+    edns.opt.fdo         = lua_toboolean (L,-1);
+    
+    lua_pop(L,5);
+    lua_getfield(L,qidx,"opts");
+    
+    if (lua_isnil(L,-1))
+    {
+      edns.opt.numopts = 0;
+      edns.opt.opts    = NULL;
+      len              = sizeof(buffer);
+      rc               = dns_encode(buffer,&len,&query);
+    }
+    else
+    {
+      if (!lua_istable(L,-1))
+        luaL_typerror(L,-1,lua_typename(L,LUA_TTABLE));
+      
+      edns.opt.numopts = lua_objlen(L,-1);
+      
+      /*----------------------------------------------------------------
+      ; the opts table can either be one record with named fields, or an
+      ; array of records, each with named fields.
+      ;----------------------------------------------------------------*/
+      
+      if (edns.opt.numopts == 0)
+      {
+        edns0_opt_t opt;
+        
+        if (!parse_edns0_opt(L,&opt))
+          return luaL_error(L,"EDNS0 option not supported");
+          
+        edns.opt.opts = &opt;
+        len           = sizeof(buffer);
+        rc            = dns_encode(buffer,&len,&query);
+      }
+      else
+      {
+        edns0_opt_t opt[edns.opt.numopts];
+        
+        for (size_t i = 1 ; i <= edns.opt.numopts ; i++)
+        {
+          lua_pushinteger(L,i);
+          lua_gettable(L,-2);
+          
+          if (!lua_istable(L,-1))
+            return luaL_typerror(L,-1,lua_typename(L,LUA_TTABLE));
+          
+          if (!parse_edns0_opt(L,&opt[i - 1]))
+            return luaL_error(L,"EDNS0 option no supported");
+          
+          lua_pop(L,1);
+        }
+        edns.opt.opts = opt;
+        len           = sizeof(buffer);
+        rc            = dns_encode(buffer,&len,&query);
+      }
+    }
+  }
   
   if (rc != RCODE_OKAY)
   {
@@ -428,6 +578,30 @@ static void decode_answer(
       case RR_NULL:
            lua_pushlstring(L,(char *)pans[i].null.data,pans[i].null.size);
            lua_setfield(L,-2,"data");
+           break;
+           
+      case RR_OPT:
+           lua_pushinteger(L,pans[i].opt.udp_payload);
+           lua_setfield(L,-2,"udp_payload");
+           lua_pushinteger(L,pans[i].opt.version);
+           lua_setfield(L,-2,"version");
+           lua_pushboolean(L,pans[i].opt.fdo);
+           lua_setfield(L,-2,"fdo");
+           lua_createtable(L,pans[i].opt.numopts,0);
+           for (size_t j = 0 ; j < pans[i].opt.numopts ; j++)
+           {
+             lua_pushinteger(L,i + 1);
+             lua_createtable(L,0,2);
+             lua_pushlstring(L,(char *)pans[i].opt.opts[j].data,pans[i].opt.opts[j].len);
+             lua_setfield(L,-2,"data");
+             if (pans[i].opt.opts[j].code == EDNS0RR_NSID)
+               lua_pushstring(L,"NSID");
+             else
+               lua_pushinteger(L,pans[i].opt.opts[i].code);
+             lua_setfield(L,-2,"code");
+             lua_settable(L,-3);
+           }
+           lua_setfield(L,-2,"opts");
            break;
 
       default:
