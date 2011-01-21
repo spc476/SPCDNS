@@ -340,7 +340,7 @@ static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
     if (pans[i].generic.type != RR_OPT)
     {
       printf(
-    	"%-16s\t%lu\t%s\t%s\t",
+    	"%-16s\t%5lu\t%s\t%s\t",
     	pans[i].generic.name,
     	(unsigned long)pans[i].generic.ttl,
     	dns_class_text(pans[i].generic.class),
