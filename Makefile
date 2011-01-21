@@ -45,7 +45,7 @@ RANLIB = ranlib
 
 #=================================================
 
-dotest : built/dotest built/doedns
+dotest : built/dotest 
 
 lua : built/dns.so
 
@@ -98,19 +98,6 @@ built/dotest : built/test.o 		\
 built/test.o : src/test.c src/dns.h src/mappings.h src/netsimple.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-built/doedns : built/testedns.o		\
-		built/codec.o		\
-		built/mappings.o	\
-		built/netsimple.o
-	$(CC) -o $@ built/testedns.o	\
-		built/codec.o		\
-		built/mappings.o	\
-		built/netsimple.o	\
-		$(LFLAGS)
-
-built/testedns.o : src/testedns.c src/dns.h src/mappings.h src/netsimple.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-		
 #=============================================================
 
 built/dns.so : built/luadns.o 		\
