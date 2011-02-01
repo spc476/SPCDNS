@@ -496,9 +496,10 @@ static void usage(const char *prog)
   
   fprintf(
   	stderr,
-  	"usage: %s [-h] [-d] [-s server] host [type]\n"
+  	"usage: %s [-h] [-d] [-e] [-s server] host [type]\n"
   	"\t-h\t\tusage text (this text)\n"
   	"\t-d\t\tdump raw DNS queries\n"
+  	"\t-e\t\tInclude EDNS0 RR with query\n"
   	"\t-s server\tIP address of server\n"
   	"\n"
   	"\ttype\t\tRR DNS type\n",
