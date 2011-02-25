@@ -102,7 +102,7 @@ struct idns_header
   uint16_t ancount;
   uint16_t nscount;
   uint16_t arcount;
-} __attribute ((packed));
+} __attribute__ ((packed));
 
 typedef struct idns_context
 {
