@@ -235,7 +235,8 @@ typedef enum dns_rcode
   RCODE_BADTRUC         =   22,	/* RFC-4635 */  
   RCODE_PRIVATE         = 3841,	/* RFC-2929 */
   
-  RCODE_NO_MEMORY
+  RCODE_NO_MEMORY,
+  RCODE_BAD_STRING,
 } dns_rcode_t;
 
 typedef enum edns0_label

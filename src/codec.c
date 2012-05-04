@@ -119,6 +119,7 @@ static        dns_rcode_t  dns_encode_domain	(block_t *const restrict,const dns_
 static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t    *const restrict) __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t    *const restrict) __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_naptr	(block_t *const restrict,const dns_naptr_t    *const restrict) __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
@@ -264,14 +265,33 @@ dns_rcode_t dns_encode(
       return rc;
   }
   
-  /*------------------------------------------------------------
-  ; at some point we may want to encode answers, nameservers,
-  ; and additional records, but for now, we skip 'em, except
-  ; for EDNS stuff.
-  ;-----------------------------------------------------------*/
+  /*----------------------------------------------------------------
+  ; I need to encode NAPTRs, so that's all we can encode as an
+  ; answer for now.  We also support an addtional records for the
+  ; EDNS stuff, but that's it for now.
+  ;---------------------------------------------------------------*/
   
-  assert(query->ancount == 0);
+  for (size_t i = 0 ; i < query->ancount ; i++)
+  {
+    switch(query->answers[i].generic.type)
+    {
+      case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
+      default:       assert(0); break;
+    }
+    
+    if (rc != RCODE_OKAY)
+      return rc;
+  }
+ 
+  /*---------------------------------------------
+  ; skip name sever records
+  ;----------------------------------------------*/
+  
   assert(query->nscount == 0);
+  
+  /*------------------------------------------------------
+  ; EDNS only supported additional record type for now
+  ;-------------------------------------------------------*/
   
   for (size_t i = 0 ; i < query->arcount ; i++)
   {
@@ -479,6 +499,114 @@ static inline dns_rcode_t encode_rr_opt(
   rdlen     = (size_t)(data->ptr - prdlen) - sizeof(uint16_t);
   prdlen[0] = (rdlen >> 8) & 0xFF;
   prdlen[1] = (rdlen     ) & 0xFF;
+  
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline dns_rcode_t encode_rr_naptr(
+	block_t           *const restrict data,
+	const dns_naptr_t *const restrict naptr
+)
+{
+  size_t   len;
+  size_t   flaglen;
+  size_t   servicelen;
+  size_t   reglen;
+  size_t   replen;
+  size_t   rdlen;
+  uint8_t *back_ptr;
+  uint8_t *start;
+  uint8_t *end;
+  uint8_t *p;
+  
+  assert(pblock_okay(data));
+  assert(naptr              != NULL);
+  assert(naptr->type        == RR_NAPTR);
+  assert(naptr->class       == CLASS_IN);
+  assert(naptr->order       >= 0);
+  assert(naptr->order       <= UINT16_MAX);
+  assert(naptr->preference  >= 0);
+  assert(naptr->preference  <= UINT16_MAX);
+  assert(naptr->flags       != NULL);
+  assert(naptr->services    != NULL);
+  assert(naptr->regexp      != NULL);
+  assert(naptr->replacement != NULL);
+  
+  len        = strlen(naptr->name);
+  flaglen    = strlen(naptr->flags);
+  servicelen = strlen(naptr->services);
+  reglen     = strlen(naptr->regexp);
+  replen     = strlen(naptr->replacement);
+  rdlen      = 4 + flaglen    + 1 
+                 + servicelen + 1
+                 + reglen     + 1
+                 + replen     + 1;
+                 
+  if ((flaglen > 255) || (servicelen > 255) || (reglen > 255) || (replen > 255))
+    return RCODE_BAD_STRING;
+  
+  if (naptr->name[len - 1] != '.') /* name must be fully qualified */
+    return RCODE_NAME_ERROR;
+  
+  if (data->size < len + 1 
+  		   + 10	/* type, class, ttl, rdlen */
+  		   + rdlen)
+    return RCODE_NO_MEMORY;
+  
+  memcpy(&data->ptr[1],naptr->name,len);
+  data->size -= (len + 1 + 10 + rdlen);
+  
+  back_ptr = data->ptr;
+  start    = &data->ptr[1];
+  end      = &data->ptr[1];
+  
+  while(len)
+  {
+    size_t delta;
+    
+    end = memchr(start,'.',len);
+    assert(end != NULL);	/* must be true---checked above */
+    delta = (size_t)(end - start);
+    assert(delta <= len);
+    
+    if (delta > 63)
+      return RCODE_NAME_ERROR;
+    
+    *back_ptr  = (uint8_t)delta;
+    back_ptr   = end;
+    start      = end + 1;
+    len       -= (delta + 1);
+  }
+  
+  *back_ptr = 0;
+  data->ptr = end + 1;
+  
+  write_uint16(data,naptr->type);
+  write_uint16(data,naptr->class);
+  write_uint32(data,naptr->ttl);
+  write_uint16(data,rdlen);
+  write_uint16(data,naptr->order);
+  write_uint16(data,naptr->preference);
+  
+  p = data->ptr;
+  
+  /*------------------------------------------------------------------------
+  ; XXX - replacement is a domain name, and thus, needs to be encoded as
+  ; such.  But seeing that for my current use case, it's always '.', which
+  ; is the root domain, it will have to be set as "" else the receiving end
+  ; will puke.
+  ;
+  ; This needs to be fixed, but I want something working right now.
+  ;------------------------------------------------------------------------*/
+  
+  *p++ = flaglen;    memcpy(p,naptr->flags,      flaglen);    p += flaglen;
+  *p++ = servicelen; memcpy(p,naptr->services,   servicelen); p += servicelen;
+  *p++ = reglen;     memcpy(p,naptr->regexp,     reglen);     p += reglen;
+  *p++ = replen;     memcpy(p,naptr->replacement,replen);     p += replen;
+  
+  data->ptr = p;
   
   return RCODE_OKAY;
 }
