@@ -115,11 +115,13 @@ typedef struct idns_context
 
 /***********************************************************************/
 
-static        dns_rcode_t  dns_encode_domain	(block_t *const restrict,const dns_question_t *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t    *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t    *const restrict) __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_domain	(block_t *const restrict,const char           *restrict,      size_t) __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_string	(block_t *const restrict,const char           *restrict,const size_t) __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_question  (block_t *const restrict,const dns_question_t *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_rr_naptr	(block_t *const restrict,const dns_naptr_t    *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_naptr	(block_t *const restrict,const dns_naptr_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
@@ -260,7 +262,7 @@ dns_rcode_t dns_encode(
   
   for (size_t i = 0 ; i < query->qdcount ; i++)
   {
-    rc = dns_encode_domain(&data,&query->questions[i]);
+    rc = dns_encode_question(&data,&query->questions[i]);
     if (rc != RCODE_OKAY)
       return rc;
   }
@@ -312,32 +314,27 @@ dns_rcode_t dns_encode(
 /*********************************************************************/
 
 static dns_rcode_t dns_encode_domain(
-	block_t              *const restrict data,
-	const dns_question_t *const restrict pquestion
+	block_t    *const restrict data,
+	const char *restrict       name,
+	size_t                     len
 )
 {
-  size_t   len;
-  size_t   delta;
   uint8_t *start;
   uint8_t *end;
   uint8_t *back_ptr;
   
   assert(pblock_okay(data));
-  assert(pquestion        != NULL);
-  assert(pquestion->name  != NULL);
-  assert(pquestion->class >= 1);
-  assert(pquestion->class <= 4);
+  assert(name != NULL);
+  assert(len  >  0);
   
-  len = strlen(pquestion->name);
-  
-  if (pquestion->name[len - 1] != '.')	/* name must be fully qualified */
+  if (name[len - 1] != '.')	/* name must be fully qualified */
     return RCODE_NAME_ERROR;
   
-  if (data->size < len + 5)	/* not enough space */
+  if (data->size < len + 1)
     return RCODE_NO_MEMORY;
   
-  memcpy(&data->ptr[1],pquestion->name,len);
-  data->size -= (len + 5);
+  memcpy(&data->ptr[1],name,len);
+  data->size -= (len + 1);
   
   back_ptr = data->ptr;
   start    = &data->ptr[1];
@@ -345,29 +342,74 @@ static dns_rcode_t dns_encode_domain(
   
   while(len)
   {
-    end   = memchr(start,'.',len);
+    size_t delta;
+    
+    end = memchr(start,'.',len);
     assert(end != NULL);	/* must be true---checked above */
-  
+    
     delta = (size_t)(end - start);
     assert(delta <= len);
-    
     if (delta > 63)
       return RCODE_NAME_ERROR;
-  
-    *back_ptr  = (uint8_t)delta;
-    back_ptr   = end;
-    start      = end + 1;
+    
+    *back_ptr = (uint8_t)delta;
+    back_ptr  = end;
+    start     = end + 1;
     len       -= (delta + 1);
   }
   
-  *back_ptr  = 0;
-  data->ptr  = end + 1;
+  *back_ptr = '\0';
+  data->ptr = end + 1;
   
-  data->ptr[0] = (pquestion->type  >> 8);
-  data->ptr[1] = (pquestion->type  &  0xFF);
-  data->ptr[2] = (pquestion->class >> 8);
-  data->ptr[3] = (pquestion->class &  0xFF);
-  data->ptr += 4;
+  return RCODE_OKAY;
+}
+
+/*******************************************************************/
+
+static dns_rcode_t dns_encode_string(
+	block_t      *const restrict data,
+	const char   *restrict       text,
+	const size_t                 size
+)
+{
+  assert(pblock_okay(data));
+  assert(text != NULL);
+
+  if (size > 255)            return RCODE_BAD_STRING;
+  if (data->size < size + 1) return RCODE_NO_MEMORY;
+  
+  *data->ptr++ = size;
+  memcpy(data->ptr,text,size);
+  data->ptr += size;
+  data->size -= (size + 1);
+  
+  return RCODE_OKAY;
+}
+
+/******************************************************************/
+
+static dns_rcode_t dns_encode_question(
+	block_t              *const restrict data,
+	const dns_question_t *const restrict pquestion
+)
+{
+  int rc;
+  
+  assert(pblock_okay(data));
+  assert(pquestion        != NULL);
+  assert(pquestion->name  != NULL);
+  assert(pquestion->class >= 1);
+  assert(pquestion->class <= 4);
+    
+  rc = dns_encode_domain(data,pquestion->name,strlen(pquestion->name));
+  if (rc != RCODE_OKAY)
+    return rc;
+  
+  if (data->size < 4)
+    return RCODE_NO_MEMORY;
+  
+  write_uint16(data,pquestion->type);
+  write_uint16(data,pquestion->class);
   
   return RCODE_OKAY;
 }
@@ -459,7 +501,7 @@ static inline dns_rcode_t encode_rr_opt(
   if (data->size < 11)
     return RCODE_NO_MEMORY;
 
-  data->ptr[0] = 00;	/* root domain */
+  data->ptr[0] = '\0';	/* root domain */
   data->ptr++;
   data->size--;
 
@@ -510,16 +552,9 @@ static inline dns_rcode_t encode_rr_naptr(
 	const dns_naptr_t *const restrict naptr
 )
 {
-  size_t   len;
-  size_t   flaglen;
-  size_t   servicelen;
-  size_t   reglen;
-  size_t   replen;
-  size_t   rdlen;
-  uint8_t *back_ptr;
-  uint8_t *start;
-  uint8_t *end;
-  uint8_t *p;
+  dns_rcode_t  rc;
+  uint8_t     *prdlen;
+  uint8_t     *pdata;
   
   assert(pblock_okay(data));
   assert(naptr              != NULL);
@@ -534,80 +569,41 @@ static inline dns_rcode_t encode_rr_naptr(
   assert(naptr->regexp      != NULL);
   assert(naptr->replacement != NULL);
   
-  len        = strlen(naptr->name);
-  flaglen    = strlen(naptr->flags);
-  servicelen = strlen(naptr->services);
-  reglen     = strlen(naptr->regexp);
-  replen     = strlen(naptr->replacement);
-  rdlen      = 4 + flaglen    + 1 
-                 + servicelen + 1
-                 + reglen     + 1
-                 + replen     + 1;
-                 
-  if ((flaglen > 255) || (servicelen > 255) || (reglen > 255) || (replen > 255))
-    return RCODE_BAD_STRING;
+  rc = dns_encode_domain(data,naptr->name,strlen(naptr->name));
+  if (rc != RCODE_OKAY) return rc;
   
-  if (naptr->name[len - 1] != '.') /* name must be fully qualified */
-    return RCODE_NAME_ERROR;
-  
-  if (data->size < len + 1 
-  		   + 10	/* type, class, ttl, rdlen */
-  		   + rdlen)
+  if (data->size < 14)	/* type, class, ttl */
     return RCODE_NO_MEMORY;
-  
-  memcpy(&data->ptr[1],naptr->name,len);
-  data->size -= (len + 1 + 10 + rdlen);
-  
-  back_ptr = data->ptr;
-  start    = &data->ptr[1];
-  end      = &data->ptr[1];
-  
-  while(len)
-  {
-    size_t delta;
-    
-    end = memchr(start,'.',len);
-    assert(end != NULL);	/* must be true---checked above */
-    delta = (size_t)(end - start);
-    assert(delta <= len);
-    
-    if (delta > 63)
-      return RCODE_NAME_ERROR;
-    
-    *back_ptr  = (uint8_t)delta;
-    back_ptr   = end;
-    start      = end + 1;
-    len       -= (delta + 1);
-  }
-  
-  *back_ptr = 0;
-  data->ptr = end + 1;
   
   write_uint16(data,naptr->type);
   write_uint16(data,naptr->class);
   write_uint32(data,naptr->ttl);
-  write_uint16(data,rdlen);
+  
+  /*-------------------------------------------------------------------------
+  ; we need to come back to the rdlen after we've written the data.  We save
+  ; a pointer to this point in the output block, allocate enough space for
+  ; it, then save the start of the space we're about to write to, so later
+  ; we can come back and write the length.
+  ;-------------------------------------------------------------------------*/
+  
+  prdlen      = data->ptr;
+  data->ptr  += sizeof(uint16_t);
+  data->size -= sizeof(uint16_t);
+  pdata       = data->ptr;
+
   write_uint16(data,naptr->order);
   write_uint16(data,naptr->preference);
   
-  p = data->ptr;
+  if ((rc = dns_encode_string(data,naptr->flags,   strlen(naptr->flags)))          != RCODE_OKAY) return rc;
+  if ((rc = dns_encode_string(data,naptr->services,strlen(naptr->services)))       != RCODE_OKAY) return rc;
+  if ((rc = dns_encode_string(data,naptr->regexp,  strlen(naptr->regexp)))         != RCODE_OKAY) return rc;
+  if ((rc = dns_encode_domain(data,naptr->replacement,strlen(naptr->replacement))) != RCODE_OKAY) return rc;
+
+  /*-----------------------------------------------------
+  ; now write the length of the data we've just written
+  ;-------------------------------------------------------*/
   
-  /*------------------------------------------------------------------------
-  ; XXX - replacement is a domain name, and thus, needs to be encoded as
-  ; such.  But seeing that for my current use case, it's always '.', which
-  ; is the root domain, it will have to be set as "" else the receiving end
-  ; will puke.
-  ;
-  ; This needs to be fixed, but I want something working right now.
-  ;------------------------------------------------------------------------*/
-  
-  *p++ = flaglen;    memcpy(p,naptr->flags,      flaglen);    p += flaglen;
-  *p++ = servicelen; memcpy(p,naptr->services,   servicelen); p += servicelen;
-  *p++ = reglen;     memcpy(p,naptr->regexp,     reglen);     p += reglen;
-  *p++ = replen;     memcpy(p,naptr->replacement,replen);     p += replen;
-  
-  data->ptr = p;
-  
+  write_uint16(&(block_t){ .ptr = prdlen , .size = 2 },data->ptr - pdata);
   return RCODE_OKAY;
 }
 
