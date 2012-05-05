@@ -327,6 +327,24 @@ static dns_rcode_t dns_encode_domain(
   assert(name != NULL);
   assert(len  >  0);
   
+  /*------------------------------------------------------------------------
+  ; The root domain is ".", which internally is represented by a single NUL
+  ; byte.  The normal route through this code will encode the root domain as
+  ; two NUL bytes, which is incorrect.  So we special case it.
+  ;------------------------------------------------------------------------*/
+  
+  if (len == 1)
+  {
+    if (data->size == 0)
+      return RCODE_NO_MEMORY;
+    
+    assert(*name == '.');
+    
+    *data->ptr++ = 0;
+    data->size--;
+    return RCODE_OKAY;
+  }
+  
   if (name[len - 1] != '.')	/* name must be fully qualified */
     return RCODE_NAME_ERROR;
   
@@ -358,7 +376,7 @@ static dns_rcode_t dns_encode_domain(
     len       -= (delta + 1);
   }
   
-  *back_ptr = '\0';
+  *back_ptr = 0;
   data->ptr = end + 1;
   
   return RCODE_OKAY;
