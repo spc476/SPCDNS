@@ -351,10 +351,46 @@ static dns_rcode_t dns_encode_domain(
   
   if (data->size < len + 1)
     return RCODE_NO_MEMORY;
+
+  /*----------------------------------------------------------------------
+  ; Okay, here's how this works.  We have a domain name: 
+  ;
+  ;	lucy.roswell.conman.org.
+  ;
+  ; We copy it to the destination buffer, but one octet in, because we need
+  ; to record the length of each segment:
+  ;
+  ;	|   |'l'|'u'|'c'|'y'|'.'|'r'|...
+  ;
+  ; back_ptr will always point to the location to the length octet, whereas
+  ; start will point to the start of the segment, and end will always point
+  ; to the next '.' character (which is guarenteed by the checks above).
+  ;
+  ; Okay, so then for our string, we find the next '.':
+  ;
+  ;	|   |'l'|'u'|'c'|'y'|'.'|'r'|...
+  ;       ^   ^               ^
+  ;       |   |               \-- end
+  ;	  |   \------------------ start
+  ;	  \---------------------- back_ptr
+  ;
+  ; We then calculate the length of the segment, and write that value into
+  ; the location at back_ptr:
+  ;
+  ;	| 4 |'l'|'u'|'c'|'y'|'.'|'r'|...
+  ;
+  ; We then advance back_ptr to end, set start to the next character and
+  ; keep going while we have characters left.  Upon exit from the loop,
+  ; back_ptr points to the last '.' in the name, which is then set to '\0'
+  ; to designate the root pointer (and thus, the end of the domain name).
+  ;
+  ; It's because of this algorithm that we had to special case the root
+  ; domain designation.  I'll leave that as an exercise to the reader.
+  ;--------------------------------------------------------------------*/
   
   memcpy(&data->ptr[1],name,len);
   data->size -= (len + 1);
-  
+
   back_ptr = data->ptr;
   start    = &data->ptr[1];
   end      = &data->ptr[1];
