@@ -338,8 +338,9 @@ static dns_rcode_t dns_encode_domain(
     if (data->size == 0)
       return RCODE_NO_MEMORY;
     
-    assert(*name == '.');
-    
+    if (*name != '.')
+      return RCODE_NAME_ERROR;
+      
     *data->ptr++ = 0;
     data->size--;
     return RCODE_OKAY;
