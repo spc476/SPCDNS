@@ -278,7 +278,7 @@ dns_rcode_t dns_encode(
     switch(query->answers[i].generic.type)
     {
       case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
-      default:       assert(0); break;
+      default:       assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
     }
     
     if (rc != RCODE_OKAY)
@@ -300,7 +300,7 @@ dns_rcode_t dns_encode(
     switch(query->additional[i].generic.type)
     {
       case RR_OPT: rc = encode_rr_opt(&data,query,&query->additional[i].opt); break;
-      default:     assert(0); break;
+      default:     assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
     }
     
     if (rc != RCODE_OKAY)
