@@ -22,8 +22,8 @@
 # Linux
 #================================================
 
-CC     = gcc -g -std=c99
-CFLAGS = -Wall -Wextra -pedantic
+CC     = gcc -std=c99
+CFLAGS = -Wall -Wextra -pedantic -g
 #CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
 PIC    = -fpic
 LFLAGS = -lm 
