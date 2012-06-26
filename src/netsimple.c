@@ -131,7 +131,7 @@ int net_request(
   {
     err = errno;
     close(sock);
-    return errno;
+    return err;
   }
   
   if (rc == 0)
