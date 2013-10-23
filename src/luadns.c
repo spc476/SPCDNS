@@ -658,6 +658,10 @@ static int dnslua_decode(lua_State *L)
   lua_createtable(L,0,0);
   tab = lua_gettop(L);
   
+  lua_pushinteger(L,result->id);
+  lua_setfield(L,tab,"id");
+  lua_pushboolean(L,result->query);
+  lua_setfield(L,tab,"query");
   lua_pushboolean(L,result->aa);
   lua_setfield(L,tab,"aa");
   lua_pushboolean(L,result->tc);
@@ -758,7 +762,7 @@ int luaopen_org_conman_dns(lua_State *L)
   lua_pushliteral(L,"Encode/Decode and send queries via DNS");
   lua_setfield(L,-2,"DESCRIPTION");
   
-  lua_pushliteral(L,"1.0.5");
+  lua_pushliteral(L,"1.0.6");
   lua_setfield(L,-2,"_VERSION");
   
   return 1;
