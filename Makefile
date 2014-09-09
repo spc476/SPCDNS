@@ -57,12 +57,12 @@ all : built/dotest built/dns.so built/libspcdns.a built/libspcdns.so
 
 #==================================================
 
-built/libspcdns.a : built/codec.o built/mappings.o
-	$(AR) $@ built/codec.o built/mappings.o
+built/libspcdns.a : built/codec.o built/mappings.o built/output.o
+	$(AR) $@ built/codec.o built/mappings.o built/output.o
 	$(RANLIB) $@
 
-built/libspcdns.so : built/codec.pic.o built/mappings.pic.o
-	$(CC) -shared -o $@ built/codec.pic.o built/mappings.pic.o 
+built/libspcdns.so : built/codec.pic.o built/mappings.pic.o built/output.pic.o
+	$(CC) -shared -o $@ built/codec.pic.o built/mappings.pic.o built/output.pic.o
 	
 built/codec.o : src/codec.c src/dns.h
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -117,7 +117,6 @@ built/dns.so : built/luadns.o 		\
 		built/codec.pic.o	\
 		built/mappings.pic.o 	\
 		built/netsimple.pic.o
-
 	
 built/luadns.o : src/luadns.c src/dns.h src/mappings.h
 	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
