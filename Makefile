@@ -82,20 +82,28 @@ built/netsimple.o : src/netsimple.c src/netsimple.h
 built/netsimple.pic.o : src/netsimple.c src/netsimple.h
 	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
 
+built/output.o : src/output.c src/output.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+built/output.pic.o : src/output.c src/output.h
+	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
+
 #==============================================================
 
 
 built/dotest : built/test.o 		\
 		built/codec.o 		\
 		built/mappings.o	\
-		built/netsimple.o
+		built/netsimple.o	\
+		built/output.o
 	$(CC) -o $@ built/test.o 	\
 		built/codec.o		\
 		built/mappings.o	\
 		built/netsimple.o	\
+		built/output.o		\
 		$(LFLAGS)
 
-built/test.o : src/test.c src/dns.h src/mappings.h src/netsimple.h
+built/test.o : src/test.c src/dns.h src/mappings.h src/netsimple.h src/output.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 #=============================================================
