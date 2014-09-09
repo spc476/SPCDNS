@@ -49,6 +49,14 @@ In the "src/" directory you'll find the following:
 		testing.  This uses UDP and is thus limited to a query of
 		512 bytes or less.
 
+	output.h
+	output.c
+
+		These files provide definitions and implementations for
+		utility functions to print query results using C stdio.
+		It was factored out of the unit tests for debugging client
+		applications making using of libspcdns.a and libspcdns.so.
+
 	luadns.c
 
 		Lua [2] bindings for this library.  It exports the routines
