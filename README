@@ -146,6 +146,60 @@ The file "lua/test.lua" shows the best use of the Lua bindings (and is close
 enough to what "src/test.c" does).  Better network handling could be done
 using LuaSocket, but for that, you are on your own.
 
+UNIT TESTING
+
+The dotest program allows unit-testing SPCDNS when making changes or
+integrating it with client applications.
+
+Note: the unit test program, dotest, requires a fully-qualified canonical DNS
+name. This means "www.example.com." NOT "www.example.com". If this is not
+present, the dns_encode_domain function returns RCODE_NAME_ERROR and the test
+will fail with a mysterious error message.
+
+Sample Output:
+
+This is an example of a working run, querying for Google's web server, using a
+Google Public DNS Server [4].
+
+$ ./dotest -d -s 8.8.8.8 www.google.com.
+OUTGOING:
+
+... MEMORY DUMP...
+
+INCOMING:
+
+... MEMORY DUMP...
+
+Bytes used: 680
+
+; Questions            = 1
+; Answers              = 5
+; Name Servers         = 0
+; Additional Records   = 0
+; Authoritative Result = false
+; Truncated Result     = false
+; Recursion Desired    = true
+; Recursion Available  = true
+; Result               = No error
+
+;;; QUESTIONS
+
+;www.google.com. IN A
+
+;;; ANSWERS
+
+www.google.com.           185   IN      A       74.125.239.49
+www.google.com.           185   IN      A       74.125.239.52
+www.google.com.           185   IN      A       74.125.239.50
+www.google.com.           185   IN      A       74.125.239.51
+www.google.com.           185   IN      A       74.125.239.48
+
+;;; NAMESERVERS
+
+
+;;; ADDITIONAL
+
+
 A FINAL NOTE
 
 If you have any problems, questions or enhancements, please send them my
