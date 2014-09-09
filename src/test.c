@@ -41,6 +41,7 @@
 #include "dns.h"
 #include "mappings.h"
 #include "netsimple.h"
+#include "output.h"
 
 enum
 {
@@ -54,10 +55,7 @@ enum
 
 /************************************************************************/
 
-static void print_question	(const char *,dns_question_t *,size_t);
-static void print_answer	(const char *,dns_answer_t   *,size_t);
 static void usage		(const char *);
-static void dump_memory		(FILE *,const void *,size_t,size_t);
 
 /************************************************************************/
 
@@ -215,7 +213,7 @@ int main(int argc,char *argv[])
   if (fdump)
   {  
     printf("OUTGOING:\n\n");
-    dump_memory(stdout,request,reqsize,0);
+    dns_dump_memory(stdout,request,reqsize,0);
   }
 
   /*-----------------------------------------------------------------------
@@ -245,7 +243,7 @@ int main(int argc,char *argv[])
   if (fdump)
   {
     printf("\nINCOMING:\n\n");
-    dump_memory(stdout,reply,replysize,0);
+    dns_dump_memory(stdout,reply,replysize,0);
   }
 
   /*----------------------------------------------------------------------
@@ -298,194 +296,12 @@ int main(int argc,char *argv[])
   	dns_rcode_text(result->rcode)
   );
   	
-  print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
-  print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
-  print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
-  print_answer  ("ADDITIONAL"  ,result->additional  ,result->arcount);
+  dns_print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
+  dns_print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
+  dns_print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
+  dns_print_answer  ("ADDITIONAL"  ,result->additional  ,result->arcount);
 
   return EXIT_SUCCESS;
-}
-
-/************************************************************************/
-
-static void print_question(const char *tag,dns_question_t *pquest,size_t cnt)
-{
-  assert(tag    != NULL);
-  assert(pquest != NULL);
-  
-  printf("\n;;; %s\n\n",tag);
-  for (size_t i = 0 ; i < cnt ; i++)
-  {
-    printf(
-    	";%s %s %s\n",
-    	pquest[i].name,
-    	dns_class_text(pquest[i].class),
-    	dns_type_text (pquest[i].type)
-    );
-  }
-}
-
-/***********************************************************************/
-
-static void print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
-{
-  char ipaddr[INET6_ADDRSTRLEN];
-  
-  assert(tag  != NULL);
-  assert(pans != NULL);
-  
-  printf("\n;;; %s\n\n",tag);
-  
-  for (size_t i = 0 ; i < cnt ; i++)
-  {
-    if (pans[i].generic.type != RR_OPT)
-    {
-      printf(
-    	"%-16s\t%5lu\t%s\t%s\t",
-    	pans[i].generic.name,
-    	(unsigned long)pans[i].generic.ttl,
-    	dns_class_text(pans[i].generic.class),
-    	dns_type_text (pans[i].generic.type)
-      );
-    }
-    else
-      printf("; OPT RR");
-    
-    switch(pans[i].generic.type)
-    {
-      case RR_NS: 
-           printf("%s",pans[i].ns.nsdname);
-           break;
-      case RR_A:
-           inet_ntop(AF_INET,&pans[i].a.address,ipaddr,sizeof(ipaddr));
-           printf("%s",ipaddr);
-           break;
-      case RR_AAAA:
-           inet_ntop(AF_INET6,&pans[i].aaaa.address,ipaddr,sizeof(ipaddr));
-           printf("%s",ipaddr);
-           break;
-      case RR_CNAME:
-           printf("%s",pans[i].cname.cname);
-           break;
-      case RR_MX:
-           printf("%5d %s",pans[i].mx.preference,pans[i].mx.exchange);
-           break;
-      case RR_PTR:
-           printf("%s",pans[i].ptr.ptr);
-           break;
-      case RR_HINFO:
-           printf("\"%s\" \"%s\"",pans[i].hinfo.cpu,pans[i].hinfo.os);
-           break;
-      case RR_MINFO:
-           printf("(\n\t\t\"%s\"\n\t\t\"%s\" )",pans[i].minfo.rmailbx,pans[i].minfo.emailbx);
-           break;
-      case RR_SPF:
-      case RR_TXT:
-           if (pans[i].txt.len < 30)
-             printf("\"%s\"",pans[i].txt.text);
-           else
-           {
-             size_t len;
-             int    max;
-             size_t off;
-             
-             printf("(");
-             len = pans[i].txt.len;
-             off = 0;
-             
-             while(len)
-             {
-               max = (len > 64) ? 64 : (int)len;
-               printf("\n\t\"%*.*s\"",max,max,&pans[i].txt.text[off]);
-               off += max;
-               len -= max;
-             }
-             
-             printf("\n\t\t)\n");
-           }
-           break;
-      case RR_SOA:
-           printf(
-           	"%s %s (\n"
-           	"\t\t%10lu   ; Serial\n"
-           	"\t\t%10lu   ; Refresh\n"
-           	"\t\t%10lu   ; Retry\n"
-           	"\t\t%10lu   ; Expire\n"
-           	"\t\t%10lu ) ; Miminum\n",
-           	pans[i].soa.mname,
-           	pans[i].soa.rname,
-           	(unsigned long)pans[i].soa.serial,
-           	(unsigned long)pans[i].soa.refresh,
-           	(unsigned long)pans[i].soa.retry,
-           	(unsigned long)pans[i].soa.expire,
-           	(unsigned long)pans[i].soa.minimum
-           );
-           break;
-      case RR_NAPTR:
-           printf(
-           	"%5d %5d (\n"
-           	"\t\t\"%s\"\n"
-           	"\t\t\"%s\"\n"
-           	"\t\t\"%s\"\n"
-           	"\t\t%s )\n",
-           	pans[i].naptr.order,
-           	pans[i].naptr.preference,
-           	pans[i].naptr.flags,
-           	pans[i].naptr.services,
-           	pans[i].naptr.regexp,
-           	pans[i].naptr.replacement
-           );
-           break;
-      case RR_LOC:
-           printf(
-           	"(\n"
-           	"\t\t%3d %2d %2d %s ; Latitude\n"
-           	"\t\t%3d %2d %2d %s ; Longitude\n"
-           	"\t\t%11ld ; Altitude\n"
-           	"\t\t%11lu ; Size\n"
-           	"\t\t%11lu ; Horizontal Precision\n"
-           	"\t\t%11lu ; Vertical Precision\n"
-           	"\t\t)\n",
-           	pans[i].loc.latitude.deg,
-           	pans[i].loc.latitude.min,
-           	pans[i].loc.latitude.sec,
-           	pans[i].loc.latitude.nw ? "N" : "S",
-           	pans[i].loc.longitude.deg,
-           	pans[i].loc.longitude.min,
-           	pans[i].loc.longitude.sec,
-           	pans[i].loc.longitude.nw ? "W" : "E",
-           	pans[i].loc.altitude,
-           	pans[i].loc.size,
-           	pans[i].loc.horiz_pre,
-           	pans[i].loc.vert_pre
-           );
-           break;
-      case RR_SRV:
-           printf(
-           	"%5d %5d %5d %s",
-           	pans[i].srv.priority,
-           	pans[i].srv.weight,
-           	pans[i].srv.port,
-           	pans[i].srv.target
-           );
-           break;
-      case RR_OPT:
-           printf(
-           	"\n"
-           	";\tpayload = %lu\n"
-           	";\tDO      = %s\n"
-           	";\t#opts   = %lu\n",
-           	(unsigned long)pans[i].opt.udp_payload,
-           	pans[i].opt.fdo ? "true" : "false",
-           	(unsigned long)pans[i].opt.numopts
-           );
-           break;
-           
-      default:
-           break;
-    }
-    printf("\n");
-  }
 }
 
 /*********************************************************************/
@@ -508,56 +324,3 @@ static void usage(const char *prog)
 }
 
 /**********************************************************************/
-
-#define LINESIZE	16
-
-static void dump_memory(FILE *out,const void *data,size_t size,size_t offset)
-{
-  const unsigned char *block = data;
-  char                 ascii[LINESIZE + 1];
-  int                  skip;
-  int                  j;
-  
-  assert(out   != NULL);
-  assert(block != NULL);
-  assert(size  >  0);
-  
-  while(size > 0)
-  {
-    fprintf(out,"%08lX: ",(unsigned long)offset);
-    
-    for (skip = offset % LINESIZE , j = 0 ; skip ; j++ , skip--)
-    {
-      fputs("   ",out);
-      ascii[j] = ' ';
-    }
-    
-    do
-    {
-      fprintf(out,"%02x ",*block);
-      if (isprint(*block))
-        ascii[j] = *block;
-      else
-        ascii[j] = '.';
-      
-      block++;
-      offset++;
-      j++;
-      size--;
-    } while((j < LINESIZE) && (size > 0));
-    
-    ascii[j] = '\0';
-
-    if (j < LINESIZE)
-    {
-      int i;
-      
-      for (i = j ; i < LINESIZE ; i++)
-        fputs("   ",out);
-    }
-    fprintf(out,"%s\n",ascii);
-  }
-}
-
-/**********************************************************************/
-
