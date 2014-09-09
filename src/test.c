@@ -88,7 +88,7 @@ int main(int argc,char *argv[])
   ;------------------------------------------------------------------*/
   
   serverhost = "127.0.0.1";
-  host       = "examle.net";
+  host       = "example.net";
   type       = "A";
   fdump      = false;
   fedns      = false;
