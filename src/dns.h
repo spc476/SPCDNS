@@ -49,6 +49,11 @@
 #ifndef DNS_H
 #define DNS_H
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <arpa/inet.h>
+
 #ifdef __cplusplus
 #  define class dclass
 #  define restrict
