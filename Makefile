@@ -49,21 +49,28 @@ dotest : built/dotest
 
 lua : built/dns.so
 
-lib : built/libspcdns.a
+lib : built/libspcdns.a built/libspcdnsmisc.a
 
-so : built/libspcdns.so
+so : built/libspcdns.so built/libspcdnsmisc.so
 
-all : built/dotest built/dns.so built/libspcdns.a built/libspcdns.so
+all : dotest lua lib so
 
 #==================================================
 
-built/libspcdns.a : built/codec.o built/mappings.o built/output.o
-	$(AR) $@ built/codec.o built/mappings.o built/output.o
+built/libspcdns.a : built/codec.o built/mappings.o
+	$(AR) $@ built/codec.o built/mappings.o
+	$(RANLIB) $@
+
+built/libspcdnsmisc.a : built/netsimple.o built/output.o
+	$(AR) $@ $^
 	$(RANLIB) $@
 
 built/libspcdns.so : built/codec.pic.o built/mappings.pic.o built/output.pic.o
 	$(CC) -shared -o $@ built/codec.pic.o built/mappings.pic.o built/output.pic.o
-	
+
+built/libspcdnsmisc.so : built/netsimple.pic.o built/output.pic.o
+	$(CC) -shared -o $@ $^
+
 built/codec.o : src/codec.c src/dns.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
