@@ -256,7 +256,6 @@ int main(int argc,char *argv[])
   
   dns_decoded_t  bufresult[DNS_DECODEBUF_8K];
   size_t         bufsize;
-  dns_query_t   *result;
   
   bufsize = sizeof(bufresult);
   rc = dns_decode(bufresult,&bufsize,reply,replysize);
@@ -269,38 +268,11 @@ int main(int argc,char *argv[])
   if (fdump)
     printf("\nBytes used: %lu\n\n",(unsigned long)bufsize);
   
-  result = (dns_query_t *)bufresult;
-
-  /*-------------------------------------------
-  ; Print the results out, ala dig
-  ;-------------------------------------------*/
-
-  printf(
-  	"; Questions            = %lu\n"
-  	"; Answers              = %lu\n"
-  	"; Name Servers         = %lu\n"
-  	"; Additional Records   = %lu\n"
-  	"; Authoritative Result = %s\n"
-  	"; Truncated Result     = %s\n"
-  	"; Recursion Desired    = %s\n"
-  	"; Recursion Available  = %s\n"
-  	"; Result               = %s\n",
-  	(unsigned long)result->qdcount,
-  	(unsigned long)result->ancount,
-  	(unsigned long)result->nscount,
-  	(unsigned long)result->arcount,
-  	result->aa ? "true" : "false",
-  	result->tc ? "true" : "false",
-  	result->rd ? "true" : "false",
-  	result->ra ? "true" : "false",
-  	dns_rcode_text(result->rcode)
-  );
-  	
-  dns_print_question("QUESTIONS"   ,result->questions   ,result->qdcount);
-  dns_print_answer  ("ANSWERS"     ,result->answers     ,result->ancount);
-  dns_print_answer  ("NAMESERVERS" ,result->nameservers ,result->nscount);
-  dns_print_answer  ("ADDITIONAL"  ,result->additional  ,result->arcount);
-
+  /*----------------------------------------
+  ; see the code in output.c 
+  ;-----------------------------------------*/
+  
+  dns_print_result((dns_query_t *)bufresult);
   return EXIT_SUCCESS;
 }
 
