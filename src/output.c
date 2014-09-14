@@ -42,12 +42,6 @@
 
 #include "output.h"
 
-void dns_print_result	(dns_query_t *);
-void dns_print_header	(dns_query_t *);
-void dns_print_question	(const char *,dns_question_t *,size_t);
-void dns_print_answer	(const char *,dns_answer_t   *,size_t);
-void dns_dump_memory	(FILE *,const void *,size_t,size_t);
-
 /************************************************************************/
 
 /*-------------------------------------------
