@@ -55,7 +55,9 @@ In the "src/" directory you'll find the following:
 		These files provide definitions and implementations for
 		utility functions to print query results using C stdio.
 		It was factored out of the unit tests for debugging client
-		applications making using of libspcdns.a and libspcdns.so.
+		applications making using of libspcdns.a and libspcdns.so. 
+		They are found in the libspcdnsmisc.a and libspcdnsmisc.so
+		libraries.
 
 	luadns.c
 
@@ -198,7 +200,6 @@ www.google.com.           185   IN      A       74.125.239.48
 
 
 ;;; ADDITIONAL
-
 
 A FINAL NOTE
 
