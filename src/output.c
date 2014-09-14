@@ -42,11 +42,12 @@
 
 /************************************************************************/
 
-/*-------------------------------------------
-; Print the results out, ala dig
-;-------------------------------------------*/
 void dns_print_result(dns_query_t* presult)
 {
+  /*-------------------------------------------
+  ; Print the results out, ala dig
+  ;-------------------------------------------*/
+
   dns_print_header(presult);
   dns_print_question("QUESTIONS"   ,presult->questions   ,presult->qdcount);
   dns_print_answer  ("ANSWERS"     ,presult->answers     ,presult->ancount);
