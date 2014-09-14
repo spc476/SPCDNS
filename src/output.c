@@ -38,8 +38,6 @@
 
 #include "dns.h"
 #include "mappings.h"
-#include "netsimple.h"
-
 #include "output.h"
 
 /************************************************************************/
