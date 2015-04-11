@@ -172,7 +172,7 @@ typedef enum dns_type
   RR_NINFO      =  56,	/* NINFO				???      */
   RR_RKEY       =  57,	/* RKEY					???      */
   RR_TALINK     =  58,	/* Trust Anchor Link			???      */
-  RR_SPF        =  99,	/* Sender Policy Framework	      + RFC-4408 */
+  RR_SPF        =  99,	/* Sender Policy Framework	     O+ RFC-4408 */
   RR_UINFO      = 100,	/* IANA Reserved			???      */
   RR_UID        = 101,	/* IANA Reserved			???      */
   RR_GID        = 102,	/* IANA Reserved			???      */

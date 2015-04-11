@@ -1,3 +1,7 @@
+On avoiding malloc:
+
+http://spin.atomicobject.com/2012/11/01/hey-c-is-a-functional-language-too/
+
 
 On Ruby bindings:
 
@@ -12,3 +16,4 @@ Google: extending Ruby in C
 https://github.com/avsm/melange/blob/master/lib/dns/dns_rr.mpl
 
 http://www.bind9.net/dns-parameters
+
