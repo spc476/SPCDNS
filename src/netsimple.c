@@ -137,7 +137,7 @@ int net_request(
   if (rc == 0)
   {
     close(sock);
-    return ETIME;
+    return ETIMEDOUT;
   }
 
   bytes = recvfrom(sock,dest,*dsize,0,NULL,NULL);

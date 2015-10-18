@@ -234,9 +234,10 @@ int main(int argc,char *argv[])
   }
   
   replysize = sizeof(reply);
-  if (net_request(&server,reply,&replysize,request,reqsize) < 0)
+  rc = net_request(&server,reply,&replysize,request,reqsize);
+  if (rc != 0)
   {
-    fprintf(stderr,"failure\n");
+    fprintf(stderr,"net_request() = %s\n",strerror(rc));
     return EXIT_FAILURE;
   }
 
