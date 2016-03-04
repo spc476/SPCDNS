@@ -1199,37 +1199,11 @@ static inline dns_rcode_t decode_rr_txt(
   }
   
   ptxt->text = (const char *)data->dest.ptr;
-  
-  /*----------------------------------------------------------------------
-  ; As we're collapsing multiple strings, add a space between them (it's
-  ; either that, or we make a major change and return an array of strings,
-  ; which I may do at some point, but I digress).  In order to prevent a
-  ; wasted space being added at the end, the destination pointer and size
-  ; are adjust prior to the loop to avoid special case code on the last 
-  ; text string.  
-  ;
-  ; This adjustment is to point just prior (yes, I know, this is technically
-  ; undefined behavior, but $100 to the person that points to an actual
-  ; system, currently used, where this causes a crash) the first character,
-  ; and the size is increased by one.  At the top of the loop, the
-  ; destination pointer is incremented to point to the next open spot and
-  ; the size value is decremented (thus undoing the adjustment before the
-  ; loop).  This is done because at the bottom of the loop, a space is
-  ; written.  If there are multiple strings, this will cause a space to
-  ; appear between the strings.  On the last string (or the only string),
-  ; this extra space will then be overwritten by a NUL byte.  No wasted
-  ; space.  
-  ;-----------------------------------------------------------------------*/
-  
-  data->dest.ptr--;
-  data->dest.size++;
-  
+
   for (size_t i = 0 ; i < items ; i++)
   {
-    data->dest.ptr++;
-    data->dest.size--;
-    
     slen = *data->parse.ptr;
+
     if (data->dest.size < slen)
       return RCODE_NO_MEMORY;
       
@@ -1241,16 +1215,18 @@ static inline dns_rcode_t decode_rr_txt(
     
     if (data->dest.size == 0)
       return RCODE_NO_MEMORY;
-      
-    data->dest.ptr[0] = ' ';
+    
+    /*--------------------------------------------------------------------
+    ; Add space between strings when concatenating them.  If this is the
+    ; last string (or the only string), then this space will be overwritten
+    ; by the NUL byte.  No wasted memory here.
+    ;---------------------------------------------------------------------*/
+    
+    *data->dest.ptr++ = ' ';
+    data->dest.size--;
   }
   
-  if (data->dest.size == 0)
-    return RCODE_NO_MEMORY;
-  
-  *data->dest.ptr++ = '\0';
-  data->dest.size--;
-  
+  data->dest.ptr[-1] = '\0';
   return RCODE_OKAY;
 }
 
