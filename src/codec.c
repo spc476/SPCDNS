@@ -121,6 +121,7 @@ static        dns_rcode_t  dns_encode_question  (block_t *const restrict,const d
 static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_a	(block_t *const restrict,const dns_a_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_rr_naptr	(block_t *const restrict,const dns_naptr_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
@@ -277,6 +278,7 @@ dns_rcode_t dns_encode(
   {
     switch(query->answers[i].generic.type)
     {
+      case RR_A: rc = encode_rr_a(&data,&query->answers[i].a); break;
       case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
       default:       assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
     }
@@ -597,6 +599,34 @@ static inline dns_rcode_t encode_rr_opt(
   prdlen[0] = (rdlen >> 8) & 0xFF;
   prdlen[1] = (rdlen     ) & 0xFF;
   
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline dns_rcode_t encode_rr_a(
+	block_t       *const restrict data,
+	const dns_a_t *const restrict a
+)
+{
+  dns_rcode_t  rc;
+  
+  assert(pblock_okay(data));
+  assert(a        != NULL);
+  assert(a->type  == RR_A);
+  assert(a->class == CLASS_IN);
+  
+  rc = dns_encode_domain(data,a->name,strlen(a->name));
+  if (rc != RCODE_OKAY) return rc;
+  
+  if (data->size < 14)	/* type, class, ttl */
+    return RCODE_NO_MEMORY;
+  
+  write_uint16(data,a->type);
+  write_uint16(data,a->class);
+  write_uint32(data,a->ttl);
+  write_uint16(data,4);
+  write_uint32(data,a->address);
   return RCODE_OKAY;
 }
 
