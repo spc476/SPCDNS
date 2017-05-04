@@ -151,8 +151,8 @@ static inline dns_rcode_t  decode_rr_sig  (idns_context *const restrict,dns_sig_
 static inline dns_rcode_t  decode_rr_minfo(idns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_gpos (idns_context *const restrict,dns_gpos_t     *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static inline dns_rcode_t  decode_rr_loc  (idns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_opt  (idns_context *const restirct,dns_edns0opt_t *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answer_t   *const restirct)              __attribute__ ((nothrow,nonnull(1,2)));
+static inline dns_rcode_t  decode_rr_opt  (idns_context *const restrict,dns_edns0opt_t *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
+static        dns_rcode_t  decode_answer  (idns_context *const restrict,dns_answer_t   *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 
 /***********************************************************************/
 
