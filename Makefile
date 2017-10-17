@@ -18,125 +18,79 @@
 #
 ######################################################################
 
-#================================================
-# Linux
-#================================================
+VERSION := $(shell git describe --tag)
 
-CC     = gcc -std=c99
-CFLAGS = -Wall -Wextra -pedantic -g
-#CFLAGS = -Os -fomit-frame-pointer -DNDEBUG
-PIC    = -fpic
-LFLAGS = -lm 
-LUA    = /usr/local/lib/lua/5.1
-AR     = ar cr
-RANLIB = ranlib
-
-#=================================================
-# Solaris
-#=================================================
-
-#CC     = cc -g -xc99
-#CFLAGS =
-#PIC    = -fpic
-#LFLAGS = -lm -lnsl -lsocket
-#LUA    = /usr/local/lib/lua/5.1
-#AR     = ar cr
-#RANLIB = ranlib
+CC      = gcc -std=c99
+CFLAGS  = -Wall -Wextra -pedantic -g
+LDFLAGS =
+LDLIBS  = -lm
+CSHARE  = -fPIC
+LDSHARE = -shared
 
 #=================================================
 
-dotest : built/dotest 
+INSTALL         = /usr/bin/install
+INSTALL_PROGRAM = $(INSTALL)
+INSTALL_DATA    = $(INSTALL) -m 644
 
-lua : built/dns.so
+prefix = /usr/local
+libdir = $(prefix)/lib
 
-lib : built/libspcdns.a built/libspcdnsmisc.a
+LUA         ?= lua
+LUA_VERSION := $(shell $(LUA) -e "print(_VERSION:match '^Lua (.*)')")
+LUADIR      ?= $(dataroot)/lua/$(LUA_VERSION)
+LIBDIR      ?= $(libdir)/lua/$(LUA_VERSION)
 
-so : built/libspcdns.so built/libspcdnsmisc.so
+ifneq ($(LUA_INCDIR),)
+  override CFLAGS += -I$(LUA_INCDIR)
+endif
 
-all : dotest lua lib so
+#=================================================
 
-#==================================================
+%.a :
+	$(AR) $(ARFLAGS) $@ $?
 
-built/libspcdns.a : built/codec.o built/mappings.o
-	$(AR) $@ built/codec.o built/mappings.o
-	$(RANLIB) $@
+%.oo : %.c
+	$(CC) $(CFLAGS) $(CSHARED) -c -o $@ $<
 
-built/libspcdnsmisc.a : built/netsimple.o built/output.o
-	$(AR) $@ $^
-	$(RANLIB) $@
+%.so :
+	$(CC) $(LDSHARE) -o $@ $^
 
-built/libspcdns.so : built/codec.pic.o built/mappings.pic.o built/output.pic.o
-	$(CC) -shared -o $@ built/codec.pic.o built/mappings.pic.o built/output.pic.o
+#=================================================
 
-built/libspcdnsmisc.so : built/netsimple.pic.o built/output.pic.o
-	$(CC) -shared -o $@ $^
+.PHONY: all install-lua uninstall-lua clean dist depend
+all   : src/dotest src/libspcdns.a src/dns.so
 
-built/codec.o : src/codec.c src/dns.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+src/dotest      : src/dotest.o src/libspcdns.a
+src/libspcdns.a : src/codec.o src/mappings.o src/netsimple.o src/output.o
+src/dns.so      : src/luadns.oo src/codec.oo src/mappings.oo src/netsimple.oo
 
-built/codec.pic.o : src/codec.c src/dns.h
-	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
-	
-built/mappings.o : src/mappings.c src/mappings.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+install-lua : src/dns.so
+	$(INSTALL) -d $(DESTDIR)$(LIBDIR)/org/conman
+	$(INSTALL_PROGRAM) src/dns.so $(DESTDIR)$(LIBDIR)/org/conman
 
-built/mappings.pic.o : src/mappings.c src/mappings.h
-	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
+uninstall-lua :
+	$(RM) $(DESTDIR)$(LIBDIR)/org/conman/dns.so
 
-built/netsimple.o : src/netsimple.c src/netsimple.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-built/netsimple.pic.o : src/netsimple.c src/netsimple.h
-	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
-
-built/output.o : src/output.c src/output.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-built/output.pic.o : src/output.c src/output.h
-	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
-
-#==============================================================
-
-
-built/dotest : built/test.o 		\
-		built/codec.o 		\
-		built/mappings.o	\
-		built/netsimple.o	\
-		built/output.o
-	$(CC) -o $@ built/test.o 	\
-		built/codec.o		\
-		built/mappings.o	\
-		built/netsimple.o	\
-		built/output.o		\
-		$(LFLAGS)
-
-built/test.o : src/test.c src/dns.h src/mappings.h src/netsimple.h src/output.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-#=============================================================
-
-built/dns.so : built/luadns.o 		\
-		built/codec.pic.o 	\
-		built/mappings.pic.o	\
-		built/netsimple.pic.o
-	$(CC) -o $@ -shared 	 	\
-		built/luadns.o		\
-		built/codec.pic.o	\
-		built/mappings.pic.o 	\
-		built/netsimple.pic.o
-	
-built/luadns.o : src/luadns.c src/dns.h src/mappings.h
-	$(CC) $(CFLAGS) $(PIC) -c -o $@ $<
-
-#===========================================================
-
-install-lua: built/dns.so
-	install -d $(LUA)/org/conman
-	install built/dns.so $(LUA)/org/conman
-	
 clean:
-	/bin/rm -rf built/*
-	/bin/rm -rf *~ src/*~ lua/*~
+	$(RM) $(shell find . -name '*.o')
+	$(RM) $(shell find . -name '*.so')
+	$(RM) $(shell find . -name '*.oo')
+	$(RM) $(shell find . -name '*.a')
+	$(RM) $(shell find . -name '*~')
+	$(RM) Makefile.bak src/dotest
 
-tarball:
-	(cd .. ; tar czvf /tmp/spcdns.tar.gz -X spcdns/.exclude spcdns/ )
+dist:
+	git archive -o /tmp/spcdns-$(VERSION).tar.gz --prefix spcdns/ $(VERSION)
+
+depend:
+	makedepend -Y -- $(CFLAGS) -- src/*.c 2>/dev/null
+
+# DO NOT DELETE
+
+src/codec.o: src/dns.h
+src/dotest.o: src/dns.h src/mappings.h src/netsimple.h src/output.h
+src/luadns.o: src/dns.h src/mappings.h src/netsimple.h
+src/mappings.o: src/dns.h src/mappings.h
+src/netsimple.o: src/dns.h src/netsimple.h
+src/output.o: src/dns.h src/mappings.h src/output.h
