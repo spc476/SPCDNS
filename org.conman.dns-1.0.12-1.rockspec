@@ -1,10 +1,10 @@
 package = "org.conman.dns"
-version = "1.0.11-1"
+version = "1.0.12-1"
 
 source = 
 {
   url = "git://github.com/spc476/SPCDNS.git",
-  tag = "v1.0.11"
+  tag = "v1.0.12"
 }
 
 description =
@@ -28,17 +28,18 @@ dependencies =
 build = 
 {
   type           = "make",
-  build_target   = "lua",
+  build_target   = "src/dns.so",
   install_target = "install-lua",
-
+  
   build_variables =
   {
-    CC     = "$(CC) -std=c99",
-    CFLAGS = "$(CFLAGS)",
+    CC     = "c99",
+    CFLAGS = "$(CFLAGS) -I$(LUA_INCDIR)",
   },
-
+  
   install_variables =
   {
     LUA = "$(LIBDIR)"
   }
 }
+ 
