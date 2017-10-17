@@ -763,6 +763,7 @@ typedef struct dns_edns0opt_t	/* RFC-2671 */
   size_t         udp_payload;
   int            version;
   bool           fdo;		/* RFC-3225 */
+  int            fug;
   size_t         numopts;
   edns0_opt_t   *opts;
 } dns_edns0opt_t;

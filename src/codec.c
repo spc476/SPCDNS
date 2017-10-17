@@ -1675,15 +1675,22 @@ static dns_rcode_t decode_answer(
     if (data->parse.ptr[1] != 0)	/* version */
       return RCODE_FORMAT_ERROR;
     
-    if ((data->parse.ptr[2] & 0x80) == 0x80)	/* RFC-3225 */
-      pans->opt.fdo = true;
-    if ((data->parse.ptr[2] & 0x7F) != 0)
-      return RCODE_FORMAT_ERROR;
-    if (data->parse.ptr[3] != 0)
-      return RCODE_FORMAT_ERROR;
-
-    data->parse.ptr  += 4;
-    data->parse.size -= 4;
+    /*--------------------------------------------------------------------
+    ; RFC-3225 states that of octets 2 and 3, only the left-most bit
+    ; of byte 2 is defined (the DO bit)---the rest are supposed to be
+    ; 0.  But of *course* Google is using these bits for their own
+    ; "don't be evil" purposes, whatever that might be.
+    ;
+    ; Thaanks Google.  Thanks for being like Microsoft---embrace, extend and
+    ; then extinquish.  Way to be not evil!
+    ;---------------------------------------------------------------------*/
+    
+    data->parse.ptr  += 2;
+    data->parse.size -= 2;
+    
+    pans->opt.fug = read_uint16(&data->parse);
+    pans->opt.fdo = pans->opt.fug > 0x7FFF;
+    pans->opt.fug &= 0x7FFF;
   }
   else
   {
