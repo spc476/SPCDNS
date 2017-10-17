@@ -38,7 +38,6 @@ libdir = $(prefix)/lib
 
 LUA         ?= lua
 LUA_VERSION := $(shell $(LUA) -e "print(_VERSION:match '^Lua (.*)')")
-LUADIR      ?= $(dataroot)/lua/$(LUA_VERSION)
 LIBDIR      ?= $(libdir)/lua/$(LUA_VERSION)
 
 ifneq ($(LUA_INCDIR),)
