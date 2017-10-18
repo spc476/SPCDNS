@@ -114,6 +114,19 @@
 
 /********************************************************************/
 
+#if LUA_VERSION_NUM > 501
+static size_t lua_objlen(lua_State *L,int index)
+{
+  size_t len;
+  lua_len(L,index);
+  len = lua_tointeger(L,-1);
+  lua_pop(L,1);
+  return len;
+}
+#endif
+
+/********************************************************************/
+
 static bool parse_edns0_opt(lua_State *L,edns0_opt_t *opt)
 {
   const char *type;
@@ -157,8 +170,7 @@ static int dnslua_encode(lua_State *L)
   int            qidx;
   int            rc;
   
-  if (!lua_istable(L,1))
-    luaL_typerror(L,1,lua_typename(L,LUA_TTABLE));
+  luaL_checktype(L,1,LUA_TTABLE);
   
   memset(&domain,0,sizeof(domain));
   memset(&query, 0,sizeof(query));
@@ -175,10 +187,7 @@ static int dnslua_encode(lua_State *L)
   /*-----------------------------------------------------------------
   ; process the question
   ;----------------------------------------------------------------*/
-  
-  if (!lua_istable(L,qidx))
-    luaL_typerror(L,qidx,lua_typename(L,LUA_TTABLE));
-  
+
   lua_getfield(L,qidx,"name");
   lua_getfield(L,qidx,"type");
   lua_getfield(L,qidx,"class");
@@ -194,7 +203,7 @@ static int dnslua_encode(lua_State *L)
   lua_getfield(L,1,"rd");
   lua_getfield(L,1,"opcode");
     
-  query.id        = luaL_optint(L,-4,1234);
+  query.id        = luaL_optinteger(L,-4,1234);
   query.query     = lua_toboolean(L,-3);
   query.rd        = lua_toboolean(L,-2);
   query.opcode    = dns_op_value(luaL_optstring(L,-1,"QUERY"));  
@@ -217,10 +226,7 @@ static int dnslua_encode(lua_State *L)
   {
     dns_answer_t edns;
     
-    qidx = lua_gettop(L);
-    if (!lua_istable(L,qidx))
-      luaL_typerror(L,qidx,lua_typename(L,LUA_TTABLE));
-    
+    qidx             = lua_gettop(L);
     query.arcount    = 1;
     query.additional = &edns;
     
@@ -232,11 +238,11 @@ static int dnslua_encode(lua_State *L)
     lua_getfield(L,qidx,"version");
     lua_getfield(L,qidx,"fdo");
     
-    edns.opt.name        = luaL_optstring(L,-5,".");
-    edns.opt.type        = dns_type_value(luaL_optstring(L,-4,"OPT"));
-    edns.opt.udp_payload = luaL_optint   (L,-3,1464);
-    edns.opt.version     = luaL_optint   (L,-2,0);
-    edns.opt.fdo         = lua_toboolean (L,-1);
+    edns.opt.name        = luaL_optstring (L,-5,".");
+    edns.opt.type        = dns_type_value (luaL_optstring(L,-4,"OPT"));
+    edns.opt.udp_payload = luaL_optinteger(L,-3,1464);
+    edns.opt.version     = luaL_optinteger(L,-2,0);
+    edns.opt.fdo         = lua_toboolean  (L,-1);
     
     lua_pop(L,5);
     lua_getfield(L,qidx,"opts");
@@ -250,9 +256,6 @@ static int dnslua_encode(lua_State *L)
     }
     else
     {
-      if (!lua_istable(L,-1))
-        luaL_typerror(L,-1,lua_typename(L,LUA_TTABLE));
-      
       edns.opt.numopts = lua_objlen(L,-1);
       
       /*----------------------------------------------------------------
@@ -279,9 +282,6 @@ static int dnslua_encode(lua_State *L)
         {
           lua_pushinteger(L,i);
           lua_gettable(L,-2);
-          
-          if (!lua_istable(L,-1))
-            return luaL_typerror(L,-1,lua_typename(L,LUA_TTABLE));
           
           if (!parse_edns0_opt(L,&opt[i - 1]))
             return luaL_error(L,"EDNS0 option no supported");
@@ -702,7 +702,7 @@ static int dnslua_decode(lua_State *L)
 
 static int dnslua_strerror(lua_State *L)
 {
-  lua_pushstring(L,dns_rcode_text(luaL_checkint(L,1)));
+  lua_pushstring(L,dns_rcode_text(luaL_checkinteger(L,1)));
   return 1;
 }
 
@@ -743,7 +743,7 @@ static int dnslua_query(lua_State *L)
 
 /**********************************************************************/
 
-static const struct luaL_reg reg_dns[] =
+static const struct luaL_Reg reg_dns[] =
 {
   { "encode"	, dnslua_encode		} ,
   { "decode"	, dnslua_decode		} ,
@@ -754,8 +754,12 @@ static const struct luaL_reg reg_dns[] =
 
 int luaopen_org_conman_dns(lua_State *L)
 {
+#if LUA_VERSION_NUM == 501
   luaL_register(L,"org.conman.dns",reg_dns);
-  
+#else
+  luaL_newlib(L,reg_dns);
+#endif
+
   lua_pushliteral(L,"Copyright 2010 by Sean Conner.  All Rights Reserved.");
   lua_setfield(L,-2,"COPYRIGHT");
   

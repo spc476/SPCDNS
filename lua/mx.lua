@@ -7,37 +7,35 @@
 -- under the terms of the GNU Lesser General Public License as published by
 -- the Free Software Foundation; either version 3 of the License, or (at your
 -- option) any later version.
--- 
+--
 -- This library is distributed in the hope that it will be useful, but
 -- WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 -- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 -- License for more details.
--- 
+--
 -- You should have received a copy of the GNU Lesser General Public License
 -- along with this library; if not, see <http://www.gnu.org/licenses/>.
 --
 -- **************************************************************************
 
-require "org.conman.dns"
-
 local SERVER = "127.0.0.1"
-local dns    = org.conman.dns
+local dns    = require "org.conman.dns"
 
 -- **************************************************************
 
 local function query(host,type)
   local e = dns.encode {
-  		id       = math.random(),
-  		query    = true,
-  		rd       = true,
-  		opcode   = 'query',
-  		question = {
-  			name  = host,
-  			type  = type,
-  			class = 'in'
-  		}
-  	}
-  	
+                id       = math.random(65535),
+                query    = true,
+                rd       = true,
+                opcode   = 'query',
+                question = {
+                        name  = host,
+                        type  = type,
+                        class = 'in'
+                }
+        }
+        
   local r,err = dns.query(SERVER,e)
   
   if r == nil then
