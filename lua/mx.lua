@@ -17,6 +17,7 @@
 -- along with this library; if not, see <http://www.gnu.org/licenses/>.
 --
 -- **************************************************************************
+-- luacheck: ignore 611
 
 local SERVER = "127.0.0.1"
 local dns    = require "org.conman.dns"

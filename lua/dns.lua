@@ -18,9 +18,9 @@
 --
 -- **************************************************************************
 
-dns  = require "org.conman.dns"
+local dns  = require "org.conman.dns"
 
-e = dns.encode {
+local e = dns.encode {
         id       = 1234,
         query    = true,
         rd       = true,
@@ -32,14 +32,14 @@ e = dns.encode {
         }
 }
 
-r,err = dns.query('127.0.0.1',e)
+local r,err = dns.query('127.0.0.1',e)
 
 if r == nil then
   print("error:",err)
   os.exit(1)
 end
 
-d = dns.decode(r)
+local d = dns.decode(r)
 
 for i = 1 , #d.answers do
   print(string.format("%s %d %s %s %d %s",

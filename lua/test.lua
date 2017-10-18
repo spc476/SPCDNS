@@ -17,6 +17,7 @@
 -- along with this library; if not, see <http://www.gnu.org/licenses/>.
 --
 -- **************************************************************************
+-- luacheck: ignore 611
 
 local SERVER = "127.0.0.1"
 local dns    = require "org.conman.dns"
@@ -143,7 +144,7 @@ local function print_answers(tag,recs)
   io.stdout:write(string.format("\n;;; %s\n\n",tag))
   
   for i = 1 , #recs do
-    s = string.format("%-16s\t%d\t%s\t%s\t",
+    local s = string.format("%-16s\t%d\t%s\t%s\t",
                 recs[i].name,
                 recs[i].ttl,
                 recs[i].class,
