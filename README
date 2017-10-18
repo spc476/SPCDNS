@@ -130,15 +130,16 @@ limit).
 
 SOME NOTES ABOUT THE LUA BINDINGS
 
-The Lua bindings are loaded into a Lua script with the following:
+The Lua bindings (for Lua 5.1, 5.2 or 5.3) are loaded into a Lua script with
+the following:
 
-	require "org.conman.dns"
+	local dns = require "org.conman.dns"
 
 This loads the bindings into a global Lua table called "org.conman.dns" to
 avoid name conflicts with other Lua DNS bindings and/or libraries.  Doing a
 "make install-lua" will install this file under:
 
-	/usr/local/lib/lua/5.1/org/conman/
+	/usr/local/lib/lua/<Lua version>/org/conman/
 
 (assuming you didn't change the LUA setting in the Makefile)
 
