@@ -232,19 +232,21 @@ static int dnslua_encode(lua_State *L)
     
     memset(&edns,0,sizeof(edns));
     
+    lua_getfield(L,qidx,"fug");
     lua_getfield(L,qidx,"name");
     lua_getfield(L,qidx,"type");
     lua_getfield(L,qidx,"udp_payload");
     lua_getfield(L,qidx,"version");
     lua_getfield(L,qidx,"fdo");
     
+    edns.opt.fug         = luaL_optinteger(L,-6,0);
     edns.opt.name        = luaL_optstring (L,-5,".");
     edns.opt.type        = dns_type_value (luaL_optstring(L,-4,"OPT"));
     edns.opt.udp_payload = luaL_optinteger(L,-3,1464);
     edns.opt.version     = luaL_optinteger(L,-2,0);
     edns.opt.fdo         = lua_toboolean  (L,-1);
     
-    lua_pop(L,5);
+    lua_pop(L,6);
     lua_getfield(L,qidx,"opts");
     
     if (lua_isnil(L,-1))
@@ -587,6 +589,8 @@ static void decode_answer(
            lua_setfield(L,-2,"version");
            lua_pushboolean(L,pans[i].opt.fdo);
            lua_setfield(L,-2,"fdo");
+           lua_pushinteger(L,pans[i].opt.fug);
+           lua_setfield(L,-2,"fug");
            lua_createtable(L,pans[i].opt.numopts,0);
            for (size_t j = 0 ; j < pans[i].opt.numopts ; j++)
            {
