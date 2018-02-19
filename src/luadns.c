@@ -770,7 +770,7 @@ int luaopen_org_conman_dns(lua_State *L)
   lua_pushliteral(L,"Encode/Decode and send queries via DNS");
   lua_setfield(L,-2,"DESCRIPTION");
   
-  lua_pushliteral(L,"1.0.12");
+  lua_pushliteral(L,VERSION);
   lua_setfield(L,-2,"_VERSION");
   
   return 1;

@@ -18,14 +18,29 @@
 #
 ######################################################################
 
+UNAME   := $(shell uname)
 VERSION := $(shell git describe --tag)
 
-CC      = gcc -std=c99
-CFLAGS  = -Wall -Wextra -pedantic -g
-LDFLAGS =
+ifeq ($(VERSION),)
+  VERSION=1.0.13
+endif
+
+# ===================================================
+
+CC      = gcc -std=c99 -Wall -Wextra -pedantic
+CFLAGS  = -g
+LDFLAGS = -g
 LDLIBS  = -lm
-CSHARE  = -fPIC
-LDSHARE = -shared
+
+ifeq ($(UNAME),Linux)
+  CSHARE  = -fPIC
+  LDSHARE = -g -shared
+endif
+
+ifeq ($(UNAME),Darwin)
+  CSHARE  = -fPIC
+  LDSHARE = -g -bundle -undefined dynamic_lookup -all_load
+endif
 
 #=================================================
 
@@ -41,7 +56,7 @@ LUA_VERSION := $(shell $(LUA) -e "print(_VERSION:match '^Lua (.*)')")
 LIBDIR      ?= $(libdir)/lua/$(LUA_VERSION)
 
 ifneq ($(LUA_INCDIR),)
-  override CFLAGS += -I$(LUA_INCDIR)
+  src/dns.so : override CFLAGS += -I$(LUA_INCDIR)
 endif
 
 #=================================================
@@ -50,7 +65,7 @@ endif
 	$(AR) $(ARFLAGS) $@ $?
 
 %.oo : %.c
-	$(CC) $(CFLAGS) $(CSHARED) -c -o $@ $<
+	$(CC) $(CFLAGS) -DVERSION='"$(VERSION)"' $(CSHARE) -c -o $@ $<
 
 %.so :
 	$(CC) $(LDSHARE) -o $@ $^
