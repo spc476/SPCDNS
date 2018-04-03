@@ -961,6 +961,7 @@ typedef struct dns_query_t	/* RFC-1035 */
   bool            tc;
   bool            rd;
   bool            ra;
+  bool            z;            /* should be zero */
   bool            ad;		/* RFC-2065 */
   bool            cd;		/* RFC-2065 */
   dns_rcode_t     rcode;

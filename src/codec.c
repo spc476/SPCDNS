@@ -254,6 +254,7 @@ dns_rcode_t dns_encode(
   if (query->tc)     header->opcode |= 0x02;
   if (query->rd)     header->opcode |= 0x01;
   if (query->ra)     header->rcode  |= 0x80;
+  if (query->z)      header->rcode  |= 0x40;
   if (query->ad)     header->rcode  |= 0x20;
   if (query->cd)     header->rcode  |= 0x10;
   
@@ -1681,7 +1682,7 @@ static dns_rcode_t decode_answer(
     ; 0.  But of *course* Google is using these bits for their own
     ; "don't be evil" purposes, whatever that might be.
     ;
-    ; Thaanks Google.  Thanks for being like Microsoft---embrace, extend and
+    ; Thanks Google.  Thanks for being like Microsoft---embrace, extend and
     ; then extinquish.  Way to be not evil!
     ;---------------------------------------------------------------------*/
     
@@ -1812,9 +1813,6 @@ dns_rcode_t dns_decode(
   
   header = (struct idns_header *)buffer;
   
-  if ((header->rcode & 0x40) != 0x00)	/* Z bit must be zero */
-    return RCODE_FORMAT_ERROR;
-  
   response->id      = ntohs(header->id);
   response->opcode  = (header->opcode >> 3) & 0x0F;
   response->query   = (header->opcode & 0x80) != 0x80;
@@ -1822,6 +1820,7 @@ dns_rcode_t dns_decode(
   response->tc      = (header->opcode & 0x02) == 0x02;
   response->rd      = (header->opcode & 0x01) == 0x01;
   response->ra      = (header->rcode  & 0x80) == 0x80;
+  response->z       = (header->rcode  & 0x40) == 0x40;
   response->ad      = (header->rcode  & 0x20) == 0x20;
   response->cd      = (header->rcode  & 0x10) == 0x10;
   response->rcode   = (header->rcode  & 0x0F);

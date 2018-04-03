@@ -674,6 +674,8 @@ static int dnslua_decode(lua_State *L)
   lua_setfield(L,tab,"rd");
   lua_pushboolean(L,result->ra);
   lua_setfield(L,tab,"ra");
+  lua_pushboolean(L,result->z);
+  lua_setfield(L,tab,"z");
   lua_pushboolean(L,result->ad);
   lua_setfield(L,tab,"ad");
   lua_pushboolean(L,result->cd);

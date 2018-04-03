@@ -157,6 +157,7 @@ int main(int argc,char *argv[])
   query.tc          = false;
   query.rd          = true;
   query.ra          = false;
+  query.z           = false;
   query.ad          = false;
   query.cd          = false;
   query.rcode       = RCODE_OKAY;
