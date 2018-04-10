@@ -895,7 +895,7 @@ static dns_rcode_t read_domain(
       if (parse->size < len + 1)
         return RCODE_FORMAT_ERROR;
 
-      if (data->dest.size < len)
+      if (data->dest.size < len + 1)
         return RCODE_NO_MEMORY;
       
       if (len)
