@@ -1095,6 +1095,10 @@ static inline dns_rcode_t decode_rr_a(
   assert(context_okay(data));
   assert(pa != NULL);
 
+  if (len == 0) {
+    memset(&pa->address,0,sizeof(pa->address));
+    return RCODE_OKAY;
+  }
   if (len != 4) return RCODE_FORMAT_ERROR;
   memcpy(&pa->address,data->parse.ptr,4);
   data->parse.ptr  += 4;
@@ -1112,7 +1116,11 @@ static inline dns_rcode_t decode_rr_aaaa(
 {
   assert(context_okay(data));
   assert(pa != NULL);
-  
+
+  if (len == 0) {
+    memset(&pa->address,0,sizeof(pa->address));
+    return RCODE_OKAY;
+  }
   if (len != 16) return RCODE_FORMAT_ERROR;
   memcpy(pa->address.s6_addr,data->parse.ptr,16);
   data->parse.ptr  += 16;
@@ -1702,9 +1710,10 @@ static dns_rcode_t decode_answer(
   len  = read_uint16(&data->parse);
   rest = data->packet.size - (data->parse.ptr - data->packet.ptr);
   
-  if (len > rest) 
+  if (len > rest)
     return RCODE_FORMAT_ERROR;
 
+  pans->generic.length = len;
   switch(pans->generic.type)
   {
     case RR_A:     return decode_rr_a    (data,&pans->a    ,len);
@@ -1749,8 +1758,13 @@ static dns_rcode_t decode_answer(
     case RR_MR:
     case RR_NS:
     case RR_PTR:
-    case RR_CNAME: return read_domain(data,&pans->cname.cname);
-    
+    case RR_CNAME:
+      if (len > 0) {
+        return read_domain(data,&pans->cname.cname);
+      } else {
+        pans->cname.cname = NULL;
+        return RCODE_OKAY;
+      }
     case RR_NULL:
     default: 
          pans->x.size = len;
@@ -1833,7 +1847,7 @@ dns_rcode_t dns_decode(
   response->answers     = alloc_struct(&context.dest,response->ancount * sizeof(dns_answer_t));
   response->nameservers = alloc_struct(&context.dest,response->nscount * sizeof(dns_answer_t));
   response->additional  = alloc_struct(&context.dest,response->arcount * sizeof(dns_answer_t));
-  
+
   if (
           (response->qdcount && (response->questions   == NULL))
        || (response->ancount && (response->answers     == NULL))
