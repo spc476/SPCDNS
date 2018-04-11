@@ -265,6 +265,7 @@ typedef struct dns_generic_t	/* RFC-1035 */
   dns_type_t   type;
   dns_class_t  class;
   TTL          ttl;
+  uint32_t     length;
 } dns_generic_t;
 
 typedef struct dns_a_t		/* RFC-1035 */
