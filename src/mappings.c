@@ -312,7 +312,7 @@ static int stoidef(
   char                   buffer[len];
   
   for (size_t i = 0 ; i < len ; i++)
-    buffer[i] = toupper(tag[i]);
+    buffer[i] = (char)toupper(tag[i]);
   
   psim = bsearch(buffer,pstab,stabcnt,sizeof(struct string_int_map),strint_cmp);
   if (psim)

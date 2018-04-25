@@ -238,7 +238,7 @@ dns_rcode_t dns_encode(
   header = (struct idns_header *)buffer;
   
   header->id      = htons(query->id);
-  header->opcode  = (query->opcode & 0x0F) << 3;
+  header->opcode  = (uint8_t)((query->opcode & 0x0F) << 3);
   header->rcode   = (query->rcode  & 0x0F);
   header->qdcount = htons(query->qdcount);
   header->ancount = htons(query->ancount);
@@ -439,7 +439,7 @@ static dns_rcode_t dns_encode_string(
   if (size > 255)            return RCODE_BAD_STRING;
   if (data->size < size + 1) return RCODE_NO_MEMORY;
   
-  *data->ptr++ = size;
+  *data->ptr++ = (uint8_t)size;
   memcpy(data->ptr,text,size);
   data->ptr += size;
   data->size -= (size + 1);
@@ -509,7 +509,7 @@ static inline dns_rcode_t encode_edns0rr_nsid(
   assert(newlen == strlen(buffer));
   
   write_uint16(data,opt->code);
-  write_uint16(data,newlen);
+  write_uint16(data,(uint16_t)newlen);
   memcpy(data->ptr,buffer,newlen);
   data->ptr  += newlen;
   data->size -= newlen;
@@ -525,14 +525,14 @@ static inline dns_rcode_t encode_edns0rr_raw(
 {
   assert(pblock_okay(data));
   assert(opt       != NULL);
-  assert(opt->code <= UINT16_MAX);
+  assert((uint16_t)opt->code <= UINT16_MAX);
   assert(opt->len  <= UINT16_MAX);
   
   if (data->size < opt->len + sizeof(uint16_t) + sizeof(uint16_t))
     return RCODE_NO_MEMORY;
   
   write_uint16(data,opt->code);
-  write_uint16(data,opt->len);
+  write_uint16(data,(uint16_t)opt->len);
   memcpy(data->ptr,opt->data,opt->len);
   data->ptr  += opt->len;
   data->size -= opt->len;
@@ -567,9 +567,9 @@ static inline dns_rcode_t encode_rr_opt(
   data->size--;
 
   write_uint16(data,RR_OPT);
-  write_uint16(data,opt->udp_payload);
+  write_uint16(data,(uint16_t)opt->udp_payload);
   data->ptr[0] = query->rcode >> 4;
-  data->ptr[1] = opt->version;
+  data->ptr[1] = (uint8_t)opt->version;
   data->ptr[2] = 0;
   data->ptr[3] = 0;
   
@@ -652,8 +652,8 @@ static inline dns_rcode_t encode_rr_naptr(
   data->size -= sizeof(uint16_t);
   pdata       = data->ptr;
 
-  write_uint16(data,naptr->order);
-  write_uint16(data,naptr->preference);
+  write_uint16(data,(uint16_t)naptr->order);
+  write_uint16(data,(uint16_t)naptr->preference);
   
   if ((rc = dns_encode_string(data,naptr->flags,   strlen(naptr->flags)))          != RCODE_OKAY) return rc;
   if ((rc = dns_encode_string(data,naptr->services,strlen(naptr->services)))       != RCODE_OKAY) return rc;
@@ -664,7 +664,7 @@ static inline dns_rcode_t encode_rr_naptr(
   ; now write the length of the data we've just written
   ;-------------------------------------------------------*/
   
-  write_uint16(&(block_t){ .ptr = prdlen , .size = 2 },data->ptr - pdata);
+  write_uint16(&(block_t){ .ptr = prdlen , .size = 2 },(uint16_t)(data->ptr - pdata));
   return RCODE_OKAY;
 }
 
@@ -834,8 +834,8 @@ static inline uint16_t read_uint16(block_t *const parse)
   assert(pblock_okay(parse));
   assert(parse->size >= 2);
   
-  val = (parse->ptr[0] << 8) 
-      | (parse->ptr[1]     );
+  val = (uint16_t)((parse->ptr[0] << 8)
+                 | (parse->ptr[1]     ));
   parse->ptr  += 2;
   parse->size -= 2;
   return val;
@@ -1064,8 +1064,8 @@ static inline dns_rcode_t decode_edns0rr_nsid(
     assert(phexh != NULL);
     assert(phexl != NULL);
     
-    *data->dest.ptr = ((phexh - hexdigits) << 4)
-                    | ((phexl - hexdigits)     );
+    *data->dest.ptr = (uint8_t)(((phexh - hexdigits) << 4)
+                              | ((phexl - hexdigits)     ));
     data->dest.ptr++;
     data->dest.size--;
   }
@@ -1475,10 +1475,10 @@ static void dgpos_angle(
 {
   double ip;
   
-  v = modf(v,&ip) *   60.0; pa->deg = ip;
-  v = modf(v,&ip) *   60.0; pa->min = ip;
-  v = modf(v,&ip) * 1000.0; pa->sec = ip;
-  pa->frac = v;
+  v = modf(v,&ip) *   60.0; pa->deg = (int)ip;
+  v = modf(v,&ip) *   60.0; pa->min = (int)ip;
+  v = modf(v,&ip) * 1000.0; pa->sec = (int)ip;
+  pa->frac = (int)v;
 }
 
 /*****************************************************************/
@@ -1565,12 +1565,12 @@ static void dloc_angle(
   assert(pa != NULL);
   
   partial  = ldiv(v,1000L);
-  pa->frac = partial.rem;
+  pa->frac = (int)partial.rem;
   partial  = ldiv(partial.quot,60L);
-  pa->sec  = partial.rem;
+  pa->sec  = (int)partial.rem;
   partial  = ldiv(partial.quot,60L);
-  pa->min  = partial.rem;
-  pa->deg  = partial.quot;
+  pa->min  = (int)partial.rem;
+  pa->deg  = (int)partial.quot;
 }
 
 /*************************************************************/
