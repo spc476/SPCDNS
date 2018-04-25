@@ -122,12 +122,15 @@ static inline dns_rcode_t  encode_edns0rr_nsid	(block_t *const restrict,const ed
 static inline dns_rcode_t  encode_edns0rr_raw	(block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_rr_opt    	(block_t *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
 static inline dns_rcode_t  encode_rr_naptr	(block_t *const restrict,const dns_naptr_t    *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_a          (block_t *const restrict,const dns_a_t        *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_aaaa       (block_t *const restrict,const dns_aaaa_t     *const restrict)        __attribute__ ((nothrow,nonnull));
 
 static        bool	   align_memory	(block_t *const)		__attribute__ ((nothrow,nonnull,   warn_unused_result));
 static        void        *alloc_struct	(block_t *const,const size_t)	__attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
 
 static inline void         write_uint16 (block_t *const,uint16_t)                                         __attribute__ ((nothrow,nonnull(1)));
 static inline void         write_uint32 (block_t *const,uint32_t)                                         __attribute__ ((nothrow,nonnull(1)));
+static inline void         write_raw    (block_t *const,const uint8_t *,uint32_t)                         __attribute__ ((nothrow,nonnull(1)));
 static inline uint16_t	   read_uint16	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static inline uint32_t	   read_uint32	(block_t *const)		                                  __attribute__ ((nothrow,nonnull));
 static        dns_rcode_t  read_raw	(idns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
@@ -279,6 +282,8 @@ dns_rcode_t dns_encode(
     switch(query->answers[i].generic.type)
     {
       case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
+      case RR_A:     rc = encode_rr_a(&data,&query->answers[i].a); break;
+      case RR_AAAA:  rc = encode_rr_aaaa(&data,&query->answers[i].aaaa); break;
       default:       assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
     }
     
@@ -663,6 +668,62 @@ static inline dns_rcode_t encode_rr_naptr(
   return RCODE_OKAY;
 }
 
+/***********************************************************************/
+
+static inline dns_rcode_t encode_rr_a(
+	block_t       *const restrict data,
+	const dns_a_t *const restrict pa
+)
+{
+  dns_rcode_t  rc;
+
+  assert(pblock_okay(data));
+  assert(pa              != NULL);
+  assert(pa->type        == RR_A);
+  assert(pa->class       == CLASS_IN);
+
+  rc = dns_encode_domain(data,pa->name,strlen(pa->name));
+  if (rc != RCODE_OKAY) return rc;
+
+  if (data->size < 14 + 2 + sizeof(pa->address))	/* type, class, ttl, uint16-size, address */
+    return RCODE_NO_MEMORY;
+
+  write_uint16(data,pa->type);
+  write_uint16(data,pa->class);
+  write_uint32(data,pa->ttl);
+  write_uint16(data,sizeof(pa->address));
+  write_raw(data,(const uint8_t*)&(pa->address), sizeof(pa->address));
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline dns_rcode_t encode_rr_aaaa(
+	block_t          *const restrict data,
+	const dns_aaaa_t *const restrict paaaa
+)
+{
+  dns_rcode_t  rc;
+
+  assert(pblock_okay(data));
+  assert(paaaa              != NULL);
+  assert(paaaa->type        == RR_AAAA);
+  assert(paaaa->class       == CLASS_IN);
+
+  rc = dns_encode_domain(data,paaaa->name,strlen(paaaa->name));
+  if (rc != RCODE_OKAY) return rc;
+
+  if (data->size < 14 + 2 + sizeof(paaaa->address))	/* type, class, ttl, uint16-size, address */
+    return RCODE_NO_MEMORY;
+
+  write_uint16(data,paaaa->type);
+  write_uint16(data,paaaa->class);
+  write_uint32(data,paaaa->ttl);
+  write_uint16(data,sizeof(paaaa->address));
+  write_raw(data,(const uint8_t*)&(paaaa->address), sizeof(paaaa->address));
+  return RCODE_OKAY;
+}
+
 /*************************************************************************
 *
 * Memory allocations are done quickly.  The dns_decode() routine is given a
@@ -746,6 +807,18 @@ static inline void write_uint32(block_t *const parse,uint32_t value)
   parse->ptr[3] = (value      ) & 0xFF;
   parse->ptr  += 4;
   parse->size -= 4;
+}
+
+/***********************************************************************/
+
+static inline void write_raw(block_t *const parse,const uint8_t *value, uint32_t numValueBytes)
+{
+  assert(pblock_okay(parse));
+  assert(parse->size >= numValueBytes);
+
+  memcpy(parse->ptr, value, numValueBytes);
+  parse->ptr  += numValueBytes;
+  parse->size -= numValueBytes;
 }
 
 /***********************************************************************/
