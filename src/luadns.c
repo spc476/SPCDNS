@@ -239,6 +239,7 @@ static int dnslua_encode(lua_State *L)
     lua_getfield(L,qidx,"version");
     lua_getfield(L,qidx,"fdo");
     
+    edns.opt.class       = CLASS_UNKNOWN;
     edns.opt.fug         = luaL_optinteger(L,-6,0);
     edns.opt.name        = luaL_optstring (L,-5,".");
     edns.opt.type        = dns_type_value (luaL_optstring(L,-4,"OPT"));
