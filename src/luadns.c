@@ -633,7 +633,7 @@ static void decode_answer(
 static int dnslua_decode(lua_State *L)
 {
   dns_decoded_t      bufresult[DNS_DECODEBUF_8K];
-  dns_packet_t       data     [DNS_BUFFER_UDP];
+  dns_packet_t       data     [DNS_DECODEBUF_4K];
   const char        *luadata;
   dns_query_t       *result;
   size_t             size;
@@ -646,7 +646,7 @@ static int dnslua_decode(lua_State *L)
   ;----------------------------------------------------------------------*/
   
   luadata = luaL_checklstring(L,1,&size);
-  if (size > MAX_DNS_QUERY_SIZE) size = MAX_DNS_QUERY_SIZE;
+  if (size > sizeof(data)) size = sizeof(data);
   memcpy(data,luadata,size);
   
   rc = dns_decode(bufresult,&(size_t){sizeof(bufresult)},data,size);
@@ -722,7 +722,7 @@ static int dnslua_query(lua_State *L)
   const char   *luaquery;
   size_t        querysize;
   dns_packet_t  query[DNS_BUFFER_UDP];
-  dns_packet_t  reply[DNS_BUFFER_UDP];
+  dns_packet_t  reply[DNS_DECODEBUF_4K];
   size_t        replysize;
   int           rc;
   
