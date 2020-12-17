@@ -1,10 +1,10 @@
 package = "org.conman.dns"
-version = "1.0.17-1"
+version = "1.0.18-1"
 
 source = 
 {
   url = "git://github.com/spc476/SPCDNS.git",
-  tag = "v1.0.17"
+  tag = "v1.0.18"
 }
 
 description =
@@ -22,7 +22,7 @@ description =
 
 dependencies = 
 {
-  "lua >= 5.1, < 5.4"
+  "lua >= 5.1, <= 5.4"
 }
 
 build = 
