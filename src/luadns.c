@@ -114,15 +114,8 @@
 
 /********************************************************************/
 
-#if LUA_VERSION_NUM > 501
-static size_t lua_objlen(lua_State *L,int index)
-{
-  size_t len;
-  lua_len(L,index);
-  len = lua_tointeger(L,-1);
-  lua_pop(L,1);
-  return len;
-}
+#if LUA_VERSION_NUM == 501
+#  define lua_rawlen(L,i) lua_objlen((L),(i))
 #endif
 
 /********************************************************************/
@@ -259,7 +252,7 @@ static int dnslua_encode(lua_State *L)
     }
     else
     {
-      edns.opt.numopts = lua_objlen(L,-1);
+      edns.opt.numopts = lua_rawlen(L,-1);
       
       /*----------------------------------------------------------------
       ; the opts table can either be one record with named fields, or an
