@@ -157,12 +157,12 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
 /***********************************************************************/
 
 #ifndef NDEBUG
-  static int query_okay  (const dns_query_t *const)  __attribute__ ((unused));
-  static int pblock_okay (const block_t *const)      __attribute__ ((unused));
-  static int block_okay  (const block_t)             __attribute__ ((unused));
-  static int context_okay(const ddns_context *const) __attribute__ ((unused));
+  static int query_okay  (const dns_query_t *)  __attribute__ ((unused));
+  static int pblock_okay (const block_t *)      __attribute__ ((unused));
+  static int block_okay  (const block_t)        __attribute__ ((unused));
+  static int context_okay(const ddns_context *) __attribute__ ((unused));
   
-  static int query_okay(const dns_query_t *const query)
+  static int query_okay(const dns_query_t *query)
   {
     assert(query          != NULL);
     assert(query->id      >= 0);
@@ -185,7 +185,7 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
     return 1;
   }
   
-  static int pblock_okay(const block_t *const block)
+  static int pblock_okay(const block_t *block)
   {
     assert(block       != NULL);
     assert(block->ptr  != NULL);
@@ -200,7 +200,7 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
     return 1;
   }
   
-  static int context_okay(const ddns_context *const data)
+  static int context_okay(const ddns_context *data)
   {
     assert(data     != NULL);
     assert(data->response != NULL);
