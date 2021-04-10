@@ -22,22 +22,22 @@
 * Implementation of the simple network interface for DNS queries.  Two
 * functions are exported:
 *
-*	net_server()
+*       net_server()
 *
-*		decode the IP address (IPv4/IPv6) from a text representation
-*		to a network format.
+*               decode the IP address (IPv4/IPv6) from a text representation
+*               to a network format.
 *
-*	net_request()
+*       net_request()
 *
-*		Send a request to the given server and wait a reponse.  This
-*		function is stupid simple---it opens a socket, sends the
-*		request via sendto(), waits for up to 15 seconds for a
-*		reply.  If no reply is seen in 15 seconds, close the socket
-*		and return an error---otherwise, call recvfrom(), close the
-*		socket and return the data.
+*               Send a request to the given server and wait a reponse.  This
+*               function is stupid simple---it opens a socket, sends the
+*               request via sendto(), waits for up to 15 seconds for a
+*               reply.  If no reply is seen in 15 seconds, close the socket
+*               and return an error---otherwise, call recvfrom(), close the
+*               socket and return the data.
 *
-*		Like I said, stupid simple.  It's enough for testing and
-*		very simple programs.
+*               Like I said, stupid simple.  It's enough for testing and
+*               very simple programs.
 *
 * This code is written for C99.
 *
@@ -62,8 +62,8 @@
 /************************************************************************/
 
 int net_server(
-	sockaddr_all *const restrict addr,
-	const char   *const restrict host
+        sockaddr_all *const restrict addr,
+        const char   *const restrict host
 )
 {
   assert(addr != NULL);
@@ -90,11 +90,11 @@ int net_server(
 /************************************************************************/
 
 int net_request(
-	sockaddr_all       *const restrict srvaddr,
-	dns_packet_t       *const restrict dest,
-	size_t             *const restrict dsize,
-	const dns_packet_t *const restrict src,
-	const size_t                      ssize
+        sockaddr_all       *const restrict srvaddr,
+        dns_packet_t       *const restrict dest,
+        size_t             *const restrict dsize,
+        const dns_packet_t *const restrict src,
+        const size_t                      ssize
 )
 {
   struct pollfd polldat;
@@ -110,11 +110,11 @@ int net_request(
     case AF_INET6: asize = sizeof(struct sockaddr_in6); break;
     default:       assert(0); return EPROTOTYPE;
   }
-
+  
   sock = socket(srvaddr->sa.sa_family,SOCK_DGRAM,0);
   if (sock < 0)
     return errno;
-
+    
   bytes = sendto(sock,src,ssize,0,&srvaddr->sa,asize);
   if (bytes < 0)
   {
@@ -122,7 +122,7 @@ int net_request(
     close(sock);
     return err;
   }
-
+  
   polldat.fd     = sock;
   polldat.events = POLLIN;
   
@@ -139,7 +139,7 @@ int net_request(
     close(sock);
     return ETIMEDOUT;
   }
-
+  
   bytes = recvfrom(sock,dest,*dsize,0,NULL,NULL);
   if (bytes < 0)
   {
@@ -147,7 +147,7 @@ int net_request(
     close(sock);
     return err;
   }
-
+  
   *dsize = bytes;
   close(sock);
   return 0;

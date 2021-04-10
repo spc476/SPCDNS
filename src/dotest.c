@@ -45,27 +45,27 @@
 
 enum
 {
-  OPT_NONE	= '\0',
-  OPT_HELP	= 'h',
+  OPT_NONE      = '\0',
+  OPT_HELP      = 'h',
   OPT_EDNS      = 'e',
-  OPT_SERVER	= 's',
-  OPT_DUMP	= 'd',
-  OPT_ERR	= '?'
+  OPT_SERVER    = 's',
+  OPT_DUMP      = 'd',
+  OPT_ERR       = '?'
 };
 
 /************************************************************************/
 
-static void usage		(const char *);
+static void usage               (const char *);
 
 /************************************************************************/
 
 const struct option c_options[] =
 {
-  { "server"	, required_argument	, NULL	, OPT_SERVER 	} ,
-  { "edns"	, no_argument		, NULL  , OPT_EDNS	} ,
-  { "dump"	, no_argument		, NULL	, OPT_DUMP	} ,
-  { "help"	, no_argument		, NULL	, OPT_HELP	} ,
-  { NULL	, 0			, NULL	, 0		}
+  { "server"    , required_argument     , NULL  , OPT_SERVER    } ,
+  { "edns"      , no_argument           , NULL  , OPT_EDNS      } ,
+  { "dump"      , no_argument           , NULL  , OPT_DUMP      } ,
+  { "help"      , no_argument           , NULL  , OPT_HELP      } ,
+  { NULL        , 0                     , NULL  , 0             }
 };
 
 /***********************************************************************/
@@ -130,7 +130,7 @@ int main(int argc,char *argv[])
   
   if (optind < argc)
     type = argv[optind];
-  
+    
   /*------------------------------------------------------------------------
   ; Encoding of a DNS query.  I'm finding that many (if not all) DNS servers
   ; only accept a single question, even though the protocol seems to allow
@@ -149,8 +149,8 @@ int main(int argc,char *argv[])
   domain.name  = host;
   domain.type  = dns_type_value(type);
   domain.class = CLASS_IN;
-
-  query.id          = 1234;	/* should be a random value */
+  
+  query.id          = 1234;     /* should be a random value */
   query.query       = true;
   query.opcode      = OP_QUERY;
   query.aa          = false;
@@ -173,7 +173,7 @@ int main(int argc,char *argv[])
   if (fedns)
   {
     /*----------------------------------------------------------------------
-    ; Test EDNS0 by sending an NSID OPT RR type query.  
+    ; Test EDNS0 by sending an NSID OPT RR type query.
     ;
     ; The udp_payload is the largest UDP packet we can reasonably expect to
     ; receive.  I'm using the value 1464 since that's about the largest UDP
@@ -202,7 +202,7 @@ int main(int argc,char *argv[])
     query.arcount    = 1;
     query.additional = &edns;
   }
- 
+  
   reqsize = sizeof(request);
   rc      = dns_encode(request,&reqsize,&query);
   if (rc != RCODE_OKAY)
@@ -212,11 +212,11 @@ int main(int argc,char *argv[])
   }
   
   if (fdump)
-  {  
+  {
     printf("OUTGOING:\n\n");
     dns_dump_memory(stdout,request,reqsize,0);
   }
-
+  
   /*-----------------------------------------------------------------------
   ; Sending a DNS query.  This uses the simple interface provided and is
   ; not good for much *except* as an example.  If you have any complex
@@ -226,11 +226,11 @@ int main(int argc,char *argv[])
   sockaddr_all server;
   dns_packet_t reply[DNS_BUFFER_UDP];
   size_t       replysize;
-
+  
   rc = net_server(&server,serverhost);
   if (rc != 0)
   {
-    fprintf(stderr,"net_server() = %s",strerror(rc)); 
+    fprintf(stderr,"net_server() = %s",strerror(rc));
     return EXIT_FAILURE;
   }
   
@@ -241,13 +241,13 @@ int main(int argc,char *argv[])
     fprintf(stderr,"net_request() = %s\n",strerror(rc));
     return EXIT_FAILURE;
   }
-
+  
   if (fdump)
   {
     printf("\nINCOMING:\n\n");
     dns_dump_memory(stdout,reply,replysize,0);
   }
-
+  
   /*----------------------------------------------------------------------
   ; Decode a DNS packet into something we can use.  dns_decoded_t is a type
   ; to ensure proper alignment for stack based results---this must be big
@@ -269,9 +269,9 @@ int main(int argc,char *argv[])
   
   if (fdump)
     printf("\nBytes used: %lu\n\n",(unsigned long)bufsize);
-  
+    
   /*----------------------------------------
-  ; see the code in output.c 
+  ; see the code in output.c
   ;-----------------------------------------*/
   
   dns_print_result((dns_query_t *)bufresult);
@@ -285,15 +285,15 @@ static void usage(const char *prog)
   assert(prog != NULL);
   
   fprintf(
-  	stderr,
-  	"usage: %s [-h] [-d] [-e] [-s server] host [type]\n"
-  	"\t-h\t\tusage text (this text)\n"
-  	"\t-d\t\tdump raw DNS queries\n"
-  	"\t-e\t\tInclude EDNS0 RR with query\n"
-  	"\t-s server\tIP address of server\n"
-  	"\n"
-  	"\ttype\t\tRR DNS type\n",
-  	prog
+        stderr,
+        "usage: %s [-h] [-d] [-e] [-s server] host [type]\n"
+        "\t-h\t\tusage text (this text)\n"
+        "\t-d\t\tdump raw DNS queries\n"
+        "\t-e\t\tInclude EDNS0 RR with query\n"
+        "\t-s server\tIP address of server\n"
+        "\n"
+        "\ttype\t\tRR DNS type\n",
+        prog
   );
 }
 

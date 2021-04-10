@@ -22,73 +22,73 @@
 * Implements Lua bindings for my DNS library.  This exports four functions
 * in the org.conman.dns object:
 *
-*	encode(t)
+*       encode(t)
 *
-*		Accepts a table in the form:
+*               Accepts a table in the form:
 *
-*			{
-*			  id       = some_number,
-*			  query    = true,	-- making a query
-*			  rd       = true,	-- for recursive queries
-*			  opcode   = 'query',
-*			  question = {
-*			  		name = 'www.example.com',
-*			  		type = 'loc',
-*			  		class = 'in'
-*			  	}, -- and optionally
-*			  additional = {
-*				name = '.',
-*				type = 'opt',
-*				udp_payload = 1464,
-*				version     = 0,
-*				fdo         = false,
-*				opts        = {
-*					{
-*					  type = 'nsid', -- or a number
-*					  data = "..."
-*					} -- and more, if required 
-*				}
-*			  }
-*			}
+*                       {
+*                         id       = some_number,
+*                         query    = true,      -- making a query
+*                         rd       = true,      -- for recursive queries
+*                         opcode   = 'query',
+*                         question = {
+*                                       name = 'www.example.com',
+*                                       type = 'loc',
+*                                       class = 'in'
+*                               }, -- and optionally
+*                         additional = {
+*                               name = '.',
+*                               type = 'opt',
+*                               udp_payload = 1464,
+*                               version     = 0,
+*                               fdo         = false,
+*                               opts        = {
+*                                       {
+*                                         type = 'nsid', -- or a number
+*                                         data = "..."
+*                                       } -- and more, if required
+*                               }
+*                         }
+*                       }
 *
-*		And returns a binary string that is the wire format of the
-*		query.  This binary string can then be sent over a UDP or
-*		TCP packet to a DNS server.
+*               And returns a binary string that is the wire format of the
+*               query.  This binary string can then be sent over a UDP or
+*               TCP packet to a DNS server.
 *
-*		This returns a binary string on success, nil,rcode on
-*		failre.
+*               This returns a binary string on success, nil,rcode on
+*               failre.
 *
-*		See lua/test.lua for an example of using this function.
+*               See lua/test.lua for an example of using this function.
 *
-*	decode(bs)
+*       decode(bs)
 *
-*		Decodes a binary string into a table (similar to the table
-*		above) for easy use of the DNS response.
+*               Decodes a binary string into a table (similar to the table
+*               above) for easy use of the DNS response.
 *
-*		This returns a table on success, or nil,rcode on failure.
+*               This returns a table on success, or nil,rcode on failure.
 *
-*		See lua/test.lua for an example of using this function.
+*               See lua/test.lua for an example of using this function.
 *
-*	query(server,bs)
+*       query(server,bs)
 *
-*		Sends the encoded binary string to the given server.  The
-*		server variable is a string of the IP address (IPv4 or
-*		IPv6)---hostnames will fail.
+*               Sends the encoded binary string to the given server.  The
+*               server variable is a string of the IP address (IPv4 or
+*               IPv6)---hostnames will fail.
 *
-*		This function is very stupid simple; it sends the request,
-*		and if it doesn't see a reply in 15 seconds, it returns a
-*		failure.  No restransmission of the packet is done.  This is
-*		probably fine for simple applications but not for anything
-*		heavy duty or rubust.
+*               This function is very stupid simple; it sends the request,
+*               and if it doesn't see a reply in 15 seconds, it returns a
+*               failure.  No restransmission of the packet is done.  This is
+*               probably fine for simple applications but not for anything
+*               heavy duty or rubust.
 *
-*		This returns a binary string of the reponse, or nil,rcode on
-*		failure.
+*               This returns a binary string of the reponse, or nil,rcode on
+*               failure.
 *
-*	strerror(rcode)
+*       strerror(rcode)
 *
-*		Returns a string representation of the server response, or 
-*		the return value from a failed query() call.  This function
-*		does not fail (if it does, there's more to worry about).
+*               Returns a string representation of the server response, or
+*               the return value from a failed query() call.  This function
+*               does not fail (if it does, there's more to worry about).
 *
 *
 * This code is written to C99.
@@ -152,7 +152,7 @@ static bool parse_edns0_opt(lua_State *L,edns0_opt_t *opt)
   return rc;
 }
 
-/********************************************************************/  
+/********************************************************************/
 
 static int dnslua_encode(lua_State *L)
 {
@@ -167,7 +167,7 @@ static int dnslua_encode(lua_State *L)
   
   memset(&domain,0,sizeof(domain));
   memset(&query, 0,sizeof(query));
-
+  
   lua_getfield(L,1,"question");
   
   /*----------------------------------------------------------------------
@@ -180,7 +180,7 @@ static int dnslua_encode(lua_State *L)
   /*-----------------------------------------------------------------
   ; process the question
   ;----------------------------------------------------------------*/
-
+  
   lua_getfield(L,qidx,"name");
   lua_getfield(L,qidx,"type");
   lua_getfield(L,qidx,"class");
@@ -188,18 +188,18 @@ static int dnslua_encode(lua_State *L)
   domain.name  = luaL_checkstring(L,-3);
   domain.type  = dns_type_value (luaL_optstring(L,-2,"A"));
   domain.class = dns_class_value(luaL_optstring(L,-1,"IN"));
-
+  
   lua_pop(L,4);
   
   lua_getfield(L,1,"id");
   lua_getfield(L,1,"query");
   lua_getfield(L,1,"rd");
   lua_getfield(L,1,"opcode");
-    
+  
   query.id        = luaL_optinteger(L,-4,1234);
   query.query     = lua_toboolean(L,-3);
   query.rd        = lua_toboolean(L,-2);
-  query.opcode    = dns_op_value(luaL_optstring(L,-1,"QUERY"));  
+  query.opcode    = dns_op_value(luaL_optstring(L,-1,"QUERY"));
   query.qdcount   = 1;
   query.questions = &domain;
   
@@ -281,7 +281,7 @@ static int dnslua_encode(lua_State *L)
           
           if (!parse_edns0_opt(L,&opt[i - 1]))
             return luaL_error(L,"EDNS0 option no supported");
-          
+            
           lua_pop(L,1);
         }
         edns.opt.opts = opt;
@@ -325,12 +325,12 @@ static void push_dnsgpos_angle(lua_State *L,dnsgpos_angle *pa,bool lat)
 /********************************************************************/
 
 static void decode_answer(
-	lua_State    *L,
-	int           tab,
-	const char   *name,
-	dns_answer_t *pans,
-	size_t        cnt,
-	bool          dup
+        lua_State    *L,
+        int           tab,
+        const char   *name,
+        dns_answer_t *pans,
+        size_t        cnt,
+        bool          dup
 )
 {
   char ipaddr[INET6_ADDRSTRLEN];
@@ -360,7 +360,7 @@ static void decode_answer(
            lua_pushlstring(L,(char *)&pans[i].a.address,4);
            lua_setfield(L,-2,"raw_address");
            break;
-
+           
       case RR_SOA:
            lua_pushstring(L,pans[i].soa.mname);
            lua_setfield(L,-2,"mname");
@@ -377,7 +377,7 @@ static void decode_answer(
            lua_pushnumber(L,pans[i].soa.minimum);
            lua_setfield(L,-2,"minimum");
            break;
-
+           
       case RR_NAPTR:
            lua_pushinteger(L,pans[i].naptr.order);
            lua_setfield(L,-2,"order");
@@ -392,7 +392,7 @@ static void decode_answer(
            lua_pushstring(L,pans[i].naptr.replacement);
            lua_setfield(L,-2,"replacement");
            break;
-
+           
       case RR_AAAA:
            inet_ntop(AF_INET6,&pans[i].aaaa.address,ipaddr,sizeof(ipaddr));
            lua_pushstring(L,ipaddr);
@@ -400,7 +400,7 @@ static void decode_answer(
            lua_pushlstring(L,(char *)&pans[i].aaaa.address,16);
            lua_setfield(L,-2,"raw_address");
            break;
-
+           
       case RR_SRV:
            lua_pushinteger(L,pans[i].srv.priority);
            lua_setfield(L,-2,"priority");
@@ -454,14 +454,14 @@ static void decode_answer(
            lua_pushstring(L,pans[i].px.mapx400);
            lua_setfield(L,-2,"mapx400");
            break;
-      
+           
       case RR_RP:
            lua_pushstring(L,pans[i].rp.mbox);
            lua_setfield(L,-2,"mbox");
            lua_pushstring(L,pans[i].rp.domain);
            lua_setfield(L,-2,"domain");
            break;
-      
+           
       case RR_MINFO:
            lua_pushstring(L,pans[i].minfo.rmailbx);
            lua_setfield(L,-2,"rmailbx");
@@ -475,7 +475,7 @@ static void decode_answer(
            lua_pushstring(L,pans[i].afsdb.hostname);
            lua_setfield(L,-2,"hostname");
            break;
-      
+           
       case RR_RT:
            lua_pushinteger(L,pans[i].rt.preference);
            lua_setfield(L,-2,"preference");
@@ -503,7 +503,7 @@ static void decode_answer(
            lua_pushstring(L,pans[i].isdn.sa);
            lua_setfield(L,-2,"sa");
            break;
-      
+           
       case RR_HINFO:
            lua_pushstring(L,pans[i].hinfo.cpu);
            lua_setfield(L,-2,"cpu");
@@ -525,47 +525,47 @@ static void decode_answer(
            lua_pushlstring(L,pans[i].txt.text,pans[i].txt.len);
            lua_setfield(L,-2,"text");
            break;
-      
+           
       case RR_NSAP_PTR:
            lua_pushstring(L,pans[i].nsap_ptr.owner);
            lua_setfield(L,-2,"owner");
            break;
-      
+           
       case RR_MD:
            lua_pushstring(L,pans[i].md.madname);
            lua_setfield(L,-2,"madname");
            break;
-      
+           
       case RR_MF:
            lua_pushstring(L,pans[i].mf.madname);
            lua_setfield(L,-2,"madname");
            break;
-      
+           
       case RR_MB:
            lua_pushstring(L,pans[i].mb.madname);
            lua_setfield(L,-2,"madname");
            break;
-      
+           
       case RR_MG:
            lua_pushstring(L,pans[i].mg.mgmname);
            lua_setfield(L,-2,"mgmname");
            break;
-      
+           
       case RR_MR:
            lua_pushstring(L,pans[i].mr.newname);
            lua_setfield(L,-2,"newname");
            break;
-      
+           
       case RR_NS:
            lua_pushstring(L,pans[i].ns.nsdname);
            lua_setfield(L,-2,"nsdname");
            break;
-
+           
       case RR_PTR:
            lua_pushstring(L,pans[i].ptr.ptr);
            lua_setfield(L,-2,"ptr");
            break;
-
+           
       case RR_CNAME:
            lua_pushstring(L,pans[i].cname.cname);
            lua_setfield(L,-2,"cname");
@@ -601,7 +601,7 @@ static void decode_answer(
            }
            lua_setfield(L,-2,"opts");
            break;
-
+           
       default:
            lua_pushlstring(L,(char *)pans[i].x.rawdata,pans[i].x.size);
            lua_setfield(L,-2,"rawdata");
@@ -618,7 +618,7 @@ static void decode_answer(
     lua_settable(L,-3);
   }
   
-  lua_setfield(L,tab,name);         
+  lua_setfield(L,tab,name);
 }
 
 /**********************************************************************/
@@ -688,11 +688,11 @@ static int dnslua_decode(lua_State *L)
     lua_setfield(L,-2,"type");
     lua_setfield(L,tab,"question");
   }
-
+  
   decode_answer(L,tab,"answers"     , result->answers    , result->ancount,false);
   decode_answer(L,tab,"nameservers" , result->nameservers, result->nscount,false);
   decode_answer(L,tab,"additional"  , result->additional , result->arcount,true);
-
+  
   assert(tab == lua_gettop(L));
   
   return 1;
@@ -707,7 +707,7 @@ static int dnslua_strerror(lua_State *L)
 }
 
 /*********************************************************************/
-  
+
 static int dnslua_query(lua_State *L)
 {
   sockaddr_all  srvaddr;
@@ -719,17 +719,17 @@ static int dnslua_query(lua_State *L)
   size_t        replysize;
   int           rc;
   
-  server   = luaL_checkstring(L,1);  
+  server   = luaL_checkstring(L,1);
   luaquery = luaL_checklstring(L,2,&querysize);
   
   if (net_server(&srvaddr,server) < 0)
     luaL_error(L,"%s is not an IPv4/IPv6 address",server);
-  
+    
   if (querysize > MAX_DNS_QUERY_SIZE) querysize = MAX_DNS_QUERY_SIZE;
   memcpy(query,luaquery,querysize);
   replysize = sizeof(reply);
   rc = net_request(&srvaddr,reply,&replysize,query,querysize);
-
+  
   if (rc != 0)
   {
     lua_pushnil(L);
@@ -745,11 +745,11 @@ static int dnslua_query(lua_State *L)
 
 static const struct luaL_Reg reg_dns[] =
 {
-  { "encode"	, dnslua_encode		} ,
-  { "decode"	, dnslua_decode		} ,
-  { "strerror"	, dnslua_strerror	} ,
-  { "query"	, dnslua_query		} ,
-  { NULL	, NULL			} 
+  { "encode"    , dnslua_encode         } ,
+  { "decode"    , dnslua_decode         } ,
+  { "strerror"  , dnslua_strerror       } ,
+  { "query"     , dnslua_query          } ,
+  { NULL        , NULL                  }
 };
 
 int luaopen_org_conman_dns(lua_State *L)

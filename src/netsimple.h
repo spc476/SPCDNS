@@ -21,11 +21,11 @@
 *
 * Definitions for a simple network interface to send and receive DNS
 * queries.
-* 
+*
 * This only suffices for simple applications; for anything that does a lot
 * of DNS queries, you probably want to use something else.
 *
-* This file assumes C99.  You must include the following files before 
+* This file assumes C99.  You must include the following files before
 * including this one:
 *
 * #include <stdint.h>
@@ -56,19 +56,19 @@ typedef union sockaddr_all
   struct sockaddr_in6 sin6;
 } sockaddr_all;
 
-int 	net_server	(
-			  sockaddr_all *const restrict,
-			  const char   *const restrict
-			) __attribute__ ((nonnull));
-			
-int 	net_request	(
-			  sockaddr_all       *const restrict,
-			  dns_packet_t       *const restrict,
-			  size_t             *const restrict,
-			  const dns_packet_t *const restrict,
-			  const size_t
-			) __attribute__ ((nonnull(1,2,3,4)));
-
+int     net_server      (
+                          sockaddr_all *const restrict,
+                          const char   *const restrict
+                        ) __attribute__ ((nonnull));
+                        
+int     net_request     (
+                          sockaddr_all       *const restrict,
+                          dns_packet_t       *const restrict,
+                          size_t             *const restrict,
+                          const dns_packet_t *const restrict,
+                          const size_t
+                        ) __attribute__ ((nonnull(1,2,3,4)));
+                        
 #ifdef __cplusplus
   }
 #endif
