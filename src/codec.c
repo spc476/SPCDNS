@@ -91,7 +91,7 @@ typedef struct block
 {
   size_t   size;
   uint8_t *ptr;
-} block_t;
+} block__s;
 
 struct idns_header
 {
@@ -106,30 +106,30 @@ struct idns_header
 
 typedef struct ddns_context
 {
-  block_t      packet;
-  block_t      parse;
-  block_t      dest;    /* see comments in align_memory() */
+  block__s      packet;
+  block__s      parse;
+  block__s      dest;    /* see comments in align_memory() */
   dns_query_t *response;
   bool         edns;
 } ddns_context;
 
 /***********************************************************************/
 
-static        dns_rcode_t  dns_encode_domain    (block_t *const restrict,const char           *restrict,      size_t) __attribute__ ((nothrow,nonnull));
-static        dns_rcode_t  dns_encode_string    (block_t *const restrict,const char           *restrict,const size_t) __attribute__ ((nothrow,nonnull));
-static        dns_rcode_t  dns_encode_question  (block_t *const restrict,const dns_question_t *const restrict)        __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_nsid  (block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_raw   (block_t *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_rr_opt        (block_t *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_rr_naptr      (block_t *const restrict,const dns_naptr_t    *const restrict)        __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_domain    (block__s *const restrict,const char           *restrict,      size_t) __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_string    (block__s *const restrict,const char           *restrict,const size_t) __attribute__ ((nothrow,nonnull));
+static        dns_rcode_t  dns_encode_question  (block__s *const restrict,const dns_question_t *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_nsid  (block__s *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_edns0rr_raw   (block__s *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_opt        (block__s *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
+static inline dns_rcode_t  encode_rr_naptr      (block__s *const restrict,const dns_naptr_t    *const restrict)        __attribute__ ((nothrow,nonnull));
 
-static        bool         align_memory (block_t *const)                __attribute__ ((nothrow,nonnull,   warn_unused_result));
-static        void        *alloc_struct (block_t *const,const size_t)   __attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
+static        bool         align_memory (block__s *const)                __attribute__ ((nothrow,nonnull,   warn_unused_result));
+static        void        *alloc_struct (block__s *const,const size_t)   __attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
 
-static inline void         write_uint16 (block_t *const,uint16_t)                                         __attribute__ ((nothrow,nonnull(1)));
-static inline void         write_uint32 (block_t *const,uint32_t)                                         __attribute__ ((nothrow,nonnull(1)));
-static inline uint16_t     read_uint16  (block_t *const)                                                  __attribute__ ((nothrow,nonnull));
-static inline uint32_t     read_uint32  (block_t *const)                                                  __attribute__ ((nothrow,nonnull));
+static inline void         write_uint16 (block__s *const,uint16_t)                                         __attribute__ ((nothrow,nonnull(1)));
+static inline void         write_uint32 (block__s *const,uint32_t)                                         __attribute__ ((nothrow,nonnull(1)));
+static inline uint16_t     read_uint16  (block__s *const)                                                  __attribute__ ((nothrow,nonnull));
+static inline uint32_t     read_uint32  (block__s *const)                                                  __attribute__ ((nothrow,nonnull));
 static        dns_rcode_t  read_raw     (ddns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  read_string  (ddns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull(1,2)));
 static        dns_rcode_t  read_domain  (ddns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull));
@@ -158,8 +158,8 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
 
 #ifndef NDEBUG
   static int query_okay  (const dns_query_t *)  __attribute__ ((unused));
-  static int pblock_okay (const block_t *)      __attribute__ ((unused));
-  static int block_okay  (const block_t)        __attribute__ ((unused));
+  static int pblock_okay (const block__s *)     __attribute__ ((unused));
+  static int block_okay  (const block__s)       __attribute__ ((unused));
   static int context_okay(const ddns_context *) __attribute__ ((unused));
   
   static int query_okay(const dns_query_t *query)
@@ -185,7 +185,7 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
     return 1;
   }
   
-  static int pblock_okay(const block_t *block)
+  static int pblock_okay(const block__s *block)
   {
     assert(block       != NULL);
     assert(block->ptr  != NULL);
@@ -193,7 +193,7 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
     return 1;
   }
   
-  static int block_okay(const block_t block)
+  static int block_okay(const block__s block)
   {
     assert(block.ptr  != NULL);
     assert(block.size >  0);
@@ -221,7 +221,7 @@ dns_rcode_t dns_encode(
 {
   struct idns_header *header;
   uint8_t            *buffer;
-  block_t             data;
+  block__s            data;
   dns_rcode_t         rc;
   
   assert(dest  != NULL);
@@ -315,7 +315,7 @@ dns_rcode_t dns_encode(
 /*********************************************************************/
 
 static dns_rcode_t dns_encode_domain(
-        block_t    *const restrict data,
+        block__s   *const restrict data,
         const char *restrict       name,
         size_t                     len
 )
@@ -423,7 +423,7 @@ static dns_rcode_t dns_encode_domain(
 /*******************************************************************/
 
 static dns_rcode_t dns_encode_string(
-        block_t      *const restrict data,
+        block__s     *const restrict data,
         const char   *restrict       text,
         const size_t                 size
 )
@@ -445,7 +445,7 @@ static dns_rcode_t dns_encode_string(
 /******************************************************************/
 
 static dns_rcode_t dns_encode_question(
-        block_t              *const restrict data,
+        block__s             *const restrict data,
         const dns_question_t *const restrict pquestion
 )
 {
@@ -473,7 +473,7 @@ static dns_rcode_t dns_encode_question(
 /*************************************************************************/
 
 static inline dns_rcode_t encode_edns0rr_nsid(
-        block_t           *const restrict data,
+        block__s          *const restrict data,
         const edns0_opt_t *const restrict opt
 )
 {
@@ -514,7 +514,7 @@ static inline dns_rcode_t encode_edns0rr_nsid(
 /**********************************************************************/
 
 static inline dns_rcode_t encode_edns0rr_raw(
-        block_t           *const restrict data,
+        block__s          *const restrict data,
         const edns0_opt_t *const restrict opt
 )
 {
@@ -537,7 +537,7 @@ static inline dns_rcode_t encode_edns0rr_raw(
 /*************************************************************************/
 
 static inline dns_rcode_t encode_rr_opt(
-        block_t              *const restrict data,
+        block__s             *const restrict data,
         const dns_query_t    *const restrict query,
         const dns_edns0opt_t *const restrict opt
 )
@@ -604,7 +604,7 @@ static inline dns_rcode_t encode_rr_opt(
 /***********************************************************************/
 
 static inline dns_rcode_t encode_rr_naptr(
-        block_t           *const restrict data,
+        block__s          *const restrict data,
         const dns_naptr_t *const restrict naptr
 )
 {
@@ -659,7 +659,7 @@ static inline dns_rcode_t encode_rr_naptr(
   ; now write the length of the data we've just written
   ;-------------------------------------------------------*/
   
-  write_uint16(&(block_t){ .ptr = prdlen , .size = 2 },data->ptr - pdata);
+  write_uint16(&(block__s){ .ptr = prdlen , .size = 2 },data->ptr - pdata);
   return RCODE_OKAY;
 }
 
@@ -678,7 +678,7 @@ static inline dns_rcode_t encode_rr_naptr(
 *
 ******************************************************************************/
 
-static bool align_memory(block_t *const pool)
+static bool align_memory(block__s *const pool)
 {
   size_t newsize;
   size_t delta;
@@ -704,7 +704,7 @@ static bool align_memory(block_t *const pool)
 
 /*************************************************************************/
 
-static void *alloc_struct(block_t *const pool,const size_t size)
+static void *alloc_struct(block__s *const pool,const size_t size)
 {
   uint8_t *ptr;
   
@@ -722,7 +722,7 @@ static void *alloc_struct(block_t *const pool,const size_t size)
 
 /***********************************************************************/
 
-static inline void write_uint16(block_t *const parse,uint16_t value)
+static inline void write_uint16(block__s *const parse,uint16_t value)
 {
   assert(pblock_okay(parse));
   assert(parse->size >= 2);
@@ -735,7 +735,7 @@ static inline void write_uint16(block_t *const parse,uint16_t value)
 
 /***********************************************************************/
 
-static inline void write_uint32(block_t *const parse,uint32_t value)
+static inline void write_uint32(block__s *const parse,uint32_t value)
 {
   assert(pblock_okay(parse));
   assert(parse->size >= 4);
@@ -750,7 +750,7 @@ static inline void write_uint32(block_t *const parse,uint32_t value)
 
 /***********************************************************************/
 
-static inline uint16_t read_uint16(block_t *const parse)
+static inline uint16_t read_uint16(block__s *const parse)
 {
   uint16_t val;
   
@@ -770,7 +770,7 @@ static inline uint16_t read_uint16(block_t *const parse)
 
 /********************************************************************/
 
-static inline uint32_t read_uint32(block_t *const parse)
+static inline uint32_t read_uint32(block__s *const parse)
 {
   uint32_t val;
   
@@ -871,10 +871,10 @@ static dns_rcode_t read_domain(
         const char   **restrict       result
 )
 {
-  block_t *parse = &data->parse;
-  block_t  tmp;
-  size_t   len;
-  int      loop;        /* loop detection */
+  block__s *parse = &data->parse;
+  block__s  tmp;
+  size_t    len;
+  int       loop;        /* loop detection */
   
   assert(context_okay(data));
   assert(result != NULL);
@@ -1167,10 +1167,10 @@ static inline dns_rcode_t decode_rr_txt(
         const size_t                 len
 )
 {
-  block_t tmp;
-  size_t  worklen;
-  size_t  items;
-  size_t  slen;
+  block__s tmp;
+  size_t   worklen;
+  size_t   items;
+  size_t   slen;
   
   assert(context_okay(data));
   assert(ptxt != NULL);
