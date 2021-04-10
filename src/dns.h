@@ -977,8 +977,8 @@ typedef struct dns_query_t      /* RFC-1035 */
 
 /**********************************************************************/
 
-dns_rcode_t     dns_encode(dns_packet_t  *,size_t *,const dns_query_t *)         __attribute__ ((nothrow,nonnull));
-dns_rcode_t     dns_decode(dns_decoded_t *,size_t *,const dns_packet_t *,size_t) __attribute__ ((nothrow,nonnull(1,2,3)));
+dns_rcode_t dns_encode(dns_packet_t  *,size_t *,const dns_query_t *)         __attribute__ ((nothrow,nonnull));
+dns_rcode_t dns_decode(dns_decoded_t *,size_t *,const dns_packet_t *,size_t) __attribute__ ((nothrow,nonnull(1,2,3)));
 
 #ifdef __cplusplus
    }
