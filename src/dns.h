@@ -977,19 +977,9 @@ typedef struct dns_query_t      /* RFC-1035 */
 
 /**********************************************************************/
 
-dns_rcode_t     dns_encode(
-                          dns_packet_t      *const restrict,
-                          size_t            *const restrict,
-                          const dns_query_t *const restrict
-                         ) __attribute__ ((nothrow,nonnull));
-                         
-dns_rcode_t     dns_decode(
-                          dns_decoded_t      *const restrict,
-                          size_t             *const restrict,
-                          const dns_packet_t *const restrict,
-                          const size_t
-                         ) __attribute__ ((nothrow,nonnull(1,2,3)));
-                         
+dns_rcode_t     dns_encode(dns_packet_t  *,size_t *,const dns_query_t *)         __attribute__ ((nothrow,nonnull));
+dns_rcode_t     dns_decode(dns_decoded_t *,size_t *,const dns_packet_t *,size_t) __attribute__ ((nothrow,nonnull(1,2,3)));
+
 #ifdef __cplusplus
    }
 #  undef class

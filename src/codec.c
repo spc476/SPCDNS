@@ -213,11 +213,7 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
 
 /*******************************************************************/
 
-dns_rcode_t dns_encode(
-        dns_packet_t      *const restrict dest,
-        size_t            *const restrict plen,
-        const dns_query_t *const restrict query
-)
+dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
 {
   struct idns_header *header;
   uint8_t            *buffer;
@@ -1763,12 +1759,7 @@ static dns_rcode_t decode_answer(
 
 /***********************************************************************/
 
-dns_rcode_t dns_decode(
-              dns_decoded_t *const restrict presponse,
-              size_t        *const restrict prsize,
-        const dns_packet_t  *const restrict buffer,
-        const size_t                        len
-)
+dns_rcode_t dns_decode(dns_decoded_t *presponse,size_t *prsize,const dns_packet_t *buffer,size_t len)
 {
   const struct idns_header *header;
   dns_query_t              *response;
