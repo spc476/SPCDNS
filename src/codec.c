@@ -104,11 +104,16 @@ struct idns_header
   uint16_t arcount;
 } __attribute__ ((packed));
 
+typedef struct edns_context
+{
+  block__s packet;
+} edns_context;
+
 typedef struct ddns_context
 {
-  block__s      packet;
-  block__s      parse;
-  block__s      dest;    /* see comments in align_memory() */
+  block__s     packet;
+  block__s     parse;
+  block__s     dest;    /* see comments in align_memory() */
   dns_query_t *response;
   bool         edns;
 } ddns_context;
@@ -154,9 +159,16 @@ typedef struct ddns_context
     return 1;
   }
   
-  static int context_okay(const ddns_context *data)
+  static int econtext_okay(const edns_context *data)
   {
-    assert(data     != NULL);
+    assert(data != NULL);
+    assert(block_okay(data->packet));
+    return 1;
+  }
+  
+  static int dcontext_okay(const ddns_context *data)
+  {
+    assert(data           != NULL);
     assert(data->response != NULL);
     assert(block_okay(data->packet));
     assert(block_okay(data->parse));
@@ -167,7 +179,7 @@ typedef struct ddns_context
 
 /*******************************************************************/
 
-static inline void write_uint16(block__s *const parse,uint16_t value)
+static inline void write_uint16(block__s *parse,uint16_t value)
 {
   assert(pblock_okay(parse));
   assert(parse->size >= 2);
@@ -180,7 +192,7 @@ static inline void write_uint16(block__s *const parse,uint16_t value)
 
 /***********************************************************************/
 
-static inline void write_uint32(block__s *const parse,uint32_t value)
+static inline void write_uint32(block__s *parse,uint32_t value)
 {
   assert(pblock_okay(parse));
   assert(parse->size >= 4);
@@ -196,16 +208,16 @@ static inline void write_uint32(block__s *const parse,uint32_t value)
 /***********************************************************************/
 
 static dns_rcode_t dns_encode_domain(
-        block__s   *const restrict data,
-        const char *restrict       name,
-        size_t                     len
+        edns_context *data,
+        char const   *name,
+        size_t        len
 )
 {
   uint8_t *start;
   uint8_t *end;
   uint8_t *back_ptr;
   
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(name != NULL);
   assert(len  >  0);
   
@@ -217,21 +229,21 @@ static dns_rcode_t dns_encode_domain(
   
   if (len == 1)
   {
-    if (data->size == 0)
+    if (data->packet.size == 0)
       return RCODE_NO_MEMORY;
       
     if (*name != '.')
       return RCODE_NAME_ERROR;
       
-    *data->ptr++ = 0;
-    data->size--;
+    *data->packet.ptr++ = 0;
+    data->packet.size--;
     return RCODE_OKAY;
   }
   
   if (name[len - 1] != '.')     /* name must be fully qualified */
     return RCODE_NAME_ERROR;
     
-  if (data->size < len + 1)
+  if (data->packet.size < len + 1)
     return RCODE_NO_MEMORY;
     
   /*----------------------------------------------------------------------
@@ -270,12 +282,12 @@ static dns_rcode_t dns_encode_domain(
   ; domain designation.  I'll leave that as an exercise to the reader.
   ;--------------------------------------------------------------------*/
   
-  memcpy(&data->ptr[1],name,len);
-  data->size -= (len + 1);
+  memcpy(&data->packet.ptr[1],name,len);
+  data->packet.size -= (len + 1);
   
-  back_ptr = data->ptr;
-  start    = &data->ptr[1];
-  end      = &data->ptr[1];
+  back_ptr = data->packet.ptr;
+  start    = &data->packet.ptr[1];
+  end      = &data->packet.ptr[1];
   
   while(len)
   {
@@ -296,7 +308,7 @@ static dns_rcode_t dns_encode_domain(
   }
   
   *back_ptr = 0;
-  data->ptr = end + 1;
+  data->packet.ptr = end + 1;
   
   return RCODE_OKAY;
 }
@@ -304,21 +316,21 @@ static dns_rcode_t dns_encode_domain(
 /*******************************************************************/
 
 static dns_rcode_t dns_encode_string(
-        block__s     *const restrict data,
-        const char   *restrict       text,
-        const size_t                 size
+        edns_context *data,
+        const char   *text,
+        const size_t  size
 )
 {
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(text != NULL);
   
-  if (size > 255)            return RCODE_BAD_STRING;
-  if (data->size < size + 1) return RCODE_NO_MEMORY;
+  if (size > 255)                   return RCODE_BAD_STRING;
+  if (data->packet.size < size + 1) return RCODE_NO_MEMORY;
   
-  *data->ptr++ = size;
-  memcpy(data->ptr,text,size);
-  data->ptr += size;
-  data->size -= (size + 1);
+  *data->packet.ptr++ = size;
+  memcpy(data->packet.ptr,text,size);
+  data->packet.ptr += size;
+  data->packet.size -= (size + 1);
   
   return RCODE_OKAY;
 }
@@ -326,13 +338,13 @@ static dns_rcode_t dns_encode_string(
 /******************************************************************/
 
 static dns_rcode_t dns_encode_question(
-        block__s             *const restrict data,
-        const dns_question_t *const restrict pquestion
+        edns_context         *data,
+        const dns_question_t *pquestion
 )
 {
   int rc;
   
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(pquestion        != NULL);
   assert(pquestion->name  != NULL);
   assert(pquestion->class >= 1);
@@ -342,11 +354,11 @@ static dns_rcode_t dns_encode_question(
   if (rc != RCODE_OKAY)
     return rc;
     
-  if (data->size < 4)
+  if (data->packet.size < 4)
     return RCODE_NO_MEMORY;
     
-  write_uint16(data,pquestion->type);
-  write_uint16(data,pquestion->class);
+  write_uint16(&data->packet,pquestion->type);
+  write_uint16(&data->packet,pquestion->class);
   
   return RCODE_OKAY;
 }
@@ -354,13 +366,13 @@ static dns_rcode_t dns_encode_question(
 /*************************************************************************/
 
 static inline dns_rcode_t encode_edns0rr_nsid(
-        block__s          *const restrict data,
-        const edns0_opt_t *const restrict opt
+        edns_context      *data,
+        const edns0_opt_t *opt
 )
 {
   size_t newlen;
   
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(opt       != NULL);
   assert(opt->code == EDNS0RR_NSID);
   assert(opt->len  <= UINT16_MAX);
@@ -372,7 +384,7 @@ static inline dns_rcode_t encode_edns0rr_nsid(
   ;------------------------------------------------------------------------*/
   
   newlen = opt->len * 2;
-  if (data->size < newlen + sizeof(uint16_t) + sizeof(uint16_t))
+  if (data->packet.size < newlen + sizeof(uint16_t) + sizeof(uint16_t))
     return RCODE_NO_MEMORY;
     
   char   buffer[newlen + 1];
@@ -384,50 +396,50 @@ static inline dns_rcode_t encode_edns0rr_nsid(
     
   assert(newlen == strlen(buffer));
   
-  write_uint16(data,opt->code);
-  write_uint16(data,newlen);
-  memcpy(data->ptr,buffer,newlen);
-  data->ptr  += newlen;
-  data->size -= newlen;
+  write_uint16(&data->packet,opt->code);
+  write_uint16(&data->packet,newlen);
+  memcpy(data->packet.ptr,buffer,newlen);
+  data->packet.ptr  += newlen;
+  data->packet.size -= newlen;
   return RCODE_OKAY;
 }
 
 /**********************************************************************/
 
 static inline dns_rcode_t encode_edns0rr_raw(
-        block__s          *const restrict data,
-        const edns0_opt_t *const restrict opt
+        edns_context      *data,
+        const edns0_opt_t *opt
 )
 {
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(opt       != NULL);
   assert(opt->code <= UINT16_MAX);
   assert(opt->len  <= UINT16_MAX);
   
-  if (data->size < opt->len + sizeof(uint16_t) + sizeof(uint16_t))
+  if (data->packet.size < opt->len + sizeof(uint16_t) + sizeof(uint16_t))
     return RCODE_NO_MEMORY;
     
-  write_uint16(data,opt->code);
-  write_uint16(data,opt->len);
-  memcpy(data->ptr,opt->data,opt->len);
-  data->ptr  += opt->len;
-  data->size -= opt->len;
+  write_uint16(&data->packet,opt->code);
+  write_uint16(&data->packet,opt->len);
+  memcpy(data->packet.ptr,opt->data,opt->len);
+  data->packet.ptr  += opt->len;
+  data->packet.size -= opt->len;
   return RCODE_OKAY;
 }
 
 /*************************************************************************/
 
 static inline dns_rcode_t encode_rr_opt(
-        block__s             *const restrict data,
-        const dns_query_t    *const restrict query,
-        const dns_edns0opt_t *const restrict opt
+        edns_context         *data,
+        const dns_query_t    *query,
+        const dns_edns0opt_t *opt
 )
 {
   uint8_t *prdlen;
   size_t   rdlen;
   size_t   i;
   
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(query            != NULL);
   assert(opt              != NULL);
   assert(opt->class       == CLASS_UNKNOWN);
@@ -435,32 +447,32 @@ static inline dns_rcode_t encode_rr_opt(
   assert(opt->version     == 0);
   assert(opt->udp_payload <= UINT16_MAX);
   
-  if (data->size < 11)
+  if (data->packet.size < 11)
     return RCODE_NO_MEMORY;
     
-  data->ptr[0] = '\0';  /* root domain */
-  data->ptr++;
-  data->size--;
+  data->packet.ptr[0] = '\0';  /* root domain */
+  data->packet.ptr++;
+  data->packet.size--;
   
-  write_uint16(data,RR_OPT);
-  write_uint16(data,opt->udp_payload);
-  data->ptr[0] = query->rcode >> 4;
-  data->ptr[1] = opt->version;
-  data->ptr[2] = 0;
-  data->ptr[3] = 0;
+  write_uint16(&data->packet,RR_OPT);
+  write_uint16(&data->packet,opt->udp_payload);
+  data->packet.ptr[0] = query->rcode >> 4;
+  data->packet.ptr[1] = opt->version;
+  data->packet.ptr[2] = 0;
+  data->packet.ptr[3] = 0;
   
-  if (opt->fdo) data->ptr[2] |= 0x80;
+  if (opt->fdo) data->packet.ptr[2] |= 0x80;
   
-  data->ptr  += 4;
-  data->size -= 4;
+  data->packet.ptr  += 4;
+  data->packet.size -= 4;
   
   /*----------------------------------------------------------------------
   ; save the location for RDLEN, and set it to 0 for now.  After we encode
   ; the rest of the packet, we'll patch this with the correct length.
   ;----------------------------------------------------------------------*/
   
-  prdlen = data->ptr;
-  write_uint16(data,0); /* place holder for now */
+  prdlen = data->packet.ptr;
+  write_uint16(&data->packet,0); /* place holder for now */
   
   for (i = 0 ; i < opt->numopts; i++)
   {
@@ -475,7 +487,7 @@ static inline dns_rcode_t encode_rr_opt(
     if (rc != RCODE_OKAY) return rc;
   }
   
-  rdlen     = (size_t)(data->ptr - prdlen) - sizeof(uint16_t);
+  rdlen     = (size_t)(data->packet.ptr - prdlen) - sizeof(uint16_t);
   prdlen[0] = (rdlen >> 8) & 0xFF;
   prdlen[1] = (rdlen     ) & 0xFF;
   
@@ -485,15 +497,15 @@ static inline dns_rcode_t encode_rr_opt(
 /***********************************************************************/
 
 static inline dns_rcode_t encode_rr_naptr(
-        block__s          *const restrict data,
-        const dns_naptr_t *const restrict naptr
+        edns_context      *data,
+        const dns_naptr_t *naptr
 )
 {
   dns_rcode_t  rc;
   uint8_t     *prdlen;
   uint8_t     *pdata;
   
-  assert(pblock_okay(data));
+  assert(econtext_okay(data));
   assert(naptr              != NULL);
   assert(naptr->type        == RR_NAPTR);
   assert(naptr->class       == CLASS_IN);
@@ -509,12 +521,12 @@ static inline dns_rcode_t encode_rr_naptr(
   rc = dns_encode_domain(data,naptr->name,strlen(naptr->name));
   if (rc != RCODE_OKAY) return rc;
   
-  if (data->size < 14)  /* type, class, ttl */
+  if (data->packet.size < 14)  /* type, class, ttl */
     return RCODE_NO_MEMORY;
     
-  write_uint16(data,naptr->type);
-  write_uint16(data,naptr->class);
-  write_uint32(data,naptr->ttl);
+  write_uint16(&data->packet,naptr->type);
+  write_uint16(&data->packet,naptr->class);
+  write_uint32(&data->packet,naptr->ttl);
   
   /*-------------------------------------------------------------------------
   ; we need to come back to the rdlen after we've written the data.  We save
@@ -523,13 +535,13 @@ static inline dns_rcode_t encode_rr_naptr(
   ; we can come back and write the length.
   ;-------------------------------------------------------------------------*/
   
-  prdlen      = data->ptr;
-  data->ptr  += sizeof(uint16_t);
-  data->size -= sizeof(uint16_t);
-  pdata       = data->ptr;
+  prdlen             = data->packet.ptr;
+  data->packet.ptr  += sizeof(uint16_t);
+  data->packet.size -= sizeof(uint16_t);
+  pdata              = data->packet.ptr;
   
-  write_uint16(data,naptr->order);
-  write_uint16(data,naptr->preference);
+  write_uint16(&data->packet,naptr->order);
+  write_uint16(&data->packet,naptr->preference);
   
   if ((rc = dns_encode_string(data,naptr->flags,   strlen(naptr->flags)))          != RCODE_OKAY) return rc;
   if ((rc = dns_encode_string(data,naptr->services,strlen(naptr->services)))       != RCODE_OKAY) return rc;
@@ -540,7 +552,7 @@ static inline dns_rcode_t encode_rr_naptr(
   ; now write the length of the data we've just written
   ;-------------------------------------------------------*/
   
-  write_uint16(&(block__s){ .ptr = prdlen , .size = 2 },data->ptr - pdata);
+  write_uint16(&(block__s){ .ptr = prdlen , .size = 2 },data->packet.ptr - pdata);
   return RCODE_OKAY;
 }
 
@@ -550,7 +562,7 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
 {
   struct idns_header *header;
   uint8_t            *buffer;
-  block__s            data;
+  edns_context        data;
   dns_rcode_t         rc;
   
   assert(dest  != NULL);
@@ -587,8 +599,8 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
   if (query->ad)     header->rcode  |= 0x20;
   if (query->cd)     header->rcode  |= 0x10;
   
-  data.size = *plen - sizeof(struct idns_header);
-  data.ptr  = &buffer[sizeof(struct idns_header)];
+  data.packet.size = *plen - sizeof(struct idns_header);
+  data.packet.ptr  = &buffer[sizeof(struct idns_header)];
   
   for (size_t i = 0 ; i < query->qdcount ; i++)
   {
@@ -637,7 +649,7 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
       return rc;
   }
   
-  *plen = (size_t)(data.ptr - buffer);
+  *plen = (size_t)(data.packet.ptr - buffer);
   return RCODE_OKAY;
 }
 
@@ -748,7 +760,7 @@ static dns_rcode_t read_raw(
         const size_t                  len
 )
 {
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(result != NULL);
   
   if (len > 0)
@@ -790,7 +802,7 @@ static dns_rcode_t read_string(
 {
   size_t len;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(result != NULL);
   
   len = *data->parse.ptr;
@@ -826,7 +838,7 @@ static dns_rcode_t read_domain(
   size_t    len;
   int       loop;        /* loop detection */
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(result != NULL);
   
   *result = (char *)data->dest.ptr;
@@ -980,7 +992,7 @@ static dns_rcode_t decode_question(
 {
   dns_rcode_t rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pquest != NULL);
   
   rc = read_domain(data,&pquest->name);
@@ -1014,7 +1026,7 @@ static inline dns_rcode_t decode_rr_soa(
 {
   dns_rcode_t rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(psoa != NULL);
   
   rc = read_domain(data,&psoa->mname);
@@ -1042,7 +1054,7 @@ static inline dns_rcode_t decode_rr_a(
         const size_t                 len
 )
 {
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pa != NULL);
   
   if (len != 4) return RCODE_FORMAT_ERROR;
@@ -1060,7 +1072,7 @@ static inline dns_rcode_t decode_rr_aaaa(
         const size_t                 len
 )
 {
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pa != NULL);
   
   if (len != 16) return RCODE_FORMAT_ERROR;
@@ -1078,7 +1090,7 @@ static inline dns_rcode_t decode_rr_wks(
         const size_t                 len
 )
 {
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pwks != NULL);
   
   if (len < 6) return RCODE_FORMAT_ERROR;
@@ -1100,7 +1112,7 @@ static inline dns_rcode_t decode_rr_mx(
         const size_t                 len
 )
 {
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pmx != NULL);
   
   if (len < 4) return RCODE_FORMAT_ERROR;
@@ -1122,7 +1134,7 @@ static inline dns_rcode_t decode_rr_txt(
   size_t   items;
   size_t   slen;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(ptxt != NULL);
   
   /*--------------------------------------------------------------------
@@ -1190,7 +1202,7 @@ static inline dns_rcode_t decode_rr_hinfo(
 {
   dns_rcode_t rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(phinfo != NULL);
   
   rc = read_string(data,&phinfo->cpu);
@@ -1207,7 +1219,7 @@ static inline dns_rcode_t decode_rr_srv(
         const size_t                 len
 )
 {
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(psrv != NULL);
   
   if (len < 7)
@@ -1229,7 +1241,7 @@ static inline dns_rcode_t decode_rr_naptr(
 {
   dns_rcode_t rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pnaptr != NULL);
   
   if (len < 4)
@@ -1259,7 +1271,7 @@ static inline dns_rcode_t decode_rr_sig(
   size_t       sofar;
   dns_rcode_t  rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(psig != NULL);
   
   if (len < 18)
@@ -1301,7 +1313,7 @@ static inline dns_rcode_t decode_rr_minfo(
 {
   dns_rcode_t rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pminfo != NULL);
   
   rc = read_domain(data,&pminfo->rmailbx);
@@ -1320,7 +1332,7 @@ static dns_rcode_t dloc_double(
 {
   size_t len;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pvalue != NULL);
   
   len = *data->parse.ptr;
@@ -1369,7 +1381,7 @@ static inline dns_rcode_t decode_rr_gpos(
   double      lat;
   double      lng;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pgpos != NULL);
   
   rc = dloc_double(data,&lng);
@@ -1462,7 +1474,7 @@ static inline dns_rcode_t decode_rr_loc(
   unsigned long  lat;
   unsigned long  lng;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(ploc != NULL);
   
   if (len < 16) return RCODE_FORMAT_ERROR;
@@ -1536,7 +1548,7 @@ static inline dns_rcode_t decode_rr_opt(
     uint8_t *scan;
     size_t   length;
     
-    assert(context_okay(data));
+    assert(dcontext_okay(data));
     assert(len > 4);
     
     for (scan = data->parse.ptr , opt->numopts = 0 , length = len ; length > 0 ; )
@@ -1598,7 +1610,7 @@ static dns_rcode_t decode_answer(
   size_t      rest;
   dns_rcode_t rc;
   
-  assert(context_okay(data));
+  assert(dcontext_okay(data));
   assert(pans != NULL);
   
   rc = read_domain(data,&pans->generic.name);
