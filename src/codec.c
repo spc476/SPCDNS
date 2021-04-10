@@ -115,53 +115,7 @@ typedef struct ddns_context
 
 /***********************************************************************/
 
-static        dns_rcode_t  dns_encode_domain    (block__s *const restrict,const char           *restrict,      size_t) __attribute__ ((nothrow,nonnull));
-static        dns_rcode_t  dns_encode_string    (block__s *const restrict,const char           *restrict,const size_t) __attribute__ ((nothrow,nonnull));
-static        dns_rcode_t  dns_encode_question  (block__s *const restrict,const dns_question_t *const restrict)        __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_nsid  (block__s *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_edns0rr_raw   (block__s *const restrict,const edns0_opt_t    *const restrict)        __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_rr_opt        (block__s *const restrict,const dns_query_t    *const restrict,const dns_edns0opt_t *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  encode_rr_naptr      (block__s *const restrict,const dns_naptr_t    *const restrict)        __attribute__ ((nothrow,nonnull));
-
-static        bool         align_memory (block__s *const)                __attribute__ ((nothrow,nonnull,   warn_unused_result));
-static        void        *alloc_struct (block__s *const,const size_t)   __attribute__ ((nothrow,nonnull(1),warn_unused_result,malloc));
-
-static inline void         write_uint16 (block__s *const,uint16_t)                                         __attribute__ ((nothrow,nonnull(1)));
-static inline void         write_uint32 (block__s *const,uint32_t)                                         __attribute__ ((nothrow,nonnull(1)));
-static inline uint16_t     read_uint16  (block__s *const)                                                  __attribute__ ((nothrow,nonnull));
-static inline uint32_t     read_uint32  (block__s *const)                                                  __attribute__ ((nothrow,nonnull));
-static        dns_rcode_t  read_raw     (ddns_context *const restrict,uint8_t    **restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static        dns_rcode_t  read_string  (ddns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull(1,2)));
-static        dns_rcode_t  read_domain  (ddns_context *const restrict,const char **restrict)              __attribute__ ((nothrow,nonnull));
-
-static inline dns_rcode_t  decode_edns0rr_nsid  (ddns_context *const restrict,edns0_opt_t *const restrict) __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  decode_edns0rr_raw   (ddns_context *const restrict,edns0_opt_t *const restrict) __attribute__ ((nothrow,nonnull));
-
-static        dns_rcode_t  decode_question(ddns_context *const restrict,dns_question_t *const restrict)              __attribute__ ((nothrow,nonnull));
-static inline dns_rcode_t  decode_rr_soa  (ddns_context *const restrict,dns_soa_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_a    (ddns_context *const restrict,dns_a_t        *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_wks  (ddns_context *const restrict,dns_wks_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_mx   (ddns_context *const restrict,dns_mx_t       *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_txt  (ddns_context *const restrict,dns_txt_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_hinfo(ddns_context *const restrict,dns_hinfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_naptr(ddns_context *const restrict,dns_naptr_t    *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_aaaa (ddns_context *const restrict,dns_aaaa_t     *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_srv  (ddns_context *const restrict,dns_srv_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_sig  (ddns_context *const restrict,dns_sig_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2),unused));
-static inline dns_rcode_t  decode_rr_minfo(ddns_context *const restrict,dns_minfo_t    *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_gpos (ddns_context *const restrict,dns_gpos_t     *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_loc  (ddns_context *const restrict,dns_loc_t      *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static inline dns_rcode_t  decode_rr_opt  (ddns_context *const restrict,dns_edns0opt_t *const restrict,const size_t) __attribute__ ((nothrow,nonnull(1,2)));
-static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answer_t   *const restrict)              __attribute__ ((nothrow,nonnull(1,2)));
-
-/***********************************************************************/
-
 #ifndef NDEBUG
-  static int query_okay  (const dns_query_t *)  __attribute__ ((unused));
-  static int pblock_okay (const block__s *)     __attribute__ ((unused));
-  static int block_okay  (const block__s)       __attribute__ ((unused));
-  static int context_okay(const ddns_context *) __attribute__ ((unused));
-  
   static int query_okay(const dns_query_t *query)
   {
     assert(query          != NULL);
@@ -213,102 +167,33 @@ static        dns_rcode_t  decode_answer  (ddns_context *const restrict,dns_answ
 
 /*******************************************************************/
 
-dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
+static inline void write_uint16(block__s *const parse,uint16_t value)
 {
-  struct idns_header *header;
-  uint8_t            *buffer;
-  block__s            data;
-  dns_rcode_t         rc;
+  assert(pblock_okay(parse));
+  assert(parse->size >= 2);
   
-  assert(dest  != NULL);
-  assert(plen  != NULL);
-  assert(*plen >= sizeof(struct idns_header));
-  assert(query_okay(query));
-  
-  memset(dest,0,*plen);
-  
-  buffer = (uint8_t *)dest;
-  header = (struct idns_header *)buffer;
-  
-  header->id      = htons(query->id);
-  header->opcode  = (query->opcode & 0x0F) << 3;
-  header->rcode   = (query->rcode  & 0x0F);
-  header->qdcount = htons(query->qdcount);
-  header->ancount = htons(query->ancount);
-  header->nscount = htons(query->nscount);
-  header->arcount = htons(query->arcount);
-  
-  /*-----------------------------------------------------------------------
-  ; I'm not bothering with symbolic constants for the flags; they're only
-  ; used in two places in the code (the other being dns_encode()) and
-  ; they're not going to change.  It's also obvious from the context what
-  ; they're refering to.
-  ;-----------------------------------------------------------------------*/
-  
-  if (!query->query) header->opcode |= 0x80;
-  if (query->aa)     header->opcode |= 0x04;
-  if (query->tc)     header->opcode |= 0x02;
-  if (query->rd)     header->opcode |= 0x01;
-  if (query->ra)     header->rcode  |= 0x80;
-  if (query->z)      header->rcode  |= 0x40;
-  if (query->ad)     header->rcode  |= 0x20;
-  if (query->cd)     header->rcode  |= 0x10;
-  
-  data.size = *plen - sizeof(struct idns_header);
-  data.ptr  = &buffer[sizeof(struct idns_header)];
-  
-  for (size_t i = 0 ; i < query->qdcount ; i++)
-  {
-    rc = dns_encode_question(&data,&query->questions[i]);
-    if (rc != RCODE_OKAY)
-      return rc;
-  }
-  
-  /*----------------------------------------------------------------
-  ; I need to encode NAPTRs, so that's all we can encode as an
-  ; answer for now.  We also support an addtional records for the
-  ; EDNS stuff, but that's it for now.
-  ;---------------------------------------------------------------*/
-  
-  for (size_t i = 0 ; i < query->ancount ; i++)
-  {
-    switch(query->answers[i].generic.type)
-    {
-      case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
-      default:       assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
-    }
-    
-    if (rc != RCODE_OKAY)
-      return rc;
-  }
-  
-  /*---------------------------------------------
-  ; skip name sever records
-  ;----------------------------------------------*/
-  
-  assert(query->nscount == 0);
-  
-  /*------------------------------------------------------
-  ; EDNS only supported additional record type for now
-  ;-------------------------------------------------------*/
-  
-  for (size_t i = 0 ; i < query->arcount ; i++)
-  {
-    switch(query->additional[i].generic.type)
-    {
-      case RR_OPT: rc = encode_rr_opt(&data,query,&query->additional[i].opt); break;
-      default:     assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
-    }
-    
-    if (rc != RCODE_OKAY)
-      return rc;
-  }
-  
-  *plen = (size_t)(data.ptr - buffer);
-  return RCODE_OKAY;
+  parse->ptr[0] = (value >> 8) & 0xFF;
+  parse->ptr[1] = (value     ) & 0xFF;
+  parse->ptr  += 2;
+  parse->size -= 2;
 }
 
-/*********************************************************************/
+/***********************************************************************/
+
+static inline void write_uint32(block__s *const parse,uint32_t value)
+{
+  assert(pblock_okay(parse));
+  assert(parse->size >= 4);
+  
+  parse->ptr[0] = (value >> 24) & 0xFF;
+  parse->ptr[1] = (value >> 16) & 0xFF;
+  parse->ptr[2] = (value >>  8) & 0xFF;
+  parse->ptr[3] = (value      ) & 0xFF;
+  parse->ptr  += 4;
+  parse->size -= 4;
+}
+
+/***********************************************************************/
 
 static dns_rcode_t dns_encode_domain(
         block__s   *const restrict data,
@@ -659,6 +544,103 @@ static inline dns_rcode_t encode_rr_naptr(
   return RCODE_OKAY;
 }
 
+/***********************************************************************/
+
+dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
+{
+  struct idns_header *header;
+  uint8_t            *buffer;
+  block__s            data;
+  dns_rcode_t         rc;
+  
+  assert(dest  != NULL);
+  assert(plen  != NULL);
+  assert(*plen >= sizeof(struct idns_header));
+  assert(query_okay(query));
+  
+  memset(dest,0,*plen);
+  
+  buffer = (uint8_t *)dest;
+  header = (struct idns_header *)buffer;
+  
+  header->id      = htons(query->id);
+  header->opcode  = (query->opcode & 0x0F) << 3;
+  header->rcode   = (query->rcode  & 0x0F);
+  header->qdcount = htons(query->qdcount);
+  header->ancount = htons(query->ancount);
+  header->nscount = htons(query->nscount);
+  header->arcount = htons(query->arcount);
+  
+  /*-----------------------------------------------------------------------
+  ; I'm not bothering with symbolic constants for the flags; they're only
+  ; used in two places in the code (the other being dns_encode()) and
+  ; they're not going to change.  It's also obvious from the context what
+  ; they're refering to.
+  ;-----------------------------------------------------------------------*/
+  
+  if (!query->query) header->opcode |= 0x80;
+  if (query->aa)     header->opcode |= 0x04;
+  if (query->tc)     header->opcode |= 0x02;
+  if (query->rd)     header->opcode |= 0x01;
+  if (query->ra)     header->rcode  |= 0x80;
+  if (query->z)      header->rcode  |= 0x40;
+  if (query->ad)     header->rcode  |= 0x20;
+  if (query->cd)     header->rcode  |= 0x10;
+  
+  data.size = *plen - sizeof(struct idns_header);
+  data.ptr  = &buffer[sizeof(struct idns_header)];
+  
+  for (size_t i = 0 ; i < query->qdcount ; i++)
+  {
+    rc = dns_encode_question(&data,&query->questions[i]);
+    if (rc != RCODE_OKAY)
+      return rc;
+  }
+  
+  /*----------------------------------------------------------------
+  ; I need to encode NAPTRs, so that's all we can encode as an
+  ; answer for now.  We also support an addtional records for the
+  ; EDNS stuff, but that's it for now.
+  ;---------------------------------------------------------------*/
+  
+  for (size_t i = 0 ; i < query->ancount ; i++)
+  {
+    switch(query->answers[i].generic.type)
+    {
+      case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
+      default:       assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
+    }
+    
+    if (rc != RCODE_OKAY)
+      return rc;
+  }
+  
+  /*---------------------------------------------
+  ; skip name sever records
+  ;----------------------------------------------*/
+  
+  assert(query->nscount == 0);
+  
+  /*------------------------------------------------------
+  ; EDNS only supported additional record type for now
+  ;-------------------------------------------------------*/
+  
+  for (size_t i = 0 ; i < query->arcount ; i++)
+  {
+    switch(query->additional[i].generic.type)
+    {
+      case RR_OPT: rc = encode_rr_opt(&data,query,&query->additional[i].opt); break;
+      default:     assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
+    }
+    
+    if (rc != RCODE_OKAY)
+      return rc;
+  }
+  
+  *plen = (size_t)(data.ptr - buffer);
+  return RCODE_OKAY;
+}
+
 /*************************************************************************
 *
 * Memory allocations are done quickly.  The dns_decode() routine is given a
@@ -714,34 +696,6 @@ static void *alloc_struct(block__s *const pool,const size_t size)
   pool->ptr  += size;
   pool->size -= size;
   return (void *)ptr;
-}
-
-/***********************************************************************/
-
-static inline void write_uint16(block__s *const parse,uint16_t value)
-{
-  assert(pblock_okay(parse));
-  assert(parse->size >= 2);
-  
-  parse->ptr[0] = (value >> 8) & 0xFF;
-  parse->ptr[1] = (value     ) & 0xFF;
-  parse->ptr  += 2;
-  parse->size -= 2;
-}
-
-/***********************************************************************/
-
-static inline void write_uint32(block__s *const parse,uint32_t value)
-{
-  assert(pblock_okay(parse));
-  assert(parse->size >= 4);
-  
-  parse->ptr[0] = (value >> 24) & 0xFF;
-  parse->ptr[1] = (value >> 16) & 0xFF;
-  parse->ptr[2] = (value >>  8) & 0xFF;
-  parse->ptr[3] = (value      ) & 0xFF;
-  parse->ptr  += 4;
-  parse->size -= 4;
 }
 
 /***********************************************************************/
