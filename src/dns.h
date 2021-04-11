@@ -111,7 +111,7 @@ typedef uintptr_t dns_decoded_t;
 * for the RRs, I've marked if I have decode support as well as experimental
 * and obsolete information as follows:
 *
-*       +       Decoding support
+*       +       Encoding/Decoding support
 *       O       Obsolete
 *       E       Experimental
 *
