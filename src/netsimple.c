@@ -62,8 +62,8 @@
 /************************************************************************/
 
 int net_server(
-        sockaddr_all *const restrict addr,
-        const char   *const restrict host
+        sockaddr_all *addr,
+        char const   *host
 )
 {
   assert(addr != NULL);
@@ -90,11 +90,11 @@ int net_server(
 /************************************************************************/
 
 int net_request(
-        sockaddr_all       *const restrict srvaddr,
-        dns_packet_t       *const restrict dest,
-        size_t             *const restrict dsize,
-        const dns_packet_t *const restrict src,
-        const size_t                      ssize
+        sockaddr_all       *srvaddr,
+        dns_packet_t       *dest,
+        size_t             *dsize,
+        dns_packet_t const *src,
+        size_t              ssize
 )
 {
   struct pollfd polldat;

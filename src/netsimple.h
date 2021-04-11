@@ -57,16 +57,16 @@ typedef union sockaddr_all
 } sockaddr_all;
 
 int     net_server      (
-                          sockaddr_all *const restrict,
-                          const char   *const restrict
+                          sockaddr_all *,
+                          char const   *
                         ) __attribute__ ((nonnull));
                         
 int     net_request     (
-                          sockaddr_all       *const restrict,
-                          dns_packet_t       *const restrict,
-                          size_t             *const restrict,
-                          const dns_packet_t *const restrict,
-                          const size_t
+                          sockaddr_all       *,
+                          dns_packet_t       *,
+                          size_t             *,
+                          dns_packet_t const *,
+                          size_t
                         ) __attribute__ ((nonnull(1,2,3,4)));
                         
 #ifdef __cplusplus

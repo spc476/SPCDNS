@@ -40,14 +40,14 @@
 #  define __attribute__(x)
 #endif
 
-const char      *dns_rcode_text         (const dns_rcode_t)     __attribute__ ((pure,nothrow));
-const char      *dns_type_text          (const dns_type_t)      __attribute__ ((pure,nothrow));
-const char      *dns_class_text         (const dns_class_t)     __attribute__ ((pure,nothrow));
-const char      *dns_op_text            (const dns_op_t)        __attribute__ ((pure,nothrow));
+char const  *dns_rcode_text  (dns_rcode_t const) __attribute__ ((pure,nothrow));
+char const  *dns_type_text   (dns_type_t  const) __attribute__ ((pure,nothrow));
+char const  *dns_class_text  (dns_class_t const) __attribute__ ((pure,nothrow));
+char const  *dns_op_text     (dns_op_t    const) __attribute__ ((pure,nothrow));
 
-dns_type_t       dns_type_value         (const char *const)     __attribute__ ((pure,nothrow,nonnull));
-dns_class_t      dns_class_value        (const char *const)     __attribute__ ((pure,nothrow,nonnull));
-dns_op_t         dns_op_value           (const char *const)     __attribute__ ((pure,nothrow,nonnull));
+dns_type_t   dns_type_value  (char const *)      __attribute__ ((pure,nothrow,nonnull));
+dns_class_t  dns_class_value (char const *)      __attribute__ ((pure,nothrow,nonnull));
+dns_op_t     dns_op_value    (char const *)      __attribute__ ((pure,nothrow,nonnull));
 
 #ifdef __cplusplus
   }

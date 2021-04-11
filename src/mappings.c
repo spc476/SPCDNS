@@ -48,8 +48,8 @@
 
 struct int_string_map
 {
-  const int         value;
-  const char *const text;
+  int  const        value;
+  char const *const text;
 };
 
 /*******************************************************************
@@ -62,13 +62,13 @@ struct int_string_map
 
 struct string_int_map
 {
-  const char *const text;
-  const int         value;
+  char const *const text;
+  int  const       value;
 };
 
 /************************************************************************/
 
-static const struct int_string_map cm_dns_rcode[] =
+static struct int_string_map const cm_dns_rcode[] =
 {
   { RCODE_OKAY            , "No error"                        } ,
   { RCODE_FORMAT_ERROR    , "Format error"                    } ,
@@ -95,7 +95,7 @@ static const struct int_string_map cm_dns_rcode[] =
 
 #define RCODE_COUNT     (sizeof(cm_dns_rcode) / sizeof(struct int_string_map))
 
-static const struct int_string_map cm_dns_type[] =
+static struct int_string_map const cm_dns_type[] =
 {
   { RR_A          , "A"          } ,
   { RR_NS         , "NS"         } ,
@@ -190,7 +190,7 @@ static const struct int_string_map cm_dns_type[] =
 
 #define TYPE_COUNT      (sizeof(cm_dns_type) / sizeof(struct int_string_map))
 
-static const struct string_int_map cm_dns_type_is[] =
+static struct string_int_map const cm_dns_type_is[] =
 {
   { "A"          , RR_A          } ,
   { "A6"         , RR_A6         } ,
@@ -283,7 +283,7 @@ static const struct string_int_map cm_dns_type_is[] =
   { "ZONEMD"     , RR_ZONEMD     } ,
 };
 
-static const struct int_string_map cm_dns_class[] =
+static struct int_string_map const cm_dns_class[] =
 {
   { CLASS_IN      , "IN"      } ,
   { CLASS_CS      , "CS"      } ,
@@ -296,7 +296,7 @@ static const struct int_string_map cm_dns_class[] =
 
 #define CLASS_COUNT     (sizeof(cm_dns_class) / sizeof(struct int_string_map))
 
-static const struct string_int_map cm_dns_class_is[] =
+static struct string_int_map const cm_dns_class_is[] =
 {
   { "ANY"     , CLASS_ANY     } ,
   { "CH"      , CLASS_CH      } ,
@@ -307,7 +307,7 @@ static const struct string_int_map cm_dns_class_is[] =
   { "UNKNOWN" , CLASS_UNKNOWN } ,
 };
 
-static const struct int_string_map cm_dns_op[] =
+static struct int_string_map const cm_dns_op[] =
 {
   { OP_QUERY   , "QUERY"   } ,
   { OP_STATUS  , "STATUS"  } ,
@@ -318,7 +318,7 @@ static const struct int_string_map cm_dns_op[] =
 
 #define OP_COUNT        (sizeof(cm_dns_op) / sizeof(struct int_string_map))
 
-static const struct string_int_map cm_dns_op_is[] =
+static struct string_int_map const cm_dns_op_is[] =
 {
   { "NOTIFY"  , OP_NOTIFY  } ,
   { "QUERY"   , OP_QUERY   } ,
@@ -329,10 +329,10 @@ static const struct string_int_map cm_dns_op_is[] =
 
 /*************************************************************************/
 
-static int intstr_cmp(const void *needle,const void *haystack)
+static int intstr_cmp(void const *needle,void const *haystack)
 {
-  const struct int_string_map *pism = haystack;
-  const int                   *pi   = needle;
+  struct int_string_map const *pism = haystack;
+  int                   const *pi   = needle;
   
   assert(needle   != NULL);
   assert(haystack != NULL);
@@ -342,10 +342,10 @@ static int intstr_cmp(const void *needle,const void *haystack)
 
 /*********************************************************************/
 
-static int strint_cmp(const void *needle,const void *haystack)
+static int strint_cmp(void const *needle,void const *haystack)
 {
-  const struct string_int_map *psim = haystack;
-  const char                  *key  = needle;
+  struct string_int_map const *psim = haystack;
+  char                  const *key  = needle;
   
   assert(needle   != NULL);
   assert(haystack != NULL);
@@ -355,11 +355,11 @@ static int strint_cmp(const void *needle,const void *haystack)
 
 /**********************************************************************/
 
-static const char *itosdef(
-        int                                         v,
-        const struct int_string_map *const restrict pitab,
-        const size_t                                itabcnt,
-        const char                  *const restrict def
+static char const *itosdef(
+        int                          v,
+        struct int_string_map const *pitab,
+        size_t                       itabcnt,
+        char const                  *def
 )
 {
   struct int_string_map *pism;
@@ -379,10 +379,10 @@ static const char *itosdef(
 /********************************************************************/
 
 static int stoidef(
-        const char *const restrict                  tag,
-        const struct string_int_map *const restrict pstab,
-        const size_t                                stabcnt,
-        const int                                   def
+        char const                  *tag,
+        struct string_int_map const *pstab,
+        size_t                       stabcnt,
+        int                          def
 )
 {
   struct string_int_map *psim;
@@ -401,49 +401,49 @@ static int stoidef(
 
 /*******************************************************************/
 
-const char *dns_rcode_text(const dns_rcode_t r)
+char const *dns_rcode_text(dns_rcode_t const r)
 {
   return itosdef(r,cm_dns_rcode,RCODE_COUNT,"Unknown error");
 }
 
 /*********************************************************************/
 
-const char *dns_type_text(const dns_type_t t)
+char const *dns_type_text(dns_type_t const t)
 {
   return itosdef(t,cm_dns_type,TYPE_COUNT,"X-UNKN");
 }
 
 /**********************************************************************/
 
-const char *dns_class_text(const dns_class_t c)
+char const *dns_class_text(dns_class_t const c)
 {
   return itosdef(c,cm_dns_class,CLASS_COUNT,"X-UNKN");
 }
 
 /*******************************************************************/
 
-const char *dns_op_text(const dns_op_t o)
+char const *dns_op_text(dns_op_t const o)
 {
   return itosdef(o,cm_dns_op,OP_COUNT,"X-UNKNOWN");
 }
 
 /********************************************************************/
 
-dns_type_t dns_type_value(const char *tag)
+dns_type_t dns_type_value(char const *tag)
 {
   return stoidef(tag,cm_dns_type_is,TYPE_COUNT,RR_UNKNOWN);
 }
 
 /*********************************************************************/
 
-dns_class_t dns_class_value(const char *tag)
+dns_class_t dns_class_value(char const *tag)
 {
   return stoidef(tag,cm_dns_class_is,CLASS_COUNT,CLASS_UNKNOWN);
 }
 
 /**********************************************************************/
 
-dns_op_t dns_op_value(const char *tag)
+dns_op_t dns_op_value(char const *tag)
 {
   return stoidef(tag,cm_dns_op_is,OP_COUNT,OP_UNKNOWN);
 }

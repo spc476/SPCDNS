@@ -83,7 +83,7 @@ void dns_print_header(dns_query_t* presult)
 
 /************************************************************************/
 
-void dns_print_question(const char *tag,dns_question_t *pquest,size_t cnt)
+void dns_print_question(char const *tag,dns_question_t *pquest,size_t cnt)
 {
   assert(tag    != NULL);
   assert(pquest != NULL);
@@ -102,7 +102,7 @@ void dns_print_question(const char *tag,dns_question_t *pquest,size_t cnt)
 
 /***********************************************************************/
 
-void dns_print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
+void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
 {
   char ipaddr[INET6_ADDRSTRLEN];
   
@@ -267,9 +267,9 @@ void dns_print_answer(const char *tag,dns_answer_t *pans,size_t cnt)
 
 #define LINESIZE        16
 
-void dns_dump_memory(FILE *out,const void *data,size_t size,size_t offset)
+void dns_dump_memory(FILE *out,void const *data,size_t size,size_t offset)
 {
-  const unsigned char *block = data;
+  unsigned char const *block = data;
   char                 ascii[LINESIZE + 1];
   int                  skip;
   int                  j;
