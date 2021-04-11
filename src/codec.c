@@ -85,13 +85,17 @@
 #define MEM_ALIGN       sizeof(dns_decoded_t)
 #define MEM_MASK        ~(sizeof(dns_decoded_t) - 1uL)
 
-/************************************************************************/
+/*---------------------------------------------------------------------------
+; This is the maximum number of domain labels to encode.  The domain
+; "example.com" contains two domain labels.  "1.0.0.127.in-addr.arpa" has
+; six domain labels.  This value is an arbitrary limit to avoid doing any
+; memory allocations but I feel it's sufficiently large enough to avoid any
+; limits.  I hope.
+;----------------------------------------------------------------------------*/
 
-typedef struct block
-{
-  size_t   size;
-  uint8_t *ptr;
-} block__s;
+#define MAXSEG  100
+
+/************************************************************************/
 
 struct idns_header
 {
@@ -104,9 +108,31 @@ struct idns_header
   uint16_t arcount;
 } __attribute__ ((packed));
 
+struct segment
+{
+  char const *name;
+  size_t      offset;
+};
+
+typedef struct block
+{
+  size_t   size;
+  uint8_t *ptr;
+} block__s;
+
+typedef struct segments
+{
+  size_t idx;
+  struct segment seg[MAXSEG];
+} segments__s;
+
 typedef struct edns_context
 {
-  block__s packet;
+  block__s     packet;
+  segments__s  segments;
+  bool         rropt;
+  uint8_t     *base;
+  dns_rcode_t  rcode;
 } edns_context;
 
 typedef struct ddns_context
@@ -163,6 +189,7 @@ typedef struct ddns_context
   {
     assert(data != NULL);
     assert(block_okay(data->packet));
+    assert(data->base != NULL);
     return 1;
   }
   
@@ -184,10 +211,10 @@ static inline void write_uint16(block__s *parse,uint16_t value)
   assert(pblock_okay(parse));
   assert(parse->size >= 2);
   
-  parse->ptr[0] = (value >> 8) & 0xFF;
-  parse->ptr[1] = (value     ) & 0xFF;
-  parse->ptr  += 2;
-  parse->size -= 2;
+  parse->ptr[0]  = (value >> 8) & 0xFF;
+  parse->ptr[1]  = (value     ) & 0xFF;
+  parse->ptr    += 2;
+  parse->size   -= 2;
 }
 
 /***********************************************************************/
@@ -197,125 +224,115 @@ static inline void write_uint32(block__s *parse,uint32_t value)
   assert(pblock_okay(parse));
   assert(parse->size >= 4);
   
-  parse->ptr[0] = (value >> 24) & 0xFF;
-  parse->ptr[1] = (value >> 16) & 0xFF;
-  parse->ptr[2] = (value >>  8) & 0xFF;
-  parse->ptr[3] = (value      ) & 0xFF;
-  parse->ptr  += 4;
-  parse->size -= 4;
+  parse->ptr[0]  = (value >> 24) & 0xFF;
+  parse->ptr[1]  = (value >> 16) & 0xFF;
+  parse->ptr[2]  = (value >>  8) & 0xFF;
+  parse->ptr[3]  = (value      ) & 0xFF;
+  parse->ptr    += 4;
+  parse->size   -= 4;
 }
 
 /***********************************************************************/
 
-static dns_rcode_t dns_encode_domain(
+static struct segment const *segment_find(char const *src,segments__s const *seg)
+{
+  assert(src != NULL);
+  assert(seg != NULL);
+  
+  for (size_t i = 0 ; i < seg->idx ; i++)
+    if (strcmp(src,seg->seg[i].name) == 0)
+      return &seg->seg[i];
+      
+  return NULL;
+}
+
+/***********************************************************************/
+
+static dns_rcode_t encode_segment(char const **psrc,uint8_t const *base,block__s *block,size_t *offset)
+{
+  assert(psrc   != NULL);
+  assert(*psrc  != NULL);
+  assert(base   != NULL);
+  assert(block  != NULL);
+  assert(offset != NULL);
+  
+  char *p = strchr(*psrc,'.');
+  
+  if (p == NULL)
+    return RCODE_NAME_ERROR;
+    
+  size_t len = p - *psrc;
+  
+  if (len >= MAX_DOMAIN_LABEL)
+    return RCODE_NAME_ERROR;
+    
+  if (block->size < len + 1)
+    return RCODE_NO_MEMORY;
+    
+  *offset       = (size_t)(block->ptr - base);
+  *block->ptr++ = (uint8_t)len;
+  
+  memcpy(block->ptr,*psrc,len);
+  
+  block->ptr  += len;
+  block->size -= (len + 1);
+  *psrc        = p + 1;
+  
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static dns_rcode_t encode_domain(
         edns_context *data,
-        char const   *name,
-        size_t        len
+        char const   *name
 )
 {
-  uint8_t *start;
-  uint8_t *end;
-  uint8_t *back_ptr;
+  struct segment const *segment;
+  dns_rcode_t           rc;
   
   assert(econtext_okay(data));
   assert(name != NULL);
-  assert(len  >  0);
   
-  /*------------------------------------------------------------------------
-  ; The root domain is ".", which internally is represented by a single NUL
-  ; byte.  The normal route through this code will encode the root domain as
-  ; two NUL bytes, which is incorrect.  So we special case it.
-  ;------------------------------------------------------------------------*/
-  
-  if (len == 1)
+  while((*name != '.') && (*name != '\0'))
   {
-    if (data->packet.size == 0)
-      return RCODE_NO_MEMORY;
+    assert(*name != '.');
+    segment = segment_find(name,&data->segments);
+    if (segment == NULL)
+    {
+      if (data->segments.idx == MAXSEG)
+        return RCODE_NO_MEMORY;
+        
+      data->segments.seg[data->segments.idx].name = name;
+      rc = encode_segment(&name,data->base,&data->packet,&data->segments.seg[data->segments.idx].offset);
       
-    if (*name != '.')
-      return RCODE_NAME_ERROR;
-      
-    *data->packet.ptr++ = 0;
-    data->packet.size--;
-    return RCODE_OKAY;
+      if (rc != RCODE_OKAY)
+        return rc;
+        
+      data->segments.idx++;
+    }
+    else
+    {
+      if (data->packet.size < 2)
+        return RCODE_NO_MEMORY;
+      *data->packet.ptr++  = (uint8_t)(segment->offset >> 8) | 0xC0;
+      *data->packet.ptr++  = (uint8_t)segment->offset;
+      data->packet.size   -= 2;
+      return RCODE_OKAY;
+    }
   }
   
-  if (name[len - 1] != '.')     /* name must be fully qualified */
-    return RCODE_NAME_ERROR;
-    
-  if (data->packet.size < len + 1)
+  if (data->packet.size == 0)
     return RCODE_NO_MEMORY;
     
-  /*----------------------------------------------------------------------
-  ; Okay, here's how this works.  We have a domain name:
-  ;
-  ;     lucy.roswell.conman.org.
-  ;
-  ; We copy it to the destination buffer, but one octet in, because we need
-  ; to record the length of each segment:
-  ;
-  ;     |   |'l'|'u'|'c'|'y'|'.'|'r'|...
-  ;
-  ; back_ptr will always point to the location to the length octet, whereas
-  ; start will point to the start of the segment, and end will always point
-  ; to the next '.' character (which is guarenteed by the checks above).
-  ;
-  ; Okay, so then for our string, we find the next '.':
-  ;
-  ;     |   |'l'|'u'|'c'|'y'|'.'|'r'|...
-  ;       ^   ^               ^
-  ;       |   |               \-- end
-  ;       |   \------------------ start
-  ;       \---------------------- back_ptr
-  ;
-  ; We then calculate the length of the segment, and write that value into
-  ; the location at back_ptr:
-  ;
-  ;     | 4 |'l'|'u'|'c'|'y'|'.'|'r'|...
-  ;
-  ; We then advance back_ptr to end, set start to the next character and
-  ; keep going while we have characters left.  Upon exit from the loop,
-  ; back_ptr points to the last '.' in the name, which is then set to '\0'
-  ; to designate the root pointer (and thus, the end of the domain name).
-  ;
-  ; It's because of this algorithm that we had to special case the root
-  ; domain designation.  I'll leave that as an exercise to the reader.
-  ;--------------------------------------------------------------------*/
-  
-  memcpy(&data->packet.ptr[1],name,len);
-  data->packet.size -= (len + 1);
-  
-  back_ptr = data->packet.ptr;
-  start    = &data->packet.ptr[1];
-  end      = &data->packet.ptr[1];
-  
-  while(len)
-  {
-    size_t delta;
-    
-    end = memchr(start,'.',len);
-    assert(end != NULL);        /* must be true---checked above */
-    
-    delta = (size_t)(end - start);
-    assert(delta <= len);
-    if (delta > 63)
-      return RCODE_NAME_ERROR;
-      
-    *back_ptr = (uint8_t)delta;
-    back_ptr  = end;
-    start     = end + 1;
-    len       -= (delta + 1);
-  }
-  
-  *back_ptr = 0;
-  data->packet.ptr = end + 1;
-  
+  *data->packet.ptr++ = 0;
+  data->packet.size--;
   return RCODE_OKAY;
 }
 
 /*******************************************************************/
 
-static dns_rcode_t dns_encode_string(
+static dns_rcode_t encode_string(
         edns_context *data,
         const char   *text,
         const size_t  size
@@ -337,7 +354,7 @@ static dns_rcode_t dns_encode_string(
 
 /******************************************************************/
 
-static dns_rcode_t dns_encode_question(
+static dns_rcode_t encode_question(
         edns_context         *data,
         const dns_question_t *pquestion
 )
@@ -350,7 +367,7 @@ static dns_rcode_t dns_encode_question(
   assert(pquestion->class >= 1);
   assert(pquestion->class <= 4);
   
-  rc = dns_encode_domain(data,pquestion->name,strlen(pquestion->name));
+  rc = encode_domain(data,pquestion->name);
   if (rc != RCODE_OKAY)
     return rc;
     
@@ -365,9 +382,101 @@ static dns_rcode_t dns_encode_question(
 
 /*************************************************************************/
 
+static inline dns_rcode_t encode_rr_a(edns_context *data,dns_a_t const *a)
+{
+  assert(econtext_okay(data));
+  assert(a != NULL);
+  
+  if (data->packet.size < 4)
+    return RCODE_NO_MEMORY;
+    
+  memcpy(data->packet.ptr,&a->address,4);
+  data->packet.ptr  += 4;
+  data->packet.size -= 4;
+  return RCODE_OKAY;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_soa(edns_context *data,dns_soa_t const *soa)
+{
+  assert(econtext_okay(data));
+  assert(soa != NULL);
+  
+  (void)data;
+  (void)soa;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_aaaa(edns_context *data,dns_aaaa_t const *aaaa)
+{
+  assert(econtext_okay(data));
+  assert(aaaa != NULL);
+  
+  if (data->packet.size < 16)
+    return RCODE_NO_MEMORY;
+  
+  memcpy(data->packet.ptr,&aaaa->address,16);
+  data->packet.ptr  += 4;
+  data->packet.size -= 4;
+  return RCODE_OKAY;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_srv(edns_context *data,dns_srv_t const *srv)
+{
+  assert(econtext_okay(data));
+  assert(srv != NULL);
+  
+  (void)data;
+  (void)srv;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_wks(edns_context *data,dns_wks_t const *wks)
+{
+  assert(econtext_okay(data));
+  assert(wks != NULL);
+  
+  (void)data;
+  (void)wks;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_gpos(edns_context *data,dns_gpos_t const *gpos)
+{
+  assert(econtext_okay(data));
+  assert(gpos != NULL);
+  
+  (void)data;
+  (void)gpos;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_loc(edns_context *data,dns_loc_t const *loc)
+{
+  assert(econtext_okay(data));
+  assert(loc != NULL);
+  
+  (void)data;
+  (void)loc;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
 static inline dns_rcode_t encode_edns0rr_nsid(
         edns_context      *data,
-        const edns0_opt_t *opt
+        edns0_opt_t const *opt
 )
 {
   size_t newlen;
@@ -431,50 +540,25 @@ static inline dns_rcode_t encode_edns0rr_raw(
 
 static inline dns_rcode_t encode_rr_opt(
         edns_context         *data,
-        const dns_query_t    *query,
         const dns_edns0opt_t *opt
 )
 {
-  uint8_t *prdlen;
-  size_t   rdlen;
-  size_t   i;
-  
   assert(econtext_okay(data));
-  assert(query            != NULL);
   assert(opt              != NULL);
-  assert(opt->class       == CLASS_UNKNOWN);
+  assert(opt->class       == opt->udp_payload);
   assert(opt->ttl         == 0);
   assert(opt->version     == 0);
   assert(opt->udp_payload <= UINT16_MAX);
   
+  if (data->rropt)
+    return RCODE_FORMAT_ERROR; /* there can be only one! */
+    
   if (data->packet.size < 11)
     return RCODE_NO_MEMORY;
     
-  data->packet.ptr[0] = '\0';  /* root domain */
-  data->packet.ptr++;
-  data->packet.size--;
+  data->rropt = true;
   
-  write_uint16(&data->packet,RR_OPT);
-  write_uint16(&data->packet,opt->udp_payload);
-  data->packet.ptr[0] = query->rcode >> 4;
-  data->packet.ptr[1] = opt->version;
-  data->packet.ptr[2] = 0;
-  data->packet.ptr[3] = 0;
-  
-  if (opt->fdo) data->packet.ptr[2] |= 0x80;
-  
-  data->packet.ptr  += 4;
-  data->packet.size -= 4;
-  
-  /*----------------------------------------------------------------------
-  ; save the location for RDLEN, and set it to 0 for now.  After we encode
-  ; the rest of the packet, we'll patch this with the correct length.
-  ;----------------------------------------------------------------------*/
-  
-  prdlen = data->packet.ptr;
-  write_uint16(&data->packet,0); /* place holder for now */
-  
-  for (i = 0 ; i < opt->numopts; i++)
+  for (size_t i = 0 ; i < opt->numopts; i++)
   {
     dns_rcode_t rc;
     
@@ -487,10 +571,6 @@ static inline dns_rcode_t encode_rr_opt(
     if (rc != RCODE_OKAY) return rc;
   }
   
-  rdlen     = (size_t)(data->packet.ptr - prdlen) - sizeof(uint16_t);
-  prdlen[0] = (rdlen >> 8) & 0xFF;
-  prdlen[1] = (rdlen     ) & 0xFF;
-  
   return RCODE_OKAY;
 }
 
@@ -502,8 +582,6 @@ static inline dns_rcode_t encode_rr_naptr(
 )
 {
   dns_rcode_t  rc;
-  uint8_t     *prdlen;
-  uint8_t     *pdata;
   
   assert(econtext_okay(data));
   assert(naptr              != NULL);
@@ -518,15 +596,120 @@ static inline dns_rcode_t encode_rr_naptr(
   assert(naptr->regexp      != NULL);
   assert(naptr->replacement != NULL);
   
-  rc = dns_encode_domain(data,naptr->name,strlen(naptr->name));
-  if (rc != RCODE_OKAY) return rc;
-  
-  if (data->packet.size < 14)  /* type, class, ttl */
+  if (data->packet.size < 4)
     return RCODE_NO_MEMORY;
     
-  write_uint16(&data->packet,naptr->type);
-  write_uint16(&data->packet,naptr->class);
-  write_uint32(&data->packet,naptr->ttl);
+  write_uint16(&data->packet,naptr->order);
+  write_uint16(&data->packet,naptr->preference);
+  
+  if ((rc = encode_string(data,naptr->flags,   strlen(naptr->flags)))    != RCODE_OKAY) return rc;
+  if ((rc = encode_string(data,naptr->services,strlen(naptr->services))) != RCODE_OKAY) return rc;
+  if ((rc = encode_string(data,naptr->regexp,  strlen(naptr->regexp)))   != RCODE_OKAY) return rc;
+  if ((rc = encode_domain(data,naptr->replacement))                      != RCODE_OKAY) return rc;
+  
+  return RCODE_OKAY;
+}
+
+/***********************************************************************/
+
+static inline dns_rcode_t encode_rr_minfo(edns_context *data,dns_minfo_t const *minfo)
+{
+  assert(econtext_okay(data));
+  assert(minfo != NULL);
+  
+  (void)data;
+  (void)minfo;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_mx(edns_context *data,dns_mx_t const *mx)
+{
+  assert(econtext_okay(data));
+  assert(mx != NULL);
+  
+  (void)data;
+  (void)mx;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_hinfo(edns_context *data,dns_hinfo_t const *hinfo)
+{
+  assert(econtext_okay(data));
+  assert(hinfo != NULL);
+  
+  (void)data;
+  (void)hinfo;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_txt(edns_context *data,dns_txt_t const *txt)
+{
+  assert(econtext_okay(data));
+  assert(txt != NULL);
+  
+  (void)data;
+  (void)txt;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static inline dns_rcode_t encode_rr_x(edns_context *data,dns_x_t const *x)
+{
+  assert(econtext_okay(data));
+  assert(x != NULL);
+  
+  (void)data;
+  (void)x;
+  return RCODE_NOT_IMPLEMENTED;
+}
+
+/*************************************************************************/
+
+static dns_rcode_t encode_answer(
+                edns_context *data,
+                dns_answer_t *answer
+)
+{
+  dns_rcode_t  rc;
+  uint8_t     *prdlen;
+  uint8_t     *pdata;
+  
+  assert(econtext_okay(data));
+  assert(answer != NULL);
+  
+  rc = encode_domain(data,answer->generic.name);
+  if (rc != RCODE_OKAY)
+    return rc;
+    
+  if (data->packet.size < 10)
+    return RCODE_NO_MEMORY;
+    
+  /*------------------------------------------------------------------------
+  ; For the RR OPT, the class field is actually the size of the UDP payload,
+  ; and the TTL field are a bunch of flags.  We have a separate field for
+  ; the UDP payload size, so here we make the adjustment behind the scenes
+  ; so you don't have to know this crap.
+  ;-------------------------------------------------------------------------*/
+  
+  if (answer->generic.type == RR_OPT)
+  {
+    answer->opt.class = answer->opt.udp_payload;
+    answer->opt.ttl   = ((data->rcode >> 4)  & 0xFF)    << 24
+                      | (answer->opt.version & 0xFF)    << 16
+                      | (answer->opt.fdo ? 0x80 : 0x00) <<  8
+                      ;
+  }
+  
+  write_uint16(&data->packet,answer->generic.type);
+  write_uint16(&data->packet,answer->generic.class);
+  write_uint32(&data->packet,answer->generic.ttl);
   
   /*-------------------------------------------------------------------------
   ; we need to come back to the rdlen after we've written the data.  We save
@@ -540,20 +723,65 @@ static inline dns_rcode_t encode_rr_naptr(
   data->packet.size -= sizeof(uint16_t);
   pdata              = data->packet.ptr;
   
-  write_uint16(&data->packet,naptr->order);
-  write_uint16(&data->packet,naptr->preference);
+  switch(answer->generic.type)
+  {
+    case RR_A:     rc = encode_rr_a    (data,&answer->a);     break;
+    case RR_SOA:   rc = encode_rr_soa  (data,&answer->soa);   break;
+    case RR_NAPTR: rc = encode_rr_naptr(data,&answer->naptr); break;
+    case RR_AAAA:  rc = encode_rr_aaaa (data,&answer->aaaa);  break;
+    case RR_SRV:   rc = encode_rr_srv  (data,&answer->srv);   break;
+    case RR_WKS:   rc = encode_rr_wks  (data,&answer->wks);   break;
+    case RR_GPOS:  rc = encode_rr_gpos (data,&answer->gpos);  break;
+    case RR_LOC:   rc = encode_rr_loc  (data,&answer->loc);   break;
+    case RR_OPT:   rc = encode_rr_opt  (data,&answer->opt);   break;
+    
+    /*---------------------------------------------------------------------
+    ; The following record types all share the same structure (although the
+    ; last field name is different, depending upon the record), so they can
+    ; share the same call site.  It's enough to shave some space in the
+    ; executable while being a cheap and non-obscure size optimization, or
+    ; a gross hack, depending upon your view.
+    ;----------------------------------------------------------------------*/
+    
+    case RR_PX:
+    case RR_RP:
+    case RR_MINFO: rc = encode_rr_minfo(data,&answer->minfo); break;
+    
+    case RR_AFSDB:
+    case RR_RT:
+    case RR_MX: rc = encode_rr_mx(data,&answer->mx); break;
+    
+    case RR_NSAP:
+    case RR_ISDN:
+    case RR_HINFO: rc = encode_rr_hinfo(data,&answer->hinfo); break;
+    
+    case RR_X25:
+    case RR_SPF:
+    case RR_TXT: rc = encode_rr_txt(data,&answer->txt); break;
+    
+    case RR_NSAP_PTR:
+    case RR_MD:
+    case RR_MF:
+    case RR_MB:
+    case RR_MG:
+    case RR_MR:
+    case RR_NS:
+    case RR_PTR:
+    case RR_CNAME: rc = encode_domain(data,answer->cname.cname); break;
+    
+    case RR_NULL:
+    default: rc = encode_rr_x(data,&answer->x); break;
+  }
   
-  if ((rc = dns_encode_string(data,naptr->flags,   strlen(naptr->flags)))          != RCODE_OKAY) return rc;
-  if ((rc = dns_encode_string(data,naptr->services,strlen(naptr->services)))       != RCODE_OKAY) return rc;
-  if ((rc = dns_encode_string(data,naptr->regexp,  strlen(naptr->regexp)))         != RCODE_OKAY) return rc;
-  if ((rc = dns_encode_domain(data,naptr->replacement,strlen(naptr->replacement))) != RCODE_OKAY) return rc;
-  
+  if (rc != RCODE_OKAY)
+    return rc;
+    
   /*-----------------------------------------------------
   ; now write the length of the data we've just written
   ;-------------------------------------------------------*/
   
-  write_uint16(&(block__s){ .ptr = prdlen , .size = 2 },data->packet.ptr - pdata);
-  return RCODE_OKAY;
+  write_uint16(&(block__s) { .ptr = prdlen , .size = 2 },(uint16_t)(data->packet.ptr - pdata));
+  return rc;
 }
 
 /***********************************************************************/
@@ -585,7 +813,7 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
   
   /*-----------------------------------------------------------------------
   ; I'm not bothering with symbolic constants for the flags; they're only
-  ; used in two places in the code (the other being dns_encode()) and
+  ; used in two places in the code (the other being dns_decode()) and
   ; they're not going to change.  It's also obvious from the context what
   ; they're refering to.
   ;-----------------------------------------------------------------------*/
@@ -599,56 +827,46 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,const dns_query_t *query)
   if (query->ad)     header->rcode  |= 0x20;
   if (query->cd)     header->rcode  |= 0x10;
   
-  data.packet.size = *plen - sizeof(struct idns_header);
-  data.packet.ptr  = &buffer[sizeof(struct idns_header)];
+  data.packet.size  = *plen - sizeof(struct idns_header);
+  data.packet.ptr   = &buffer[sizeof(struct idns_header)];
+  data.base         = buffer;
+  data.segments.idx = 0;
+  data.rropt        = false;
+  data.rcode        = query->rcode;
   
   for (size_t i = 0 ; i < query->qdcount ; i++)
   {
-    rc = dns_encode_question(&data,&query->questions[i]);
+    rc = encode_question(&data,&query->questions[i]);
     if (rc != RCODE_OKAY)
       return rc;
   }
-  
-  /*----------------------------------------------------------------
-  ; I need to encode NAPTRs, so that's all we can encode as an
-  ; answer for now.  We also support an addtional records for the
-  ; EDNS stuff, but that's it for now.
-  ;---------------------------------------------------------------*/
   
   for (size_t i = 0 ; i < query->ancount ; i++)
   {
-    switch(query->answers[i].generic.type)
-    {
-      case RR_NAPTR: rc = encode_rr_naptr(&data,&query->answers[i].naptr); break;
-      default:       assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
-    }
-    
+    rc = encode_answer(&data,&query->answers[i]);
     if (rc != RCODE_OKAY)
       return rc;
   }
   
-  /*---------------------------------------------
-  ; skip name sever records
-  ;----------------------------------------------*/
-  
-  assert(query->nscount == 0);
-  
-  /*------------------------------------------------------
-  ; EDNS only supported additional record type for now
-  ;-------------------------------------------------------*/
-  
-  for (size_t i = 0 ; i < query->arcount ; i++)
+  for (size_t i = 0 ; i < query->nscount ; i++)
   {
-    switch(query->additional[i].generic.type)
-    {
-      case RR_OPT: rc = encode_rr_opt(&data,query,&query->additional[i].opt); break;
-      default:     assert(0); rc = RCODE_NOT_IMPLEMENTED; break;
-    }
-    
+    rc = encode_answer(&data,&query->nameservers[i]);
     if (rc != RCODE_OKAY)
       return rc;
   }
   
+  /*---------------------------------------------------------------------
+  ; RR OPT can only appear once, and only in the additional info section.
+  ; Check that we haven't encoded one before.
+  ;----------------------------------------------------------------------*/
+  
+  if (data.rropt)
+    return RCODE_FORMAT_ERROR;
+    
+  for (size_t i = 0 ; i < query->arcount ; i++)
+    if ((rc = encode_answer(&data,&query->additional[i])) != RCODE_OKAY)
+      return rc;
+      
   *plen = (size_t)(data.packet.ptr - buffer);
   return RCODE_OKAY;
 }
