@@ -529,11 +529,11 @@ static inline dns_rcode_t encode_rr_gpos(edns_context *data,dns_gpos_t const *gp
   textlen = snprintf(text,sizeof(text),"%f",lng);
   if ((rc = encode_string(data,text,textlen)) != RCODE_OKAY)
     return rc;
-
+    
   textlen = snprintf(text,sizeof(text),"%f",lat);
   if ((rc = encode_string(data,text,textlen)) != RCODE_OKAY)
     return rc;
-
+    
   textlen = snprintf(text,sizeof(text),"%f",gpos->altitude);
   return encode_string(data,text,textlen);
 }
@@ -545,18 +545,20 @@ static inline dns_rcode_t encode_rr_gpos(edns_context *data,dns_gpos_t const *gp
 *
 **************************************************************************/
 
-static uint8_t eloc_scale(unsigned long scale,unsigned long def)
+static uint8_t eloc_scale(unsigned long long scale,unsigned long def)
 {
   double fp;
   double ip;
+  double rs;
   int    smul;
   int    spow;
-
+  
   if (scale == 0)
     scale = def;
-  
+    
   fp   = modf(log10(scale),&ip);
-  smul = (int)(fp * 10.0);
+  rs   = pow(10.0,ip);
+  smul = (double)scale / rs;
   spow = ip;
   
   assert(smul >= 0);
@@ -589,28 +591,36 @@ static inline dns_rcode_t encode_rr_loc(edns_context *data,dns_loc_t const *loc)
   
   if (data->packet.size < 16)
     return RCODE_NO_MEMORY;
-  
+    
   *data->packet.ptr++ = 0; /* version is always 0 */
   *data->packet.ptr++ = eloc_scale(loc->size,     100uL);
   *data->packet.ptr++ = eloc_scale(loc->horiz_pre,1000000uL);
   *data->packet.ptr++ = eloc_scale(loc->vert_pre, 1000uL);
   
   v = loc->latitude.deg * 3600000uL
-    + loc->latitude.min *    3600uL
-    + loc->latitude.sec *      60uL
+    + loc->latitude.min *   60000uL
+    + loc->latitude.sec *    1000uL
     + loc->latitude.frac
     ;
   assert(v <= LOC_LAT_MAX); /* above asserts should mean this is true */
-  if (loc->latitude.nw) v += LOC_BIAS;
+  if (loc->latitude.nw)
+    v += LOC_BIAS;
+  else
+    v = LOC_BIAS - v;
+    
   write_uint32(&data->packet,v);
   
   v = loc->longitude.deg * 3600000uL
-    + loc->longitude.min *    3600uL
-    + loc->longitude.sec *      60uL
+    + loc->longitude.min *   60000uL
+    + loc->longitude.sec *    1000uL
     + loc->longitude.frac
     ;
   assert(v <= LOC_LNG_MAX); /* above asserts should mean this is true */
-  if (!loc->longitude.nw) v += LOC_BIAS;
+  if (!loc->longitude.nw)
+    v += LOC_BIAS;
+  else
+    v = LOC_BIAS - v;
+    
   write_uint32(&data->packet,v);
   
   write_uint32(&data->packet,(unsigned)loc->altitude + LOC_ALT_BIAS);
