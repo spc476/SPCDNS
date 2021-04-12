@@ -485,12 +485,47 @@ static inline dns_rcode_t encode_rr_wks(edns_context *data,dns_wks_t const *wks)
 
 static inline dns_rcode_t encode_rr_gpos(edns_context *data,dns_gpos_t const *gpos)
 {
-  assert(econtext_okay(data));
-  assert(gpos != NULL);
+  dns_rcode_t rc;
+  double      lat;
+  double      lng;
+  char        text[12];
+  int         textlen;
   
-  (void)data;
-  (void)gpos;
-  return RCODE_NOT_IMPLEMENTED;
+  assert(econtext_okay(data));
+  assert(gpos                 != NULL);
+  assert(gpos->longitude.deg  <=  180);
+  assert(gpos->longitude.min  <    60);
+  assert(gpos->longitude.sec  <    60);
+  assert(gpos->longitude.frac <  1000);
+  assert(gpos->latitude.deg   <=   90);
+  assert(gpos->latitude.min   <    60);
+  assert(gpos->latitude.sec   <    60);
+  assert(gpos->latitude.frac  <  1000);
+  
+  lat = (double)gpos->latitude.deg
+      + (double)gpos->latitude.min  /      60.0
+      + (double)gpos->latitude.sec  /    3600.0
+      + (double)gpos->latitude.frac / 3600000.0
+      ;
+  if (!gpos->latitude.nw) lat = -lat;
+  
+  lng = (double)gpos->longitude.deg
+      + (double)gpos->longitude.min  /      60.0
+      + (double)gpos->longitude.sec  /    3600.0
+      + (double)gpos->longitude.frac / 3600000.0
+      ;
+  if (gpos->longitude.nw) lng = -lng;
+  
+  textlen = snprintf(text,sizeof(text),"%f",lng);
+  if ((rc = encode_string(data,text,textlen)) != RCODE_OKAY)
+    return rc;
+
+  textlen = snprintf(text,sizeof(text),"%f",lat);
+  if ((rc = encode_string(data,text,textlen)) != RCODE_OKAY)
+    return rc;
+
+  textlen = snprintf(text,sizeof(text),"%f",gpos->altitude);
+  return encode_string(data,text,textlen);
 }
 
 /*************************************************************************/
