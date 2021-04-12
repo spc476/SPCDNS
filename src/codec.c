@@ -95,6 +95,16 @@
 
 #define MAXSEG  100
 
+/*---------------------------------------------------------------------------
+; You really, no, I mean it, *REALLY* need to read RFC-1876 to understand
+; all the crap that's going on for deciphering RR_LOC.
+;----------------------------------------------------------------------------*/
+
+#define LOC_BIAS        (((unsigned long)INT32_MAX) + 1uL)
+#define LOC_LAT_MAX     ((unsigned long)( 90uL * 3600000uL))
+#define LOC_LNG_MAX     ((unsigned long)(180uL * 3600000uL))
+#define LOC_ALT_BIAS    (10000000L)
+
 /************************************************************************/
 
 struct idns_header
@@ -528,16 +538,83 @@ static inline dns_rcode_t encode_rr_gpos(edns_context *data,dns_gpos_t const *gp
   return encode_string(data,text,textlen);
 }
 
+/*************************************************************************
+*
+* You really, no, I mean it, *REALLY* need to read RFC-1876 to understand
+* all the crap that's going on for deciphering RR_LOC.
+*
+**************************************************************************/
+
+static uint8_t eloc_scale(unsigned long scale,unsigned long def)
+{
+  double fp;
+  double ip;
+  int    smul;
+  int    spow;
+
+  if (scale == 0)
+    scale = def;
+  
+  fp   = modf(log10(scale),&ip);
+  smul = (int)(fp * 10.0);
+  spow = ip;
+  
+  assert(smul >= 0);
+  assert(smul <= 9);
+  assert(spow >= 0);
+  assert(spow <= 9);
+  
+  return (smul << 4) | spow;
+}
+
 /*************************************************************************/
 
 static inline dns_rcode_t encode_rr_loc(edns_context *data,dns_loc_t const *loc)
 {
+  uint32_t v;
+  
   assert(econtext_okay(data));
   assert(loc != NULL);
+  assert(loc->size           <= 9000000000uLL);
+  assert(loc->horiz_pre      <= 9000000000uLL);
+  assert(loc->vert_pre       <= 9000000000uLL);
+  assert(loc->latitude.deg   <=  180);
+  assert(loc->longitude.min  <    60);
+  assert(loc->longitude.sec  <    60);
+  assert(loc->longitude.frac <  1000);
+  assert(loc->latitude.deg   <=   90);
+  assert(loc->latitude.min   <    60);
+  assert(loc->latitude.sec   <    60);
+  assert(loc->latitude.frac  <  1000);
   
-  (void)data;
-  (void)loc;
-  return RCODE_NOT_IMPLEMENTED;
+  if (data->packet.size < 16)
+    return RCODE_NO_MEMORY;
+  
+  *data->packet.ptr++ = 0; /* version is always 0 */
+  *data->packet.ptr++ = eloc_scale(loc->size,     100uL);
+  *data->packet.ptr++ = eloc_scale(loc->horiz_pre,1000000uL);
+  *data->packet.ptr++ = eloc_scale(loc->vert_pre, 1000uL);
+  
+  v = loc->latitude.deg * 3600000uL
+    + loc->latitude.min *    3600uL
+    + loc->latitude.sec *      60uL
+    + loc->latitude.frac
+    ;
+  assert(v <= LOC_LAT_MAX); /* above asserts should mean this is true */
+  if (loc->latitude.nw) v += LOC_BIAS;
+  write_uint32(&data->packet,v);
+  
+  v = loc->longitude.deg * 3600000uL
+    + loc->longitude.min *    3600uL
+    + loc->longitude.sec *      60uL
+    + loc->longitude.frac
+    ;
+  assert(v <= LOC_LNG_MAX); /* above asserts should mean this is true */
+  if (!loc->longitude.nw) v += LOC_BIAS;
+  write_uint32(&data->packet,v);
+  
+  write_uint32(&data->packet,(unsigned)loc->altitude + LOC_ALT_BIAS);
+  return RCODE_OKAY;
 }
 
 /*************************************************************************/
@@ -1732,14 +1809,9 @@ static inline dns_rcode_t decode_rr_gpos(
 *
 **************************************************************************/
 
-#define LOC_BIAS        (((unsigned long)INT32_MAX) + 1uL)
-#define LOC_LAT_MAX     ((unsigned long)( 90uL * 3600000uL))
-#define LOC_LNG_MAX     ((unsigned long)(180uL * 3600000uL))
-#define LOC_ALT_BIAS    (10000000L)
-
 static int dloc_scale(
-        unsigned long *presult,
-        const int      scale
+        unsigned long long *presult,
+        const int           scale
 )
 {
   int spow;

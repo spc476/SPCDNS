@@ -217,9 +217,9 @@ void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
                 "\t\t%3d %2d %2d %s ; Latitude\n"
                 "\t\t%3d %2d %2d %s ; Longitude\n"
                 "\t\t%11ld ; Altitude\n"
-                "\t\t%11lu ; Size\n"
-                "\t\t%11lu ; Horizontal Precision\n"
-                "\t\t%11lu ; Vertical Precision\n"
+                "\t\t%11llu ; Size\n"
+                "\t\t%11llu ; Horizontal Precision\n"
+                "\t\t%11llu ; Vertical Precision\n"
                 "\t\t)\n",
                 pans[i].loc.latitude.deg,
                 pans[i].loc.latitude.min,

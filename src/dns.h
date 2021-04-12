@@ -645,17 +645,17 @@ typedef struct dns_aaaa_t       /* RFC-1886 */
 
 typedef struct dns_loc_t        /* RFC-1876 */
 {
-  char const     *name;
-  dns_type_t      type;
-  dns_class_t     class;
-  TTL             ttl;
-  int             version;
-  unsigned long   size;         /* plese see RFC-1876 for a discussion  */
-  unsigned long   horiz_pre;    /* of these fields                      */
-  unsigned long   vert_pre;
-  dnsgpos_angle   latitude;
-  dnsgpos_angle   longitude;
-  long            altitude;
+  char const         *name;
+  dns_type_t          type;
+  dns_class_t         class;
+  TTL                 ttl;
+  int                 version;
+  unsigned long long  size;      /* plese see RFC-1876 for a discussion  */
+  unsigned long long  horiz_pre; /* of these fields                      */
+  unsigned long long  vert_pre;
+  dnsgpos_angle       latitude;
+  dnsgpos_angle       longitude;
+  long                altitude;
 } dns_loc_t;
 
 typedef struct dns_nxt_t        /* RFC-2065 */
