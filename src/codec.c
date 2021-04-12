@@ -400,12 +400,26 @@ static inline dns_rcode_t encode_rr_a(edns_context *data,dns_a_t const *a)
 
 static inline dns_rcode_t encode_rr_soa(edns_context *data,dns_soa_t const *soa)
 {
-  assert(econtext_okay(data));
-  assert(soa != NULL);
+  dns_rcode_t rc;
   
-  (void)data;
-  (void)soa;
-  return RCODE_NOT_IMPLEMENTED;
+  assert(econtext_okay(data));
+  assert(soa        != NULL);
+  assert(soa->mname != NULL);
+  assert(soa->rname != NULL);
+  
+  if ((rc = encode_domain(data,soa->mname)) != RCODE_OKAY) return rc;
+  if ((rc = encode_domain(data,soa->rname)) != RCODE_OKAY) return rc;
+  
+  if (data->packet.size < 20)
+    return RCODE_NO_MEMORY;
+    
+  write_uint32(&data->packet,soa->serial);
+  write_uint32(&data->packet,soa->refresh);
+  write_uint32(&data->packet,soa->retry);
+  write_uint32(&data->packet,soa->expire);
+  write_uint32(&data->packet,soa->minimum);
+  
+  return RCODE_OKAY;
 }
 
 /*************************************************************************/
@@ -417,7 +431,7 @@ static inline dns_rcode_t encode_rr_aaaa(edns_context *data,dns_aaaa_t const *aa
   
   if (data->packet.size < 16)
     return RCODE_NO_MEMORY;
-  
+    
   memcpy(data->packet.ptr,&aaaa->address,16);
   data->packet.ptr  += 4;
   data->packet.size -= 4;
@@ -429,11 +443,19 @@ static inline dns_rcode_t encode_rr_aaaa(edns_context *data,dns_aaaa_t const *aa
 static inline dns_rcode_t encode_rr_srv(edns_context *data,dns_srv_t const *srv)
 {
   assert(econtext_okay(data));
-  assert(srv != NULL);
+  assert(srv           != NULL);
+  assert(srv->priority <= UINT16_MAX);
+  assert(srv->weight   <= UINT16_MAX);
+  assert(srv->port     <= UINT16_MAX);
+  assert(srv->target   != NULL);
   
-  (void)data;
-  (void)srv;
-  return RCODE_NOT_IMPLEMENTED;
+  if (data->packet.size < 7)
+    return RCODE_NO_MEMORY;
+    
+  write_uint16(&data->packet,srv->priority);
+  write_uint16(&data->packet,srv->weight);
+  write_uint16(&data->packet,srv->port);
+  return encode_domain(data,srv->target);
 }
 
 /*************************************************************************/
@@ -441,11 +463,22 @@ static inline dns_rcode_t encode_rr_srv(edns_context *data,dns_srv_t const *srv)
 static inline dns_rcode_t encode_rr_wks(edns_context *data,dns_wks_t const *wks)
 {
   assert(econtext_okay(data));
-  assert(wks != NULL);
+  assert(wks           != NULL);
+  assert(wks->protocol <= UINT16_MAX);
+  assert(wks->numbits  <= 8192);
+  assert(wks->bits     != NULL);
   
-  (void)data;
-  (void)wks;
-  return RCODE_NOT_IMPLEMENTED;
+  if (data->packet.size < wks->numbits + 6)
+    return RCODE_NO_MEMORY;
+    
+  memcpy(data->packet.ptr,&wks->address,4);
+  data->packet.ptr  += 4;
+  data->packet.size -= 4;
+  write_uint16(&data->packet,wks->protocol);
+  memcpy(data->packet.ptr,wks->bits,wks->numbits);
+  data->packet.ptr  += wks->numbits;
+  data->packet.size -= wks->numbits;
+  return RCODE_OKAY;
 }
 
 /*************************************************************************/
@@ -614,12 +647,16 @@ static inline dns_rcode_t encode_rr_naptr(
 
 static inline dns_rcode_t encode_rr_minfo(edns_context *data,dns_minfo_t const *minfo)
 {
-  assert(econtext_okay(data));
-  assert(minfo != NULL);
+  dns_rcode_t rc;
   
-  (void)data;
-  (void)minfo;
-  return RCODE_NOT_IMPLEMENTED;
+  assert(econtext_okay(data));
+  assert(minfo          != NULL);
+  assert(minfo->rmailbx != NULL);
+  assert(minfo->emailbx != NULL);
+  
+  if ((rc = encode_domain(data,minfo->rmailbx)) != RCODE_OKAY)
+    return rc;
+  return encode_domain(data,minfo->emailbx);
 }
 
 /*************************************************************************/
@@ -627,35 +664,61 @@ static inline dns_rcode_t encode_rr_minfo(edns_context *data,dns_minfo_t const *
 static inline dns_rcode_t encode_rr_mx(edns_context *data,dns_mx_t const *mx)
 {
   assert(econtext_okay(data));
-  assert(mx != NULL);
+  assert(mx             != NULL);
+  assert(mx->preference <= UINT16_MAX);
+  assert(mx->exchange   != NULL);
   
-  (void)data;
-  (void)mx;
-  return RCODE_NOT_IMPLEMENTED;
+  if (data->packet.size < 2)
+    return RCODE_NO_MEMORY;
+    
+  write_uint16(&data->packet,mx->preference);
+  return encode_domain(data,mx->exchange);
 }
 
 /*************************************************************************/
 
 static inline dns_rcode_t encode_rr_hinfo(edns_context *data,dns_hinfo_t const *hinfo)
 {
-  assert(econtext_okay(data));
-  assert(hinfo != NULL);
+  dns_rcode_t rc;
   
-  (void)data;
-  (void)hinfo;
-  return RCODE_NOT_IMPLEMENTED;
+  assert(econtext_okay(data));
+  assert(hinfo      != NULL);
+  assert(hinfo->cpu != NULL);
+  assert(hinfo->os  != NULL);
+  
+  if ((rc = encode_string(data,hinfo->cpu,strlen(hinfo->cpu))) != RCODE_OKAY)
+    return rc;
+  return encode_string(data,hinfo->os,strlen(hinfo->os));
 }
 
 /*************************************************************************/
 
 static inline dns_rcode_t encode_rr_txt(edns_context *data,dns_txt_t const *txt)
 {
-  assert(econtext_okay(data));
-  assert(txt != NULL);
+  char const  *p;
+  size_t       max;
+  dns_rcode_t  rc;
   
-  (void)data;
-  (void)txt;
-  return RCODE_NOT_IMPLEMENTED;
+  assert(econtext_okay(data));
+  assert(txt       != NULL);
+  assert(txt->len  >  0);
+  assert(txt->text != NULL);
+  
+  /*------------------------------------------------------------------------
+  ; Text can be longer than 255 characters, but can only be encoded into 255
+  ; byte chunks.
+  ;-------------------------------------------------------------------------*/
+  
+  for (p = txt->text , max = txt->len ; max > 0 ; )
+  {
+    size_t chunk = (max < 255) ? max : 255;
+    if ((rc = encode_string(data,p,chunk)) != RCODE_OKAY)
+      return rc;
+    max -= chunk;
+    p   += chunk;
+  }
+  
+  return RCODE_OKAY;
 }
 
 /*************************************************************************/
