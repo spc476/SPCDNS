@@ -838,8 +838,9 @@ static dns_rcode_t encode_answer(
     case RR_PTR:
     case RR_CNAME: rc = encode_domain(data,answer->cname.cname); break;
     
-    case RR_NULL:
-    default: rc = encode_rr_x(data,&answer->x); break;
+    case RR_NULL: rc = encode_rr_x(data,&answer->x); break;
+    
+    default: rc = RCODE_NOT_IMPLEMENTED; break;
   }
   
   if (rc != RCODE_OKAY)
