@@ -140,7 +140,7 @@ typedef struct edns_context
 {
   block__s     packet;
   segments__s  segments;
-  bool         rropt;
+  bool         edns;
   uint8_t     *base;
   dns_rcode_t  rcode;
 } edns_context;
@@ -706,13 +706,13 @@ static inline dns_rcode_t encode_rr_opt(
   assert(opt->version     == 0);
   assert(opt->udp_payload <= UINT16_MAX);
   
-  if (data->rropt)
+  if (data->edns)
     return RCODE_FORMAT_ERROR; /* there can be only one! */
     
   if (data->packet.size < 11)
     return RCODE_NO_MEMORY;
     
-  data->rropt = true;
+  data->edns = true;
   
   for (size_t i = 0 ; i < opt->numopts; i++)
   {
@@ -1024,7 +1024,7 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,dns_query_t const *query)
   data.packet.ptr   = &buffer[sizeof(struct idns_header)];
   data.base         = buffer;
   data.segments.idx = 0;
-  data.rropt        = false;
+  data.edns         = false;
   data.rcode        = query->rcode;
   
   for (size_t i = 0 ; i < query->qdcount ; i++)
@@ -1053,7 +1053,7 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,dns_query_t const *query)
   ; Check that we haven't encoded one before.
   ;----------------------------------------------------------------------*/
   
-  if (data.rropt)
+  if (data.edns)
     return RCODE_FORMAT_ERROR;
     
   for (size_t i = 0 ; i < query->arcount ; i++)
