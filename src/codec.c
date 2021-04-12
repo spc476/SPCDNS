@@ -374,6 +374,7 @@ static dns_rcode_t encode_question(
   assert(econtext_okay(data));
   assert(pquestion        != NULL);
   assert(pquestion->name  != NULL);
+  assert(pquestion->type  != RR_OPT);
   assert(pquestion->class >= 1);
   assert(pquestion->class <= 4);
   
