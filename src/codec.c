@@ -433,8 +433,8 @@ static inline dns_rcode_t encode_rr_aaaa(edns_context *data,dns_aaaa_t const *aa
     return RCODE_NO_MEMORY;
     
   memcpy(data->packet.ptr,&aaaa->address,16);
-  data->packet.ptr  += 4;
-  data->packet.size -= 4;
+  data->packet.ptr  += 16;
+  data->packet.size -= 16;
   return RCODE_OKAY;
 }
 
