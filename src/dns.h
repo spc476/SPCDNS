@@ -401,7 +401,7 @@ typedef struct dns_wks_t        /* RFC-1035 */
   TTL          ttl;
   in_addr_t    address;
   int          protocol;
-  size_t       numbits;
+  size_t       numbits; /* <= 8192 */
   uint8_t     *bits;
 } dns_wks_t;
 
