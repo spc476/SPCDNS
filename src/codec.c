@@ -726,11 +726,17 @@ static inline dns_rcode_t encode_rr_txt(edns_context *data,dns_txt_t const *txt)
 static inline dns_rcode_t encode_rr_x(edns_context *data,dns_x_t const *x)
 {
   assert(econtext_okay(data));
-  assert(x != NULL);
+  assert(x          != NULL);
+  assert(x->rawdata != NULL);
   
-  (void)data;
-  (void)x;
-  return RCODE_NOT_IMPLEMENTED;
+  if (data->packet.size < x->size)
+    return RCODE_NO_MEMORY;
+    
+  memcpy(data->packet.ptr,x->rawdata,x->size);
+  data->packet.ptr  += x->size;
+  data->packet.size -= x->size;
+  
+  return RCODE_OKAY;
 }
 
 /*************************************************************************/
