@@ -57,12 +57,12 @@ end
 -- ****************************************************************
 
 local function print_txt(rec)
-  if type(rec.txt) == 'string' then
-    return rec.txt
-  elseif type(rec.txt) == 'table' then
+  if type(rec.text) == 'string' then
+    return string.format("%q",rec.text)
+  elseif type(rec.text) == 'table' then
     local s = "("
-    for i = 1 , #rec.txt do
-      s = s .. string.format("\n\t\t\t%q",rec.txt[i])
+    for i = 1 , #rec.text do
+      s = s .. string.format("\n\t\t\t%q",rec.text[i])
     end
     s = s .. "\n\t\t)"
     return s
