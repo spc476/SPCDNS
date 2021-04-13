@@ -100,6 +100,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <ctype.h>
+#include <math.h>
 #include <assert.h>
 
 #include <arpa/inet.h>
@@ -120,176 +122,448 @@
 
 /********************************************************************/
 
-static bool parse_edns0_opt(lua_State *L,edns0_opt_t *opt)
+static void to_question(lua_State *L,dns_question_t **pq,size_t *pqs,int idx)
 {
-  const char *type;
-  size_t      size;
-  bool        rc;
+  assert(L   != NULL);
+  assert(pq  != NULL);
+  assert(pqs != NULL);
+  assert(idx != 0);
   
-  rc = true;
+  idx  = lua_absindex(L,idx);
+  *pqs = lua_rawlen(L,idx);
+  *pq  = lua_newuserdata(L,*pqs * sizeof(dns_question_t));
   
-  lua_getfield(L,-1,"data");
-  opt->len = 0;
-  opt->data = (uint8_t *)lua_tolstring(L,-1,&opt->len);
-  lua_pop(L,1);
-  
-  lua_getfield(L,-1,"code");
-  if (lua_isnumber(L,-1))
-    opt->code = lua_tointeger(L,-1);
-  else if (lua_isstring(L,-1))
+  for (size_t i = 0 ; i < *pqs ; i++)
   {
-    type = lua_tolstring(L,-1,&size);
+    lua_pushinteger(L,i + 1);
+    lua_gettable(L,idx);
+    lua_getfield(L,-1,"name");
+    lua_getfield(L,-2,"type");
+    lua_getfield(L,-3,"class");
     
-    if ((memcmp(type,"nsid",size) == 0) || (memcmp(type,"NSID",size) == 0))
-      opt->code = EDNS0RR_NSID;
+    (*pq)[i].name  = luaL_checkstring(L,-3);
+    (*pq)[i].type  = dns_type_value(luaL_optstring(L,-2,"A"));
+    (*pq)[i].class = dns_class_value(luaL_optstring(L,-1,"IN"));
+    lua_pop(L,4);
+  }
+}
+
+/********************************************************************/
+
+static void to_dnsgpos_angle(lua_State *L,dnsgpos_angle *ang,int idx,bool lat)
+{
+  lua_Number sec;
+  
+  idx = lua_absindex(L,idx);
+  lua_getfield(L,idx,"deg");
+  lua_getfield(L,idx,"min");
+  lua_getfield(L,idx,"sec");
+  
+  ang->deg  = luaL_checkinteger(L,-3);
+  ang->min  = luaL_checkinteger(L,-2);
+  ang->frac = modf(luaL_checknumber(L,-1),&sec) * 1000.0;
+  ang->sec  = sec;
+  lua_pop(L,3);
+  
+  lua_getfield(L,idx,"hemisphere");
+  if (!lua_isnil(L,-1))
+  {
+    char const *s = luaL_checkstring(L,-1);
+    if (lat)
+      ang->nw = toupper(*s) == 'N';
     else
-      rc = false;
+      ang->nw = toupper(*s) == 'W';
+    lua_pop(L,1);
   }
   else
-    rc = false;
-  lua_pop(L,1);
+  {
+    lua_getfield(L,idx,"nw");
+    ang->nw = lua_toboolean(L,-1);
+    lua_pop(L,2);
+  }  
+}
+
+/********************************************************************/
+
+static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
+{
+  int top;
+  int tidx;
   
-  return rc;
+  assert(L   != NULL);
+  assert(pa  != NULL);
+  assert(pas != NULL);
+  assert(idx != 0);
+  
+  idx  = lua_absindex(L,idx);
+  *pas = lua_rawlen(L,idx);
+  *pa  = lua_newuserdata(L,*pas * sizeof(dns_answer_t));
+  top  = lua_gettop(L);
+  
+  for (size_t i = 0 ; i < *pas ; i++)
+  {
+    lua_pushinteger(L,i + 1);
+    lua_gettable(L,idx);
+    tidx = lua_absindex(L,-1);
+    
+    lua_getfield(L,tidx,"name");
+    lua_getfield(L,tidx,"type");
+    lua_getfield(L,tidx,"class");
+    lua_getfield(L,tidx,"ttl");
+    
+    (*pa)[i].generic.name  = luaL_checkstring(L,-4);
+    (*pa)[i].generic.type  = dns_type_value(luaL_checkstring(L,-3));
+    (*pa)[i].generic.class = dns_class_value(luaL_optstring(L,-2,"IN"));
+    (*pa)[i].generic.ttl   = luaL_checkinteger(L,-1);
+    
+    switch((*pa)[i].generic.type)
+    {
+      case RR_A:
+           lua_getfield(L,tidx,"raw_address");
+           if (!lua_isnil(L,-1))
+           {
+             size_t      s;
+             char const *a = luaL_checklstring(L,-1,&s);
+             if (s != 4) luaL_error(L,"not an IP address in A record");
+             memcpy(&(*pa)[i].a.address,a,4);
+           }
+           else
+           {
+             lua_getfield(L,tidx,"address");
+             if (inet_pton(AF_INET,luaL_checkstring(L,-1),&(*pa)[i].a.address) != 0)
+               luaL_error(L,"Not an IP address in A record");
+           }
+           break;
+           
+      case RR_SOA:
+           lua_getfield(L,tidx,"mname");
+           lua_getfield(L,tidx,"rname");
+           lua_getfield(L,tidx,"serial");
+           lua_getfield(L,tidx,"refresh");
+           lua_getfield(L,tidx,"retry");
+           lua_getfield(L,tidx,"expire");
+           lua_getfield(L,tidx,"minimum");
+           (*pa)[i].soa.mname   = luaL_checkstring(L,-7);
+           (*pa)[i].soa.rname   = luaL_checkstring(L,-6);
+           (*pa)[i].soa.serial  = luaL_checkinteger(L,-5);
+           (*pa)[i].soa.refresh = luaL_checkinteger(L,-4);
+           (*pa)[i].soa.retry   = luaL_checkinteger(L,-3);
+           (*pa)[i].soa.expire  = luaL_checkinteger(L,-2);
+           (*pa)[i].soa.minimum = luaL_checkinteger(L,-1);
+           break;
+           
+      case RR_NAPTR:
+           lua_getfield(L,tidx,"order");
+           lua_getfield(L,tidx,"preference");
+           lua_getfield(L,tidx,"flags");
+           lua_getfield(L,tidx,"services");
+           lua_getfield(L,tidx,"regexp");
+           lua_getfield(L,tidx,"replacement");
+           (*pa)[i].naptr.order       = luaL_checkinteger(L,-6);
+           (*pa)[i].naptr.preference  = luaL_checkinteger(L,-5);
+           (*pa)[i].naptr.flags       = luaL_checkstring(L,-4);
+           (*pa)[i].naptr.services    = luaL_checkstring(L,-3);
+           (*pa)[i].naptr.regexp      = luaL_checkstring(L,-2);
+           (*pa)[i].naptr.replacement = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_AAAA:
+           lua_getfield(L,tidx,"raw_address");
+           if (!lua_isnil(L,-1))
+           {
+             size_t s;
+             char const *a = luaL_checklstring(L,-1,&s);
+             if (s != 16) luaL_error(L,"not an IPv6 address in AAAA record");
+             memcpy(&(*pa)[i].aaaa.address,a,16);
+           }
+           else
+           {
+             lua_getfield(L,tidx,"address");
+             if (inet_pton(AF_INET6,luaL_checkstring(L,-1),&(*pa)[i].aaaa.address) != 0)
+               luaL_error(L,"not an IPv6 address in AAAA record");
+           }
+           break;
+           
+      case RR_SRV:
+           lua_getfield(L,tidx,"priority");
+           lua_getfield(L,tidx,"weight");
+           lua_getfield(L,tidx,"port");
+           lua_getfield(L,tidx,"target");
+           (*pa)[i].srv.priority = luaL_checkinteger(L,-4);
+           (*pa)[i].srv.weight   = luaL_checkinteger(L,-3);
+           (*pa)[i].srv.port     = luaL_checkinteger(L,-2);
+           (*pa)[i].srv.target   = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_WKS:
+           lua_getfield(L,tidx,"raw_address");
+           if (!lua_isnil(L,-1))
+           {
+             size_t      s;
+             char const *a = luaL_checklstring(L,-1,&s);
+             if (s != 4) luaL_error(L,"not an IP address in A record");
+             memcpy(&(*pa)[i].wks.address,a,4);
+           }
+           else
+           {
+             lua_getfield(L,tidx,"address");
+             if (inet_pton(AF_INET,luaL_checkstring(L,-1),&(*pa)[i].wks.address) != 0)
+               luaL_error(L,"Not an IP address in A record");
+           }
+           
+           lua_getfield(L,tidx,"protocol");
+           lua_getfield(L,tidx,"bits");
+           (*pa)[i].wks.protocol = luaL_checkinteger(L,-1);
+           (*pa)[i].wks.bits     = (uint8_t *)luaL_checklstring(L,-2,&(*pa)[i].wks.numbits);
+           break;
+
+      case RR_GPOS:
+           lua_getfield(L,tidx,"longitude");
+           lua_getfield(L,tidx,"latitude");
+           lua_getfield(L,tidx,"altitude");
+           to_dnsgpos_angle(L,&(*pa)[i].gpos.longitude,-3,false);
+           to_dnsgpos_angle(L,&(*pa)[i].gpos.latitude,-2,true);
+           (*pa)[i].gpos.altitude = luaL_checknumber(L,-1);
+           break;
+           
+      case RR_LOC:
+           lua_getfield(L,tidx,"version");
+           lua_getfield(L,tidx,"size");
+           lua_getfield(L,tidx,"horiz_pre");
+           lua_getfield(L,tidx,"vert_pre");
+           lua_getfield(L,tidx,"latitude");
+           lua_getfield(L,tidx,"longitude");
+           lua_getfield(L,tidx,"altitude");
+           (*pa)[i].loc.version   = luaL_checkinteger(L,-7);
+           (*pa)[i].loc.size      = luaL_checkinteger(L,-6);
+           (*pa)[i].loc.horiz_pre = luaL_checkinteger(L,-5);
+           (*pa)[i].loc.vert_pre  = luaL_checkinteger(L,-4);
+           to_dnsgpos_angle(L,&(*pa)[i].loc.latitude,-3,true);
+           to_dnsgpos_angle(L,&(*pa)[i].loc.longitude,-2,false);
+           (*pa)[i].loc.altitude  = luaL_checkinteger(L,-1);
+           break;
+           
+      case RR_PX:
+           lua_getfield(L,tidx,"map822");
+           lua_getfield(L,tidx,"mapx400");
+           (*pa)[i].px.map822  = luaL_checkstring(L,-2);
+           (*pa)[i].px.mapx400 = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_RP:
+           lua_getfield(L,tidx,"mbox");
+           lua_getfield(L,tidx,"domain");
+           (*pa)[i].rp.mbox   = luaL_checkstring(L,-2);
+           (*pa)[i].rp.domain = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MINFO:
+           lua_getfield(L,tidx,"rmailbx");
+           lua_getfield(L,tidx,"emailbx");
+           (*pa)[i].minfo.rmailbx = luaL_checkstring(L,-2);
+           (*pa)[i].minfo.emailbx = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_AFSDB:
+           lua_getfield(L,tidx,"subtype");
+           lua_getfield(L,tidx,"hostname");
+           (*pa)[i].afsdb.subtype  = luaL_checkinteger(L,-2);
+           (*pa)[i].afsdb.hostname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_RT:
+           lua_getfield(L,tidx,"preference");
+           lua_getfield(L,tidx,"host");
+           (*pa)[i].rt.preference = luaL_checkinteger(L,-2);
+           (*pa)[i].rt.host       = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MX:
+           lua_getfield(L,tidx,"preference");
+           lua_getfield(L,tidx,"exchange");
+           (*pa)[i].mx.preference = luaL_checkinteger(L,-2);
+           (*pa)[i].mx.exchange   = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_NSAP:
+           lua_getfield(L,tidx,"length");
+           lua_getfield(L,tidx,"address");
+           (*pa)[i].nsap.length      = luaL_checkstring(L,-2);
+           (*pa)[i].nsap.nsapaddress = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_ISDN:
+           lua_getfield(L,tidx,"address");
+           lua_getfield(L,tidx,"sa");
+           (*pa)[i].isdn.isdnaddress = luaL_checkstring(L,-2);
+           (*pa)[i].isdn.sa          = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_HINFO:
+           lua_getfield(L,tidx,"cpu");
+           lua_getfield(L,tidx,"os");
+           (*pa)[i].hinfo.cpu = luaL_checkstring(L,-2);
+           (*pa)[i].hinfo.os  = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_X25:
+           lua_getfield(L,tidx,"address");
+           (*pa)[i].x25.psdnaddress = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_SPF:
+           lua_getfield(L,tidx,"text");
+           (*pa)[i].spf.text = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_TXT:
+           lua_getfield(L,tidx,"text");
+           (*pa)[i].txt.text = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_NSAP_PTR:
+           lua_getfield(L,tidx,"owner");
+           (*pa)[i].nsap_ptr.owner = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MD:
+           lua_getfield(L,tidx,"madname");
+           (*pa)[i].md.madname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MF:
+           lua_getfield(L,tidx,"madname");
+           (*pa)[i].mf.madname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MB:
+           lua_getfield(L,tidx,"madname");
+           (*pa)[i].mb.madname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MG:
+           lua_getfield(L,tidx,"mgmname");
+           (*pa)[i].mg.mgmname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_MR:
+           lua_getfield(L,tidx,"newname");
+           (*pa)[i].mr.newname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_NS:
+           lua_getfield(L,tidx,"nsdname");
+           (*pa)[i].ns.nsdname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_PTR:
+           lua_getfield(L,tidx,"ptr");
+           (*pa)[i].ptr.ptr = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_CNAME:
+           lua_getfield(L,tidx,"cname");
+           (*pa)[i].cname.cname = luaL_checkstring(L,-1);
+           break;
+           
+      case RR_NULL:
+           lua_getfield(L,tidx,"data");
+           (*pa)[i].null.data = (uint8_t *)luaL_checklstring(L,-1,&(*pa)[i].null.size);
+           break;
+           
+      case RR_OPT:
+           lua_getfield(L,tidx,"udp_payload");
+           lua_getfield(L,tidx,"version");
+           lua_getfield(L,tidx,"fdo");
+           lua_getfield(L,tidx,"fug");
+           lua_getfield(L,tidx,"opts");
+           
+           (*pa)[i].opt.udp_payload = luaL_checkinteger(L,-5);
+           (*pa)[i].opt.version     = luaL_checkinteger(L,-4);
+           (*pa)[i].opt.fdo         = lua_toboolean(L,-3);
+           (*pa)[i].opt.fug         = luaL_optinteger(L,-2,0);
+           (*pa)[i].opt.numopts     = lua_rawlen(L,-1);
+           (*pa)[i].opt.opts        = lua_newuserdata(L,(*pa)[i].opt.numopts * sizeof(edns0_opt_t));
+           
+           for (size_t j = 0 ; j < (*pa)[i].opt.numopts ; j++)
+           {
+             lua_pushinteger(L,j + 1);
+             lua_gettable(L,-1);
+             lua_getfield(L,-1,"data");
+             lua_getfield(L,-2,"code");
+             
+             (*pa)[i].opt.opts[j].data = (uint8_t *)luaL_checklstring(L,-2,&(*pa)[i].opt.opts[j].len);
+             if (lua_isnumber(L,-1))
+               (*pa)[i].opt.opts[j].code = lua_tointeger(L,-1);
+             else if (lua_isstring(L,-1))
+             {
+               if (strcmp("NSID",lua_tostring(L,-1)) == 0)
+                 (*pa)[i].opt.opts[j].code = EDNS0RR_NSID;
+               else if (strcmp("nsid",lua_tostring(L,-1)) == 0)
+                 (*pa)[i].opt.opts[j].code = EDNS0RR_NSID;
+               else
+                 luaL_error(L,"OPT RR code '%s' not supported",lua_tostring(L,-1));
+             }
+             lua_pop(L,3);
+           }
+           
+           break;
+           
+      default: break;
+    }
+    
+    lua_settop(L,top);
+  }
 }
 
 /********************************************************************/
 
 static int dnslua_encode(lua_State *L)
 {
-  dns_question_t domain;
-  dns_query_t    query;
-  dns_packet_t   buffer[DNS_BUFFER_UDP];
-  size_t         len;
-  int            qidx;
-  int            rc;
+  dns_query_t  query;
+  dns_packet_t buffer[DNS_BUFFER_UDP_MAX];
+  size_t       len;
+  dns_rcode_t  rc;
   
   luaL_checktype(L,1,LUA_TTABLE);
-  
-  memset(&domain,0,sizeof(domain));
-  memset(&query, 0,sizeof(query));
-  
-  lua_getfield(L,1,"question");
-  
-  /*----------------------------------------------------------------------
-  ; the user could have passed in multiple parameters; this way, we know
-  ; where the table we just referenced got stashed on the stack.
-  ;---------------------------------------------------------------------*/
-  
-  qidx = lua_gettop(L);
-  
-  /*-----------------------------------------------------------------
-  ; process the question
-  ;----------------------------------------------------------------*/
-  
-  lua_getfield(L,qidx,"name");
-  lua_getfield(L,qidx,"type");
-  lua_getfield(L,qidx,"class");
-  
-  domain.name  = luaL_checkstring(L,-3);
-  domain.type  = dns_type_value (luaL_optstring(L,-2,"A"));
-  domain.class = dns_class_value(luaL_optstring(L,-1,"IN"));
-  
-  lua_pop(L,4);
+  lua_settop(L,1);
   
   lua_getfield(L,1,"id");
   lua_getfield(L,1,"query");
-  lua_getfield(L,1,"rd");
   lua_getfield(L,1,"opcode");
+  lua_getfield(L,1,"aa");
+  lua_getfield(L,1,"tc");
+  lua_getfield(L,1,"rd");
+  lua_getfield(L,1,"ra");
+  lua_getfield(L,1,"z");
+  lua_getfield(L,1,"ad");
+  lua_getfield(L,1,"cd");
+  lua_getfield(L,1,"rcode");
   
-  query.id        = luaL_optinteger(L,-4,1234);
-  query.query     = lua_toboolean(L,-3);
-  query.rd        = lua_toboolean(L,-2);
-  query.opcode    = dns_op_value(luaL_optstring(L,-1,"QUERY"));
-  query.qdcount   = 1;
-  query.questions = &domain;
+  query.id     = luaL_checkinteger(L,-11);
+  query.query  = lua_toboolean(L,-10);
+  query.opcode = dns_op_value(luaL_optstring(L,-1,"QUERY"));
+  query.aa     = lua_toboolean(L,-8);
+  query.tc     = lua_toboolean(L,-7);
+  query.rd     = lua_toboolean(L,-6);
+  query.ra     = lua_toboolean(L,-5);
+  query.z      = lua_toboolean(L,-4);
+  query.ad     = lua_toboolean(L,-3);
+  query.cd     = lua_toboolean(L,-2);
+  query.rcode  = dns_rcode_value(luaL_optstring(L,-1,"NOT_IMPLEMENTED"));
+  lua_pop(L,11);
   
-  lua_pop(L,4);
-  
-  /*----------------------------------------------------------------
-  ; OPT RR support---gring grind grind
-  ;-----------------------------------------------------------------*/
-  
+  lua_getfield(L,1,"question");
+  to_question(L,&query.questions,&query.qdcount,-1);
+  lua_getfield(L,1,"answers");
+  to_answers(L,&query.answers,&query.ancount,-1);
+  lua_getfield(L,1,"nameservers");
+  to_answers(L,&query.nameservers,&query.nscount,-1);
   lua_getfield(L,1,"additional");
-  if (lua_isnil(L,-1))
-  {
-    len = sizeof(buffer);
-    rc  = dns_encode(buffer,&len,&query);
-  }
-  else
-  {
-    dns_answer_t edns;
-    
-    qidx             = lua_gettop(L);
-    query.arcount    = 1;
-    query.additional = &edns;
-    
-    memset(&edns,0,sizeof(edns));
-    
-    lua_getfield(L,qidx,"fug");
-    lua_getfield(L,qidx,"name");
-    lua_getfield(L,qidx,"type");
-    lua_getfield(L,qidx,"udp_payload");
-    lua_getfield(L,qidx,"version");
-    lua_getfield(L,qidx,"fdo");
-    
-    edns.opt.class       = CLASS_UNKNOWN;
-    edns.opt.fug         = luaL_optinteger(L,-6,0);
-    edns.opt.name        = luaL_optstring (L,-5,".");
-    edns.opt.type        = dns_type_value (luaL_optstring(L,-4,"OPT"));
-    edns.opt.udp_payload = luaL_optinteger(L,-3,1464);
-    edns.opt.version     = luaL_optinteger(L,-2,0);
-    edns.opt.fdo         = lua_toboolean  (L,-1);
-    
-    lua_pop(L,6);
-    lua_getfield(L,qidx,"opts");
-    
-    if (lua_isnil(L,-1))
-    {
-      edns.opt.numopts = 0;
-      edns.opt.opts    = NULL;
-      len              = sizeof(buffer);
-      rc               = dns_encode(buffer,&len,&query);
-    }
-    else
-    {
-      edns.opt.numopts = lua_rawlen(L,-1);
-      
-      /*----------------------------------------------------------------
-      ; the opts table can either be one record with named fields, or an
-      ; array of records, each with named fields.
-      ;----------------------------------------------------------------*/
-      
-      if (edns.opt.numopts == 0)
-      {
-        edns0_opt_t opt;
-        
-        if (!parse_edns0_opt(L,&opt))
-          return luaL_error(L,"EDNS0 option not supported");
-          
-        edns.opt.opts = &opt;
-        len           = sizeof(buffer);
-        rc            = dns_encode(buffer,&len,&query);
-      }
-      else
-      {
-        edns0_opt_t opt[edns.opt.numopts];
-        
-        for (size_t i = 1 ; i <= edns.opt.numopts ; i++)
-        {
-          lua_pushinteger(L,i);
-          lua_gettable(L,-2);
-          
-          if (!parse_edns0_opt(L,&opt[i - 1]))
-            return luaL_error(L,"EDNS0 option no supported");
-            
-          lua_pop(L,1);
-        }
-        edns.opt.opts = opt;
-        len           = sizeof(buffer);
-        rc            = dns_encode(buffer,&len,&query);
-      }
-    }
-  }
+  to_answers(L,&query.additional,&query.arcount,-1);
+  
+  len = sizeof(buffer);
+  rc  = dns_encode(buffer,&len,&query);
   
   if (rc != RCODE_OKAY)
   {
@@ -714,7 +988,7 @@ static int dnslua_query(lua_State *L)
   const char   *server;
   const char   *luaquery;
   size_t        querysize;
-  dns_packet_t  query[DNS_BUFFER_UDP];
+  dns_packet_t  query[DNS_BUFFER_UDP_MAX];
   dns_packet_t  reply[DNS_DECODEBUF_4K];
   size_t        replysize;
   int           rc;
@@ -773,4 +1047,3 @@ int luaopen_org_conman_dns(lua_State *L)
 }
 
 /**********************************************************************/
-
