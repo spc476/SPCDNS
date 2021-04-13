@@ -2,9 +2,10 @@
 SPCDNS: The sane DNS encoding/decoding library
 
 SPCDNS implements a simple yet sane API to encode DNS queries and to decode
-DNS replies.  The library (v1.0) currently supports the decoding of 30 DNS
-resource records, which is more than just about all other DNS resolving
-libraries I've seen (c-ares, udns, adns, libdns and djbdns [1]).
+DNS replies.  The library (v1.1) currently supports the encoding and
+decoding of 30 DNS resource records, which is more than just about all other
+DNS resolving libraries I've seen (c-ares, udns, adns, libdns and djbdns
+[1]).
 
 SPCDNS is *NOT* a general purpose DNS resolving library (although code is
 provided to make DNS queries, it is simple and fairly stupid).  This code
@@ -62,14 +63,12 @@ In the "src/" directory you'll find the following:
 	luadns.c
 
 		Lua [2] bindings for this library.  It exports the routines
-		found in codec.c, mappings.c and netsimple.c.  Not all the
-		DNS RR types decoded are supported as of yet, but the major
-		ones commonly used are supported.  
+		found in codec.c, mappings.c and netsimple.c.
 
-	test.c
+	dotest.c
 
 		An example program showing how to use the API to construct
-		and send a query, and to decode the response.  
+		and send a query, and to decode the response.
 
 You'll probably want to check the Makefile to make sure the right compiler
 and locations are set.  Or not.  You don't *HAVE* to use the included
@@ -130,14 +129,12 @@ limit).
 
 SOME NOTES ABOUT THE LUA BINDINGS
 
-The Lua bindings (for Lua 5.1, 5.2 or 5.3) are loaded into a Lua script with
-the following:
+The Lua bindings (for Lua 5.1-5.4) are loaded into a Lua script with the
+following:
 
 	local dns = require "org.conman.dns"
 
-This loads the bindings into a global Lua table called "org.conman.dns" to
-avoid name conflicts with other Lua DNS bindings and/or libraries.  Doing a
-"make install-lua" will install this file under:
+Doing a "make install-lua" will install this file under:
 
 	/usr/local/lib/lua/<Lua version>/org/conman/
 
