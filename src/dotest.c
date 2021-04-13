@@ -196,6 +196,7 @@ int main(int argc,char *argv[])
     edns.opt.udp_payload = 1464;
     edns.opt.version     = 0;
     edns.opt.fdo         = false;
+    edns.opt.z           = 0;
     edns.opt.numopts     = 1;
     edns.opt.opts        = &opt;
     
