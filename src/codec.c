@@ -702,7 +702,6 @@ static inline dns_rcode_t encode_rr_opt(
   assert(econtext_okay(data));
   assert(opt              != NULL);
   assert(opt->class       == opt->udp_payload);
-  assert(opt->ttl         == 0);
   assert(opt->version     == 0);
   assert(opt->udp_payload <= UINT16_MAX);
   
@@ -1935,9 +1934,11 @@ static inline dns_rcode_t decode_rr_opt(
   if (data->edns) /* there can be only one */
     return RCODE_FORMAT_ERROR;
     
-  data->edns   = true;
-  opt->numopts = 0;
-  opt->opts    = NULL;
+  data->edns             = true;
+  opt->numopts           = 0;
+  opt->opts              = NULL;
+  opt->version           = (opt->ttl >> 16) & 0xFF;
+  data->response->rcode |= (opt->ttl >> 20) & 0x0FF0;
   
   if (len)
   {
