@@ -22,7 +22,7 @@ UNAME   := $(shell uname)
 VERSION := $(shell git describe --tag)
 
 ifeq ($(VERSION),)
-  VERSION=v1.0.19
+  VERSION=v1.1.0
 endif
 
 # ===================================================
