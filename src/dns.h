@@ -793,6 +793,7 @@ typedef struct dns_edns0opt_t   /* RFC-2671 */
   int            version;
   bool           fdo;           /* RFC-3225 */
   int            fug;
+  unsigned int   z;
   size_t         numopts;
   edns0_opt_t   *opts;
 } dns_edns0opt_t;

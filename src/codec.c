@@ -895,6 +895,7 @@ static dns_rcode_t encode_answer(
     answer->opt.ttl   = ((data->rcode >> 4)  & 0xFF)    << 24
                       | (answer->opt.version & 0xFF)    << 16
                       | (answer->opt.fdo ? 0x80 : 0x00) <<  8
+                      | htons(answer->opt.z & 0xFFFF)
                       ;
   }
   
@@ -1938,6 +1939,7 @@ static inline dns_rcode_t decode_rr_opt(
   opt->numopts           = 0;
   opt->opts              = NULL;
   opt->version           = (opt->ttl >> 16) & 0xFF;
+  opt->z                 = ntohs(opt->ttl & 0xFFFF);
   data->response->rcode |= (opt->ttl >> 20) & 0x0FF0;
   
   if (len)
