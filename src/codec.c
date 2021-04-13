@@ -1540,9 +1540,6 @@ static inline dns_rcode_t decode_rr_txt(
         size_t        len
 )
 {
-  block__s tmp;
-  size_t   worklen;
-  size_t   items;
   size_t   slen;
   
   assert(dcontext_okay(data));
@@ -1554,53 +1551,43 @@ static inline dns_rcode_t decode_rr_txt(
   ; the length to be there (in case of binary data)
   ;---------------------------------------------------------------------*/
   
-  tmp       = data->parse;
-  worklen   = len;
-  ptxt->len = 0;
+  ptxt->text = (char const *)data->dest.ptr;
+  ptxt->len  = 0;
   
-  for (items = 0 ; worklen ; )
+  while(len)
   {
-    slen = *tmp.ptr + 1;
-    
-    if (tmp.size < slen)
+    if (data->parse.size < 1)
       return RCODE_FORMAT_ERROR;
       
-    items++;
-    ptxt->len += slen - 1;
-    tmp.ptr   += slen;
-    tmp.size  -= slen;
-    worklen   -= slen;
-  }
-  
-  ptxt->text = (char const *)data->dest.ptr;
-  
-  for (size_t i = 0 ; i < items ; i++)
-  {
-    slen = *data->parse.ptr;
+    slen = *data->parse.ptr++;
+    data->parse.size--;
+    len--;
     
+    if (slen > len)
+      return RCODE_FORMAT_ERROR;
+      
+    if (data->parse.size < slen)
+      return RCODE_FORMAT_ERROR;
+      
     if (data->dest.size < slen)
       return RCODE_NO_MEMORY;
       
-    memcpy(data->dest.ptr,&data->parse.ptr[1],slen);
+    memcpy(data->dest.ptr,data->parse.ptr,slen);
+    assert(slen <= len);
+    
+    ptxt->len        += slen;
     data->dest.ptr   += slen;
     data->dest.size  -= slen;
-    data->parse.ptr  += (slen + 1);
-    data->parse.size -= (slen + 1);
-    
-    if (data->dest.size == 0)
-      return RCODE_NO_MEMORY;
-      
-    /*--------------------------------------------------------------------
-    ; Add space between strings when concatenating them.  If this is the
-    ; last string (or the only string), then this space will be overwritten
-    ; by the NUL byte.  No wasted memory here.
-    ;---------------------------------------------------------------------*/
-    
-    *data->dest.ptr++ = ' ';
-    data->dest.size--;
+    data->parse.ptr  += slen;
+    data->parse.size -= slen;
+    len              -= slen;
   }
   
-  data->dest.ptr[-1] = '\0';
+  if (data->dest.size == 0)
+    return RCODE_NO_MEMORY;
+    
+  *data->dest.ptr++ = '\0';
+  data->dest.size--;
   return RCODE_OKAY;
 }
 
