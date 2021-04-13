@@ -410,17 +410,17 @@ static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
            
       case RR_X25:
            lua_getfield(L,tidx,"address");
-           (*pa)[i].x25.psdnaddress = luaL_checkstring(L,-1);
+           (*pa)[i].x25.psdnaddress = luaL_checklstring(L,-1,&(*pa)[i].x25.size);
            break;
            
       case RR_SPF:
            lua_getfield(L,tidx,"text");
-           (*pa)[i].spf.text = luaL_checkstring(L,-1);
+           (*pa)[i].spf.text = luaL_checklstring(L,-1,&(*pa)[i].spf.len);
            break;
            
       case RR_TXT:
            lua_getfield(L,tidx,"text");
-           (*pa)[i].txt.text = luaL_checkstring(L,-1);
+           (*pa)[i].txt.text = luaL_checklstring(L,-1,&(*pa)[i].txt.len);
            break;
            
       case RR_NSAP_PTR:
