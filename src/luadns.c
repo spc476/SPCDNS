@@ -129,23 +129,25 @@ static void to_question(lua_State *L,dns_question_t **pq,size_t *pqs,int idx)
   assert(pqs != NULL);
   assert(idx != 0);
   
+  /*----------------------------------------------------------------------
+  ; while dns_encode() supports more than one question, most servers today
+  ; (2021) *still* do not support more than one question, and most of the
+  ; existing Lua code assumes one question.  So let's keep with tradition
+  ; for now.
+  ;-----------------------------------------------------------------------*/
+  
   idx  = lua_absindex(L,idx);
-  *pqs = lua_rawlen(L,idx);
+  *pqs = 1;
   *pq  = lua_newuserdata(L,*pqs * sizeof(dns_question_t));
   
-  for (size_t i = 0 ; i < *pqs ; i++)
-  {
-    lua_pushinteger(L,i + 1);
-    lua_gettable(L,idx);
-    lua_getfield(L,-1,"name");
-    lua_getfield(L,-2,"type");
-    lua_getfield(L,-3,"class");
+  lua_getfield(L,idx,"name");
+  lua_getfield(L,idx,"type");
+  lua_getfield(L,idx,"class");
     
-    (*pq)[i].name  = luaL_checkstring(L,-3);
-    (*pq)[i].type  = dns_type_value(luaL_optstring(L,-2,"A"));
-    (*pq)[i].class = dns_class_value(luaL_optstring(L,-1,"IN"));
-    lua_pop(L,4);
-  }
+  (*pq)[0].name  = luaL_checkstring(L,-3);
+  (*pq)[0].type  = dns_type_value(luaL_optstring(L,-2,"A"));
+  (*pq)[0].class = dns_class_value(luaL_optstring(L,-1,"IN"));
+  lua_pop(L,3);
 }
 
 /********************************************************************/
@@ -476,12 +478,14 @@ static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
            lua_getfield(L,tidx,"version");
            lua_getfield(L,tidx,"fdo");
            lua_getfield(L,tidx,"fug");
+           lua_getfield(L,tidx,"z");
            lua_getfield(L,tidx,"opts");
            
-           (*pa)[i].opt.udp_payload = luaL_checkinteger(L,-5);
-           (*pa)[i].opt.version     = luaL_checkinteger(L,-4);
-           (*pa)[i].opt.fdo         = lua_toboolean(L,-3);
-           (*pa)[i].opt.fug         = luaL_optinteger(L,-2,0);
+           (*pa)[i].opt.udp_payload = luaL_checkinteger(L,-6);
+           (*pa)[i].opt.version     = luaL_checkinteger(L,-5);
+           (*pa)[i].opt.fdo         = lua_toboolean(L,-4);
+           (*pa)[i].opt.fug         = luaL_optinteger(L,-3,0);
+           (*pa)[i].opt.z           = luaL_optinteger(L,-2,0);
            (*pa)[i].opt.numopts     = lua_rawlen(L,-1);
            (*pa)[i].opt.opts        = lua_newuserdata(L,(*pa)[i].opt.numopts * sizeof(edns0_opt_t));
            
@@ -858,6 +862,8 @@ static void decode_answer(
            lua_setfield(L,-2,"fdo");
            lua_pushinteger(L,pans[i].opt.fug);
            lua_setfield(L,-2,"fug");
+           lua_pushinteger(L,pans[i].opt.z);
+           lua_setfield(L,-2,"z");
            lua_createtable(L,pans[i].opt.numopts,0);
            for (size_t j = 0 ; j < pans[i].opt.numopts ; j++)
            {
