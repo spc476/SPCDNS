@@ -160,23 +160,14 @@ typedef struct ddns_context
   static int query_okay(dns_query_t const *query)
   {
     assert(query          != NULL);
-    assert(query->id      >= 0);
+    assert(query->id      >=  0);
     assert(query->id      <= UINT16_MAX);
-    assert(query->opcode  <= 2);
-    assert(query->rcode   <= 5);
+    assert(query->opcode  <=  5);
+    assert(query->rcode   <= 15);
     assert(query->qdcount <= UINT16_MAX);
     assert(query->ancount <= UINT16_MAX);
     assert(query->nscount <= UINT16_MAX);
     assert(query->arcount <= UINT16_MAX);
-    
-    if (query->query)
-    {
-      assert((query->opcode == OP_QUERY) || (query->opcode == OP_IQUERY));
-      assert(!query->aa);
-      assert(!query->tc);
-      assert(!query->ra);
-      assert(query->rcode == RCODE_OKAY);
-    }
     return 1;
   }
   
