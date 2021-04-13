@@ -550,7 +550,7 @@ static int dnslua_encode(lua_State *L)
   query.z      = lua_toboolean(L,-4);
   query.ad     = lua_toboolean(L,-3);
   query.cd     = lua_toboolean(L,-2);
-  query.rcode  = dns_rcode_value(luaL_optstring(L,-1,"NOT_IMPLEMENTED"));
+  query.rcode  = dns_rcode_value(luaL_optstring(L,-1,"OKAY"));
   lua_pop(L,11);
   
   lua_getfield(L,1,"question");
