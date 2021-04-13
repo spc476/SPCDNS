@@ -38,8 +38,8 @@
 *
 *************************************************************************/
 
-#ifndef NETSIMPLE_H
-#define NETSIMPLE_H
+#ifndef I_927898DC_135D_5C61_B435_21EC89A06D2D
+#define I_927898DC_135D_5C61_B435_21EC89A06D2D
 
 #ifdef __cplusplus
   extern "C" {

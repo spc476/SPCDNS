@@ -25,8 +25,8 @@
 *
 ***************************************************************************/
 
-#ifndef OUTPUT_H
-#define OUTPUT_H
+#ifndef I_54636A09_9D2A_5B69_A900_EC8C8A59E060
+#define I_54636A09_9D2A_5B69_A900_EC8C8A59E060
 
 #ifdef __cplusplus
   extern "C" {

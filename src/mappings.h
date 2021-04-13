@@ -29,8 +29,8 @@
 *
 **************************************************************************/
 
-#ifndef DNS_MAPPINGS_H
-#define DNS_MAPPINGS_H
+#ifndef I_E2A4214D_2476_5EA3_92C1_9E450F8F349E
+#define I_E2A4214D_2476_5EA3_92C1_9E450F8F349E
 
 #ifdef __cplusplus
   extern "C" {
