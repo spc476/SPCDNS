@@ -603,8 +603,7 @@ static void decode_answer(
         int           tab,
         const char   *name,
         dns_answer_t *pans,
-        size_t        cnt,
-        bool          dup
+        size_t        cnt
 )
 {
   char ipaddr[INET6_ADDRSTRLEN];
@@ -882,13 +881,6 @@ static void decode_answer(
            break;
     }
     
-    if (dup)
-    {
-      lua_getfield(L,-1,"name");
-      lua_pushvalue(L,-2);
-      lua_settable(L,-5);
-    }
-    
     lua_settable(L,-3);
   }
   
@@ -934,6 +926,8 @@ static int dnslua_decode(lua_State *L)
   lua_setfield(L,tab,"id");
   lua_pushboolean(L,result->query);
   lua_setfield(L,tab,"query");
+  lua_pushstring(L,dns_op_text(result->opcode));
+  lua_setfield(L,tab,"opcode");
   lua_pushboolean(L,result->aa);
   lua_setfield(L,tab,"aa");
   lua_pushboolean(L,result->tc);
@@ -948,7 +942,7 @@ static int dnslua_decode(lua_State *L)
   lua_setfield(L,tab,"ad");
   lua_pushboolean(L,result->cd);
   lua_setfield(L,tab,"cd");
-  lua_pushinteger(L,result->rcode);
+  lua_pushstring(L,dns_rcode_enum(result->rcode));
   lua_setfield(L,tab,"rcode");
   
   if (result->qdcount)
@@ -963,9 +957,9 @@ static int dnslua_decode(lua_State *L)
     lua_setfield(L,tab,"question");
   }
   
-  decode_answer(L,tab,"answers"     , result->answers    , result->ancount,false);
-  decode_answer(L,tab,"nameservers" , result->nameservers, result->nscount,false);
-  decode_answer(L,tab,"additional"  , result->additional , result->arcount,true);
+  decode_answer(L,tab,"answers"     , result->answers    , result->ancount);
+  decode_answer(L,tab,"nameservers" , result->nameservers, result->nscount);
+  decode_answer(L,tab,"additional"  , result->additional , result->arcount);
   
   assert(tab == lua_gettop(L));
   
