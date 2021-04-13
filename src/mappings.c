@@ -95,6 +95,31 @@ static struct int_string_map const cm_dns_rcode[] =
 
 #define RCODE_COUNT     (sizeof(cm_dns_rcode) / sizeof(struct int_string_map))
 
+static struct int_string_map const cm_dns_rcode_enum[] =
+{
+  { RCODE_OKAY            , "OKAY"            } ,
+  { RCODE_FORMAT_ERROR    , "FORMAT_ERROR"    } ,
+  { RCODE_SERVER_FAILURE  , "SERVER_FAILURE"  } ,
+  { RCODE_NAME_ERROR      , "NAME_ERROR"      } ,
+  { RCODE_NOT_IMPLEMENTED , "NOT_IMPLEMENTED" } ,
+  { RCODE_REFUSED         , "REFUSED"         } ,
+  { RCODE_YXDOMAIN        , "YXDOMAIN"        } ,
+  { RCODE_YXRRSET         , "YXRRSET"         } ,
+  { RCODE_NXRRSET         , "NXRRSET"         } ,
+  { RCODE_NOTAUTH         , "NOTAUTH"         } ,
+  { RCODE_NOTZONE         , "NOTZONE"         } ,
+  { RCODE_BADVERS         , "BADVERS"         } ,
+  { RCODE_BADKEY          , "BADKEY"          } ,
+  { RCODE_BADTIME         , "BADTIME"         } ,
+  { RCODE_BADMODE         , "BADMODE"         } ,
+  { RCODE_BADNAME         , "BADNAME"         } ,
+  { RCODE_BADALG          , "BADALG"          } ,
+  { RCODE_BADTRUC         , "BADTRUNC"        } ,
+  { RCODE_BADCOOKIE       , "BADCOOKIE"       } ,
+  { RCODE_NO_MEMORY       , "NO_MEMORY"       } ,
+  { RCODE_BAD_STRING      , "BAD_STRING"      } ,
+};
+
 static struct string_int_map const cm_dns_rcode_is[] =
 {
   { "BADALG"          , RCODE_BADALG          } ,
@@ -429,28 +454,35 @@ static int stoidef(
 
 /*******************************************************************/
 
-char const *dns_rcode_text(dns_rcode_t const r)
+char const *dns_rcode_enum(dns_rcode_t r)
+{
+  return itosdef(r,cm_dns_rcode_enum,RCODE_COUNT,"X-UNKN");
+}
+
+/*******************************************************************/
+
+char const *dns_rcode_text(dns_rcode_t r)
 {
   return itosdef(r,cm_dns_rcode,RCODE_COUNT,"Unknown error");
 }
 
 /*********************************************************************/
 
-char const *dns_type_text(dns_type_t const t)
+char const *dns_type_text(dns_type_t t)
 {
   return itosdef(t,cm_dns_type,TYPE_COUNT,"X-UNKN");
 }
 
 /**********************************************************************/
 
-char const *dns_class_text(dns_class_t const c)
+char const *dns_class_text(dns_class_t c)
 {
   return itosdef(c,cm_dns_class,CLASS_COUNT,"X-UNKN");
 }
 
 /*******************************************************************/
 
-char const *dns_op_text(dns_op_t const o)
+char const *dns_op_text(dns_op_t o)
 {
   return itosdef(o,cm_dns_op,OP_COUNT,"X-UNKNOWN");
 }
