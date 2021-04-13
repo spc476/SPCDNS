@@ -492,7 +492,7 @@ static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
            for (size_t j = 0 ; j < (*pa)[i].opt.numopts ; j++)
            {
              lua_pushinteger(L,j + 1);
-             lua_gettable(L,-1);
+             lua_gettable(L,-3);
              lua_getfield(L,-1,"data");
              lua_getfield(L,-2,"code");
              
@@ -508,7 +508,7 @@ static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
                else
                  luaL_error(L,"OPT RR code '%s' not supported",lua_tostring(L,-1));
              }
-             lua_pop(L,3);
+             lua_pop(L,2);
            }
            
            break;
@@ -867,14 +867,14 @@ static void decode_answer(
            lua_createtable(L,pans[i].opt.numopts,0);
            for (size_t j = 0 ; j < pans[i].opt.numopts ; j++)
            {
-             lua_pushinteger(L,i + 1);
+             lua_pushinteger(L,j + 1);
              lua_createtable(L,0,2);
              lua_pushlstring(L,(char *)pans[i].opt.opts[j].data,pans[i].opt.opts[j].len);
              lua_setfield(L,-2,"data");
              if (pans[i].opt.opts[j].code == EDNS0RR_NSID)
                lua_pushstring(L,"NSID");
              else
-               lua_pushinteger(L,pans[i].opt.opts[i].code);
+               lua_pushinteger(L,pans[i].opt.opts[j].code);
              lua_setfield(L,-2,"code");
              lua_settable(L,-3);
            }
