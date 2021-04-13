@@ -97,27 +97,27 @@ static struct int_string_map const cm_dns_rcode[] =
 
 static struct string_int_map const cm_dns_rcode_is[] =
 {
-  { "OKAY"            , RCODE_OKAY            } ,
-  { "FORMAT_ERROR"    , RCODE_FORMAT_ERROR    } ,
-  { "SERVER_FAILURE"  , RCODE_SERVER_FAILURE  } ,
-  { "NAME_ERROR"      , RCODE_NAME_ERROR      } ,
-  { "NOT_IMPLEMENTED" , RCODE_NOT_IMPLEMENTED } ,
-  { "REFUSED"         , RCODE_REFUSED         } ,
-  { "YXDOMAIN"        , RCODE_YXDOMAIN        } ,
-  { "YXRRSET"         , RCODE_YXRRSET         } ,
-  { "NXRRSET"         , RCODE_NXRRSET         } ,
-  { "NOTAUTH"         , RCODE_NOTAUTH         } ,
-  { "NOTZONE"         , RCODE_NOTZONE         } ,
-  { "BADVERS"         , RCODE_BADVERS         } ,
+  { "BADALG"          , RCODE_BADALG          } ,
+  { "BADCOOKIE"       , RCODE_BADCOOKIE       } ,
   { "BADKEY"          , RCODE_BADKEY          } ,
-  { "BADTIME"         , RCODE_BADTIME         } ,
   { "BADMODE"         , RCODE_BADMODE         } ,
   { "BADNAME"         , RCODE_BADNAME         } ,
-  { "BADALG"          , RCODE_BADALG          } ,
+  { "BADTIME"         , RCODE_BADTIME         } ,
   { "BADTRUNC"        , RCODE_BADTRUC         } ,
-  { "BADCOOKIE"       , RCODE_BADCOOKIE       } ,
-  { "NO_MEMORY"       , RCODE_NO_MEMORY       } ,
+  { "BADVERS"         , RCODE_BADVERS         } ,
   { "BAD_STRING"      , RCODE_BAD_STRING      } ,
+  { "FORMAT_ERROR"    , RCODE_FORMAT_ERROR    } ,
+  { "NAME_ERROR"      , RCODE_NAME_ERROR      } ,
+  { "NOTAUTH"         , RCODE_NOTAUTH         } ,
+  { "NOTZONE"         , RCODE_NOTZONE         } ,
+  { "NOT_IMPLEMENTED" , RCODE_NOT_IMPLEMENTED } ,
+  { "NO_MEMORY"       , RCODE_NO_MEMORY       } ,
+  { "NXRRSET"         , RCODE_NXRRSET         } ,
+  { "OKAY"            , RCODE_OKAY            } ,
+  { "REFUSED"         , RCODE_REFUSED         } ,
+  { "SERVER_FAILURE"  , RCODE_SERVER_FAILURE  } ,
+  { "YXDOMAIN"        , RCODE_YXDOMAIN        } ,
+  { "YXRRSET"         , RCODE_YXRRSET         } ,
 };
 
 static struct int_string_map const cm_dns_type[] =
@@ -412,9 +412,12 @@ static int stoidef(
 {
   struct string_int_map *psim;
   size_t                 len = strlen(tag) + 1;
-  char                   buffer[len];
+  char                   buffer[16];
+  size_t                 max = len > 15 ? 15 : len;
   
-  for (size_t i = 0 ; i < len ; i++)
+  memset(buffer,0,sizeof(buffer));
+
+  for (size_t i = 0 ; i < max ; i++)
     buffer[i] = toupper(tag[i]);
     
   psim = bsearch(buffer,pstab,stabcnt,sizeof(struct string_int_map),strint_cmp);
