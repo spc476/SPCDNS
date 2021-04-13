@@ -95,6 +95,31 @@ static struct int_string_map const cm_dns_rcode[] =
 
 #define RCODE_COUNT     (sizeof(cm_dns_rcode) / sizeof(struct int_string_map))
 
+static struct string_int_map const cm_dns_rcode_is[] =
+{
+  { "OKAY"            , RCODE_OKAY            } ,
+  { "FORMAT_ERROR"    , RCODE_FORMAT_ERROR    } ,
+  { "SERVER_FAILURE"  , RCODE_SERVER_FAILURE  } ,
+  { "NAME_ERROR"      , RCODE_NAME_ERROR      } ,
+  { "NOT_IMPLEMENTED" , RCODE_NOT_IMPLEMENTED } ,
+  { "REFUSED"         , RCODE_REFUSED         } ,
+  { "YXDOMAIN"        , RCODE_YXDOMAIN        } ,
+  { "YXRRSET"         , RCODE_YXRRSET         } ,
+  { "NXRRSET"         , RCODE_NXRRSET         } ,
+  { "NOTAUTH"         , RCODE_NOTAUTH         } ,
+  { "NOTZONE"         , RCODE_NOTZONE         } ,
+  { "BADVERS"         , RCODE_BADVERS         } ,
+  { "BADKEY"          , RCODE_BADKEY          } ,
+  { "BADTIME"         , RCODE_BADTIME         } ,
+  { "BADMODE"         , RCODE_BADMODE         } ,
+  { "BADNAME"         , RCODE_BADNAME         } ,
+  { "BADALG"          , RCODE_BADALG          } ,
+  { "BADTRUNC"        , RCODE_BADTRUC         } ,
+  { "BADCOOKIE"       , RCODE_BADCOOKIE       } ,
+  { "NO_MEMORY"       , RCODE_NO_MEMORY       } ,
+  { "BAD_STRING"      , RCODE_BAD_STRING      } ,
+};
+
 static struct int_string_map const cm_dns_type[] =
 {
   { RR_A          , "A"          } ,
@@ -425,6 +450,13 @@ char const *dns_class_text(dns_class_t const c)
 char const *dns_op_text(dns_op_t const o)
 {
   return itosdef(o,cm_dns_op,OP_COUNT,"X-UNKNOWN");
+}
+
+/********************************************************************/
+
+dns_rcode_t dns_rcode_value(char const *tag)
+{
+  return stoidef(tag,cm_dns_rcode_is,RCODE_COUNT,RCODE_NOT_IMPLEMENTED);
 }
 
 /********************************************************************/
