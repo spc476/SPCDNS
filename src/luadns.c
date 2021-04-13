@@ -334,7 +334,7 @@ static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
            lua_getfield(L,tidx,"latitude");
            lua_getfield(L,tidx,"longitude");
            lua_getfield(L,tidx,"altitude");
-           (*pa)[i].loc.version   = luaL_checkinteger(L,-7);
+           (*pa)[i].loc.version   = luaL_optinteger(L,-7,0);
            (*pa)[i].loc.size      = luaL_checkinteger(L,-6);
            (*pa)[i].loc.horiz_pre = luaL_checkinteger(L,-5);
            (*pa)[i].loc.vert_pre  = luaL_checkinteger(L,-4);
