@@ -542,7 +542,7 @@ static int dnslua_encode(lua_State *L)
   
   query.id     = luaL_checkinteger(L,-11);
   query.query  = lua_toboolean(L,-10);
-  query.opcode = dns_op_value(luaL_optstring(L,-1,"QUERY"));
+  query.opcode = dns_op_value(luaL_optstring(L,-9,"QUERY"));
   query.aa     = lua_toboolean(L,-8);
   query.tc     = lua_toboolean(L,-7);
   query.rd     = lua_toboolean(L,-6);
