@@ -1801,12 +1801,17 @@ static inline dns_rcode_t decode_rr_gpos(
     pgpos->longitude.nw = true;
     lng                 = fabs(lng);
   }
-  
+  else
+    pgpos->longitude.nw = false;
+    
   if (lat >= 0.0)
     pgpos->latitude.nw = true;
   else
+  {
+    pgpos->latitude.nw = false;
     lat = fabs(lat);
-    
+  }
+  
   dgpos_angle(&pgpos->longitude,lng);
   dgpos_angle(&pgpos->latitude, lat);
   
@@ -1901,10 +1906,16 @@ static inline dns_rcode_t decode_rr_loc(
     lat -= LOC_BIAS;
   }
   else
+  {
+    ploc->latitude.nw = false;
     lat = LOC_BIAS - lat;
-    
+  }
+  
   if (lng >= LOC_BIAS)  /* east */
+  {
+    ploc->longitude.nw = false;
     lng -= LOC_BIAS;
+  }
   else
   {
     ploc->longitude.nw = true;
