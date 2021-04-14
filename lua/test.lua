@@ -199,7 +199,7 @@ io.stdout:write(string.format([[
         tostring(results.tc),
         tostring(results.rd),
         tostring(results.ra),
-        dns.strerror(results.rcode),
+        results.rcode,
         results.question.name,
         results.question.class,
         results.question.type
