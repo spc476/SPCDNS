@@ -122,6 +122,18 @@
 
 /********************************************************************/
 
+#if LUA_VERSION_NUM == 501
+static int lua_absindex(lua_State *L,int idx)
+{
+  return (idx > 0) || (idx < LUA_REGISTRYINDEX)
+       ? idx
+       : lua_gettop(L) + idx + 1
+       ;
+}
+#endif
+
+/********************************************************************/
+
 static void to_question(lua_State *L,dns_question_t **pq,size_t *pqs,int idx)
 {
   assert(L   != NULL);
