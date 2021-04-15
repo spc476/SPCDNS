@@ -56,18 +56,8 @@ typedef union sockaddr_all
   struct sockaddr_in6 sin6;
 } sockaddr_all;
 
-int     net_server      (
-                          sockaddr_all *,
-                          char const   *
-                        ) __attribute__ ((nonnull));
-                        
-int     net_request     (
-                          sockaddr_all       *,
-                          dns_packet_t       *,
-                          size_t             *,
-                          dns_packet_t const *,
-                          size_t
-                        ) __attribute__ ((nonnull(1,2,3,4)));
+extern int net_server (sockaddr_all *,char const *)                                        __attribute__ ((nonnull)); 
+extern int net_request(sockaddr_all *,dns_packet_t *,size_t *,dns_packet_t const *,size_t) __attribute__ ((nonnull(1,2,3,4)));
                         
 #ifdef __cplusplus
   }
