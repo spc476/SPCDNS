@@ -68,6 +68,8 @@ void dns_print_header(dns_query_t* presult)
         "; Truncated Result     = %s\n"
         "; Recursion Desired    = %s\n"
         "; Recursion Available  = %s\n"
+        "; Authentic Data       = %s\n"
+        "; Checking disabled    = %s\n"
         "; Result               = %s\n",
         (unsigned long)presult->qdcount,
         (unsigned long)presult->ancount,
@@ -77,6 +79,8 @@ void dns_print_header(dns_query_t* presult)
         presult->tc ? "true" : "false",
         presult->rd ? "true" : "false",
         presult->ra ? "true" : "false",
+        presult->ad ? "true" : "false",
+        presult->cd ? "true" : "false",
         dns_rcode_text(presult->rcode)
   );
 }
