@@ -2126,8 +2126,10 @@ dns_rcode_t dns_decode(dns_decoded_t *presponse,size_t *prsize,dns_packet_t cons
   assert(prsize    != NULL);
   assert(*prsize   >= sizeof(dns_query_t));
   assert(buffer    != NULL);
-  assert(len       >= sizeof(struct idns_header));
   
+  if (len < sizeof(struct idns_header))
+    return RCODE_FORMAT_ERROR;
+    
   context.packet.ptr  = (uint8_t *)buffer;
   context.packet.size = len;
   context.parse.ptr   = &context.packet.ptr[sizeof(struct idns_header)];
