@@ -235,6 +235,7 @@ static struct int_string_map const cm_dns_type[] =
   { RR_AMTRELAY   , "AMTRELAY"   } ,
   { RR_TA         , "TA"         } ,
   { RR_DLV        , "DLV"        } ,
+  { RR_PRIVATE    , "PRIVATE"    } ,
   { RR_UNKNOWN    , "UNKNOWN"    } ,
 };
 
@@ -304,6 +305,7 @@ static struct string_int_map const cm_dns_type_is[] =
   { "NXT"        , RR_NXT        } ,
   { "OPENPGPKEY" , RR_OPENPGPKEY } ,
   { "OPT"        , RR_OPT        } ,
+  { "PRIVATE"    , RR_PRIVATE    } ,
   { "PTR"        , RR_PTR        } ,
   { "PX"         , RR_PX         } ,
   { "RKEY"       , RR_RKEY       } ,
@@ -341,6 +343,7 @@ static struct int_string_map const cm_dns_class[] =
   { CLASS_HS      , "HS"      } ,
   { CLASS_NONE    , "NONE"    } ,
   { CLASS_ANY     , "ANY"     } ,
+  { CLASS_PRIVATE , "PRIVATE" } ,
   { CLASS_UNKNOWN , "UNKNOWN" } ,
 };
 
@@ -354,16 +357,17 @@ static struct string_int_map const cm_dns_class_is[] =
   { "HS"      , CLASS_HS      } ,
   { "IN"      , CLASS_IN      } ,
   { "NONE"    , CLASS_NONE    } ,
+  { "PRIVATE" , CLASS_PRIVATE } ,
   { "UNKNOWN" , CLASS_UNKNOWN } ,
 };
 
 static struct int_string_map const cm_dns_op[] =
 {
   { OP_QUERY   , "QUERY"   } ,
+  { OP_UNKNOWN , "UKNOWN"  } ,
   { OP_STATUS  , "STATUS"  } ,
   { OP_NOTIFY  , "NOTIFY"  } ,
   { OP_UPDATE  , "UPDATE"  } ,
-  { OP_UNKNOWN , "UNKNOWN" } ,
 };
 
 #define OP_COUNT        (sizeof(cm_dns_op) / sizeof(struct int_string_map))
