@@ -155,7 +155,7 @@ static void to_question(lua_State *L,dns_question_t **pq,size_t *pqs,int idx)
   lua_getfield(L,idx,"name");
   lua_getfield(L,idx,"type");
   lua_getfield(L,idx,"class");
-    
+  
   (*pq)[0].name  = luaL_checkstring(L,-3);
   (*pq)[0].type  = dns_type_value(luaL_optstring(L,-2,"A"));
   (*pq)[0].class = dns_class_value(luaL_optstring(L,-1,"IN"));
@@ -194,7 +194,7 @@ static void to_dnsgpos_angle(lua_State *L,dnsgpos_angle *ang,int idx,bool lat)
     lua_getfield(L,idx,"nw");
     ang->nw = lua_toboolean(L,-1);
     lua_pop(L,2);
-  }  
+  }
 }
 
 /********************************************************************/
@@ -330,7 +330,7 @@ static void to_answers(lua_State *L,dns_answer_t **pa,size_t *pas,int idx)
            (*pa)[i].wks.protocol = luaL_checkinteger(L,-1);
            (*pa)[i].wks.bits     = (uint8_t *)luaL_checklstring(L,-2,&(*pa)[i].wks.numbits);
            break;
-
+           
       case RR_GPOS:
            lua_getfield(L,tidx,"longitude");
            lua_getfield(L,tidx,"latitude");

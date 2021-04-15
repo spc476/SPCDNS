@@ -441,7 +441,7 @@ static int stoidef(
   size_t                 max = len > 15 ? 15 : len;
   
   memset(buffer,0,sizeof(buffer));
-
+  
   for (size_t i = 0 ; i < max ; i++)
     buffer[i] = toupper(tag[i]);
     
