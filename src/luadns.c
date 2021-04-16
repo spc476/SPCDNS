@@ -570,7 +570,14 @@ static int dnslua_encode(lua_State *L)
   if (lua_isnumber(L,-1))
     query.rcode = lua_tointeger(L,-1);
   else if (lua_isstring(L,-1))
-    query.rcode  = dns_rcode_value(luaL_optstring(L,-1,"OKAY"));
+    query.rcode = dns_rcode_value(luaL_optstring(L,-1,"OKAY"));
+  else if (lua_isnil(L,-1))
+  {
+    if (query.query)
+      query.rcode = RCODE_OKAY;
+    else
+      luaL_error(L,"invalid rcode to dns_encode()");
+  }
   else
     luaL_error(L,"invalid rcode to dns_encode()");
   
