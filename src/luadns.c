@@ -589,7 +589,8 @@ static int dnslua_encode(lua_State *L)
   }
   
   lua_pushlstring(L,(char *)buffer,len);
-  return 1;
+  lua_pushinteger(L,0);
+  return 2;
 }
 
 /********************************************************************/
@@ -980,8 +981,8 @@ static int dnslua_decode(lua_State *L)
   decode_answer(L,tab,"additional"  , result->additional , result->arcount);
   
   assert(tab == lua_gettop(L));
-  
-  return 1;
+  lua_pushinteger(L,0);
+  return 2;
 }
 
 /*********************************************************************/
@@ -1024,7 +1025,8 @@ static int dnslua_query(lua_State *L)
   }
   
   lua_pushlstring(L,(char *)reply,replysize);
-  return 1;
+  lua_pushinteger(L,0);
+  return 2;
 }
 
 /**********************************************************************/
