@@ -566,7 +566,14 @@ static int dnslua_encode(lua_State *L)
   query.z      = lua_toboolean(L,-4);
   query.ad     = lua_toboolean(L,-3);
   query.cd     = lua_toboolean(L,-2);
-  query.rcode  = dns_rcode_value(luaL_optstring(L,-1,"OKAY"));
+  
+  if (lua_isnumber(L,-1))
+    query.rcode = lua_tointeger(L,-1);
+  else if (lua_isstring(L,-1))
+    query.rcode  = dns_rcode_value(luaL_optstring(L,-1,"OKAY"));
+  else
+    luaL_error(L,"invalid rcode to dns_encode()");
+  
   lua_pop(L,11);
   
   lua_getfield(L,1,"question");
