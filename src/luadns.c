@@ -566,21 +566,7 @@ static int dnslua_encode(lua_State *L)
   query.z      = lua_toboolean(L,-4);
   query.ad     = lua_toboolean(L,-3);
   query.cd     = lua_toboolean(L,-2);
-  
-  if (lua_isnumber(L,-1))
-    query.rcode = lua_tointeger(L,-1);
-  else if (lua_isstring(L,-1))
-    query.rcode = dns_rcode_value(luaL_optstring(L,-1,"OKAY"));
-  else if (lua_isnil(L,-1))
-  {
-    if (query.query)
-      query.rcode = RCODE_OKAY;
-    else
-      luaL_error(L,"invalid rcode to dns_encode()");
-  }
-  else
-    luaL_error(L,"invalid rcode to dns_encode()");
-  
+  query.rcode  = luaL_optinteger(L,-1,RCODE_OKAY);
   lua_pop(L,11);
   
   lua_getfield(L,1,"question");
@@ -975,7 +961,7 @@ static int dnslua_decode(lua_State *L)
   lua_setfield(L,tab,"ad");
   lua_pushboolean(L,result->cd);
   lua_setfield(L,tab,"cd");
-  lua_pushstring(L,dns_rcode_enum(result->rcode));
+  lua_pushinteger(L,result->rcode);
   lua_setfield(L,tab,"rcode");
   
   if (result->qdcount)
@@ -1005,8 +991,6 @@ static int dnslua_strerror(lua_State *L)
 {
   if (lua_isnumber(L,1))
     lua_pushstring(L,dns_rcode_text(lua_tointeger(L,1)));
-  else if (lua_isstring(L,1))
-    lua_pushstring(L,dns_rcode_text(dns_rcode_value(lua_tostring(L,1))));
   else
     lua_pushliteral(L,"uninown error");
   return 1;
@@ -1067,6 +1051,14 @@ int luaopen_org_conman_dns(lua_State *L)
   luaL_newlib(L,reg_dns);
 #endif
 
+  lua_createtable(L,0,0);
+  for (size_t i = 0 ; c_dns_rcode_enum[i].text != NULL ; i++)
+  {
+    lua_pushinteger(L,c_dns_rcode_enum[i].value);
+    lua_setfield(L,-2,c_dns_rcode_enum[i].text);
+  }
+  lua_setfield(L,-2,"errno");
+  
   lua_pushliteral(L,VERSION);
   lua_setfield(L,-2,"_VERSION");
   

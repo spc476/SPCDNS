@@ -39,19 +39,6 @@
 #include "dns.h"
 #include "mappings.h"
 
-/************************************************************************
-*
-* The following structure is used to map values to strings.  The arrays
-* defined by this structure *MUST* be sorted by value in ascending order.
-*
-*************************************************************************/
-
-struct int_string_map
-{
-  int  const        value;
-  char const *const text;
-};
-
 /*******************************************************************
 *
 * The following structure is used to map strings to values.  The arrays
@@ -95,7 +82,7 @@ static struct int_string_map const cm_dns_rcode[] =
 
 #define RCODE_COUNT     (sizeof(cm_dns_rcode) / sizeof(struct int_string_map))
 
-static struct int_string_map const cm_dns_rcode_enum[] =
+struct int_string_map const c_dns_rcode_enum[] =
 {
   { RCODE_OKAY            , "OKAY"            } ,
   { RCODE_FORMAT_ERROR    , "FORMAT_ERROR"    } ,
@@ -118,6 +105,7 @@ static struct int_string_map const cm_dns_rcode_enum[] =
   { RCODE_BADCOOKIE       , "BADCOOKIE"       } ,
   { RCODE_NO_MEMORY       , "NO_MEMORY"       } ,
   { RCODE_BAD_STRING      , "BAD_STRING"      } ,
+  { 0                     , NULL              } ,
 };
 
 static struct string_int_map const cm_dns_rcode_is[] =
@@ -460,7 +448,7 @@ static int stoidef(
 
 char const *dns_rcode_enum(dns_rcode_t r)
 {
-  return itosdef(r,cm_dns_rcode_enum,RCODE_COUNT,"X-UNKN");
+  return itosdef(r,c_dns_rcode_enum,RCODE_COUNT,"X-UNKN");
 }
 
 /*******************************************************************/

@@ -40,6 +40,14 @@
 #  define __attribute__(x)
 #endif
 
+struct int_string_map
+{
+  int  const        value;
+  char const *const text;
+};
+
+extern struct int_string_map const c_dns_rcode_enum[];
+
 extern char const  *dns_rcode_enum  (dns_rcode_t) __attribute__ ((pure,nothrow));
 extern char const  *dns_rcode_text  (dns_rcode_t) __attribute__ ((pure,nothrow));
 extern char const  *dns_type_text   (dns_type_t)  __attribute__ ((pure,nothrow));
