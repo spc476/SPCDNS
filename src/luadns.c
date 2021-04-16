@@ -584,7 +584,7 @@ static int dnslua_encode(lua_State *L)
   if (rc != RCODE_OKAY)
   {
     lua_pushnil(L);
-    lua_pushstring(L,dns_rcode_text(rc));
+    lua_pushinteger(L,rc);
     return 2;
   }
   
@@ -931,7 +931,7 @@ static int dnslua_decode(lua_State *L)
   if (rc != RCODE_OKAY)
   {
     lua_pushnil(L);
-    lua_pushstring(L,dns_rcode_text(rc));
+    lua_pushinteger(L,rc);
     return 2;
   }
   
