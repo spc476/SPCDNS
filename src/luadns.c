@@ -989,7 +989,12 @@ static int dnslua_decode(lua_State *L)
 
 static int dnslua_strerror(lua_State *L)
 {
-  lua_pushstring(L,dns_rcode_text(luaL_checkinteger(L,1)));
+  if (lua_isnumber(L,1))
+    lua_pushstring(L,dns_rcode_text(lua_tointeger(L,1)));
+  else if (lua_isstring(L,1))
+    lua_pushstring(L,dns_rcode_text(dns_rcode_value(lua_tostring(L,1))));
+  else
+    lua_pushliteral(L,"uninown error");
   return 1;
 }
 
