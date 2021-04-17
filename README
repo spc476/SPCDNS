@@ -2,7 +2,7 @@
 SPCDNS: The sane DNS encoding/decoding library
 
 SPCDNS implements a simple yet sane API to encode DNS queries and to decode
-DNS replies.  The library (v1.1) currently supports the encoding and
+DNS replies.  The library (v2.0.0) currently supports the encoding and
 decoding of 30 DNS resource records, which is more than just about all other
 DNS resolving libraries I've seen (c-ares, udns, adns, libdns and djbdns
 [1]).
