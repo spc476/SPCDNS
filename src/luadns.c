@@ -118,18 +118,13 @@
 
 #if LUA_VERSION_NUM == 501
 #  define lua_rawlen(L,i) lua_objlen((L),(i))
-#endif
-
-/********************************************************************/
-
-#if LUA_VERSION_NUM == 501
-static int lua_absindex(lua_State *L,int idx)
-{
-  return (idx > 0) || (idx < LUA_REGISTRYINDEX)
+   static int lua_absindex(lua_State *L,int idx)
+   {
+     return (idx > 0) || (idx < LUA_REGISTRYINDEX)
        ? idx
        : lua_gettop(L) + idx + 1
        ;
-}
+   }
 #endif
 
 /********************************************************************/
