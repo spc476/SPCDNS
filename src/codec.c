@@ -1643,51 +1643,6 @@ static inline dns_rcode_t decode_rr_naptr(
 
 /********************************************************************/
 
-static inline dns_rcode_t decode_rr_sig(
-        ddns_context *data,
-        dns_sig_t    *psig,
-        size_t        len
-)
-{
-  uint8_t     *start;
-  size_t       sofar;
-  dns_rcode_t  rc;
-  
-  assert(dcontext_okay(data));
-  assert(psig != NULL);
-  
-  if (len < 18)
-    return RCODE_FORMAT_ERROR;
-    
-  /*-----------------------------------------------------------------------
-  ; The signature portion doesn't have a length code.  Because of that, we
-  ; need to track how much data is left so we can pull it out.  We record
-  ; the start of the parsing area, and once we get past the signer, we can
-  ; calculate the remainder data to pull out.
-  ;------------------------------------------------------------------------*/
-  
-  start = data->parse.ptr;
-  
-  psig->covered      = read_uint16(&data->parse);
-  psig->algorithm    = *data->parse.ptr++; data->parse.size--;
-  psig->labels       = *data->parse.ptr++; data->parse.size--;
-  psig->originttl    = read_uint32(&data->parse);
-  psig->sigexpire    = read_uint32(&data->parse);
-  psig->timesigned   = read_uint32(&data->parse);
-  psig->keyfootprint = read_uint16(&data->parse);
-  
-  rc = read_domain(data,&psig->signer);
-  if (rc != RCODE_OKAY) return rc;
-  
-  sofar = (size_t)(data->parse.ptr - start);
-  if (sofar > len) return RCODE_FORMAT_ERROR;
-  
-  psig->sigsize = len - sofar;
-  return read_raw(data,&psig->signature,psig->sigsize);
-}
-
-/******************************************************************/
-
 static inline dns_rcode_t decode_rr_minfo(
                 ddns_context *data,
                 dns_minfo_t  *pminfo
