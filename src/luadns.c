@@ -96,19 +96,12 @@
 ***************************************************************************/
 
 #include <string.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
 #include <ctype.h>
 #include <math.h>
 #include <assert.h>
 
-#include <arpa/inet.h>
-
 #include <lua.h>
 #include <lauxlib.h>
-#include <lualib.h>
 
 #include "dns.h"
 #include "mappings.h"

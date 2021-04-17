@@ -36,6 +36,7 @@
 #  define __attribute__(x)
 #endif
 
+#include <stdio.h>
 #include "dns.h"
 
 extern void dns_print_result   (dns_query_t *);

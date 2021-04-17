@@ -51,7 +51,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stddef.h>
 #include <arpa/inet.h>
 
 #ifdef __cplusplus

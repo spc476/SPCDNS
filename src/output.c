@@ -25,16 +25,8 @@
 *
 ***************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
 #include <ctype.h>
 #include <assert.h>
-
-#include <getopt.h>
-#include <arpa/inet.h>
 
 #include "dns.h"
 #include "mappings.h"

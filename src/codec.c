@@ -56,20 +56,13 @@
 
 #define _GNU_SOURCE
 
-#include <limits.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <stddef.h>
-#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
 #include <math.h>
 #include <assert.h>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
 
 #include "dns.h"
 
