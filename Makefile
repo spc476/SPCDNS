@@ -27,7 +27,7 @@ endif
 
 # ===================================================
 
-CC      = gcc -std=c99 -Wall -Wextra -pedantic
+CC      = gcc -std=c99 -Wall -Wextra -pedantic -Wwrite-strings
 CFLAGS  = -g
 LDFLAGS = -g
 LDLIBS  = -lm
