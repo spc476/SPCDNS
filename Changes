@@ -1,0 +1,85 @@
+
+v2.0.0
+
+	* Encoding of multiple DNS records now supported
+	* Lua now returns integer error instead of string (API change for Lua)
+
+v1.0.19
+
+	* Fix compilation errors when using Lua 5.1
+
+v1.0.18
+
+	* Update code to compile with Lua 5.4
+
+v1.0.17
+
+	* Bug fix---Increase packet buffer size in Lua code.
+
+v1.0.16
+
+	* Bug fix---Forgot to set class field when using OPT RR
+
+v1.0.15
+
+	* Bug fix---invalid write to memory
+
+v1.0.14
+
+	* Bug fix---unused bit goes into the z field
+
+v1.0.13
+
+	* Bug fix---compiling/linking issues
+
+v1.0.12
+
+	* Update code to compile with Lua 5.2 and 5.3
+
+v1.0.11
+
+	* Bug fix---fix typo
+
+v1.0.10
+
+	* Bug fix---remove undefined behavior from previous bug fix
+
+v1.0.9
+
+	* Bug fix---concatenated TXT records need space between strings
+
+v1.0.8
+
+	* Bug fix---timed out condition didn't return timed out error
+
+v1.0.7
+
+	* Rockspec update
+
+v1.0.6
+
+	* Rockspec update
+
+v1.0.5
+
+	* Support for Lua rocks
+
+v1.0.4
+
+	* Fixed __attribute__()
+
+v1.0.3
+
+	* Bug fix-return unknown values
+
+v1.0.2
+
+	* C++ compilation errors fixed
+
+v1.0.1
+
+	* Added some asserts
+
+v1.0.0
+
+	* Initial version.
