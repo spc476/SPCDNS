@@ -39,7 +39,7 @@ void dns_print_result(dns_query_t* presult)
   /*-------------------------------------------
   ; Print the results out, ala dig
   ;-------------------------------------------*/
-  
+
   dns_print_header(presult);
   dns_print_question("QUESTIONS"   ,presult->questions   ,presult->qdcount);
   dns_print_answer  ("ANSWERS"     ,presult->answers     ,presult->ancount);
@@ -83,7 +83,7 @@ void dns_print_question(char const *tag,dns_question_t *pquest,size_t cnt)
 {
   assert(tag    != NULL);
   assert(pquest != NULL);
-  
+
   printf("\n;;; %s\n\n",tag);
   for (size_t i = 0 ; i < cnt ; i++)
   {
@@ -101,12 +101,12 @@ void dns_print_question(char const *tag,dns_question_t *pquest,size_t cnt)
 void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
 {
   char ipaddr[INET6_ADDRSTRLEN];
-  
+
   assert(tag  != NULL);
   assert(pans != NULL);
-  
+
   printf("\n;;; %s\n\n",tag);
-  
+
   for (size_t i = 0 ; i < cnt ; i++)
   {
     if (pans[i].generic.type != RR_OPT)
@@ -121,7 +121,7 @@ void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
     }
     else
       printf("; OPT RR");
-      
+
     switch(pans[i].generic.type)
     {
       case RR_NS:
@@ -159,11 +159,11 @@ void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
              size_t len;
              int    max;
              size_t off;
-             
+
              printf("(");
              len = pans[i].txt.len;
              off = 0;
-             
+
              while(len)
              {
                max = (len > 64) ? 64 : (int)len;
@@ -171,7 +171,7 @@ void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
                off += max;
                len -= max;
              }
-             
+
              printf("\n\t\t)\n");
            }
            break;
@@ -251,7 +251,7 @@ void dns_print_answer(char const *tag,dns_answer_t *pans,size_t cnt)
                 (unsigned long)pans[i].opt.numopts
            );
            break;
-           
+
       default:
            break;
     }
@@ -269,21 +269,21 @@ void dns_dump_memory(FILE *out,void const *data,size_t size,size_t offset)
   char                 ascii[LINESIZE + 1];
   int                  skip;
   int                  j;
-  
+
   assert(out   != NULL);
   assert(block != NULL);
   assert(size  >  0);
-  
+
   while(size > 0)
   {
     fprintf(out,"%08lX: ",(unsigned long)offset);
-    
+
     for (skip = offset % LINESIZE , j = 0 ; skip ; j++ , skip--)
     {
       fputs("   ",out);
       ascii[j] = ' ';
     }
-    
+
     do
     {
       fprintf(out,"%02x ",*block);
@@ -291,19 +291,19 @@ void dns_dump_memory(FILE *out,void const *data,size_t size,size_t offset)
         ascii[j] = *block;
       else
         ascii[j] = '.';
-        
+
       block++;
       offset++;
       j++;
       size--;
     } while((j < LINESIZE) && (size > 0));
-    
+
     ascii[j] = '\0';
-    
+
     if (j < LINESIZE)
     {
       int i;
-      
+
       for (i = j ; i < LINESIZE ; i++)
         fputs("   ",out);
     }

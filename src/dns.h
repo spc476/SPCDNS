@@ -51,7 +51,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#if defined(WIN32)
+#include <winsock2.h>
+#include <wspiapi.h>
+typedef uint32_t in_addr_t;
+#else
 #include <arpa/inet.h>
+#endif
 
 #ifdef __cplusplus
 #  define class dclass
@@ -194,9 +200,9 @@ typedef enum dns_type
   RR_LP         =   107, /* Name of ILNP subnetwork             RFC-6742 */
   RR_EUI48      =   108, /* EUI-48 address                      RFC-7043 */
   RR_EUI64      =   109, /* EUI-64 address                      RFC-7043 */
-  
+
         /* Query types, >= 128 */
-        
+
   RR_TKEY       =   249, /* Transaction Key                     RFC-2930 */
   RR_TSIG       =   250, /* Transaction Signature               RFC-2845 */
   RR_IXFR       =   251, /* Incremental zone transfer           RFC-1995 */
@@ -209,10 +215,10 @@ typedef enum dns_type
   RR_AVC        =   258, /* Application Visibility and Control           */
   RR_DOA        =   259, /* Digital Object Architecture                  */
   RR_AMTRELAY   =   260, /* Automatic Multicast Tunneling Relay RFC-8777 */
-  
+
   RR_TA         = 32768, /* DNSSEC Trust Authories                       */
   RR_DLV        = 32769, /* DNSSEC Lookaside Validation      O  RFC-8749 RFC-4431 */
-  
+
   RR_PRIVATE    = 65280, /* Private usage                       RFC-2929 */
   RR_UNKNOWN    = 65535, /* Unknown record type                 RFC-6895 */
 } dns_type_t;
@@ -267,7 +273,7 @@ typedef enum dns_rcode
   RCODE_BADTRUC         =   22, /* RFC-4635 */
   RCODE_BADCOOKIE       =   23, /* RFC-7873 */
   RCODE_PRIVATE         = 3841, /* RFC-2929 */
-  
+
   RCODE_NO_MEMORY,
   RCODE_BAD_STRING,
 } dns_rcode_t;
@@ -572,7 +578,7 @@ typedef union dnskey_key        /* RFC-2065 */
     size_t   modsize;
     uint8_t *modulus;
   } md5;
-  
+
   struct
   {
     size_t   size;
