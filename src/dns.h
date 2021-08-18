@@ -51,7 +51,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#if defined(WIN32)
+#if defined(_WIN32)
 #include <winsock2.h>
 #include <wspiapi.h>
 typedef uint32_t in_addr_t;
