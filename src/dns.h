@@ -52,7 +52,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #if defined(_WIN32)
-#  include <windock2.h>
+#  include <winsock2.h>
 #  include <wspiapi.h>
    typedef uint32_t in_addr_t;
 #else
