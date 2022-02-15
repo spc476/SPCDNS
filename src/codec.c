@@ -532,7 +532,6 @@ static inline dns_rcode_t encode_rr_gpos(edns_context *data,dns_gpos_t const *gp
 
 static uint8_t eloc_scale(unsigned long long scale,unsigned long def)
 {
-  double fp;
   double ip;
   double rs;
   int    smul;
@@ -541,7 +540,7 @@ static uint8_t eloc_scale(unsigned long long scale,unsigned long def)
   if (scale == 0)
     scale = def;
     
-  fp   = modf(log10(scale),&ip);
+  modf(log10(scale),&ip);
   rs   = pow(10.0,ip);
   smul = (double)scale / rs;
   spow = ip;
