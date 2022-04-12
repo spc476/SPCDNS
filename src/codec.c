@@ -1304,6 +1304,9 @@ static dns_rcode_t read_domain(
     
     else
       return RCODE_FORMAT_ERROR;
+
+    if (parse->size < 1)
+      return RCODE_FORMAT_ERROR;
   } while(*parse->ptr);
   
   parse->ptr++;
