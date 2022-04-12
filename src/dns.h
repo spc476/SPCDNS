@@ -51,7 +51,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <arpa/inet.h>
+#if defined(_WIN32)
+#  include <winsock2.h>
+#  include <wspiapi.h>
+   typedef uint32_t in_addr_t;
+#else
+#   include <arpa/inet.h>
+#endif
 
 #ifdef __cplusplus
 #  define class dclass
