@@ -1,10 +1,10 @@
 package = "org.conman.dns"
-version = "2.0.3-1"
+version = "2.0.4-1"
 
 source = 
 {
-  url = "git://github.com/spc476/SPCDNS.git",
-  tag = "v2.0.3"
+  url = "https://github.com/spc476/SPCDNS.git",
+  tag = "v2.0.4"
 }
 
 description =
