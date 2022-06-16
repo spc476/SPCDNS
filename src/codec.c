@@ -619,6 +619,8 @@ static inline dns_rcode_t encode_edns0rr_nsid(
 )
 {
   size_t newlen;
+  size_t nidx;
+  size_t i;
   
   assert(econtext_okay(data));
   assert(opt       != NULL);
@@ -635,18 +637,12 @@ static inline dns_rcode_t encode_edns0rr_nsid(
   if (data->packet.size < newlen + sizeof(uint16_t) + sizeof(uint16_t))
     return RCODE_NO_MEMORY;
     
-  char   buffer[newlen + 1];
-  size_t nidx;
-  size_t i;
-  
-  for (i = nidx = 0 ; i < opt->len ; i++ , nidx += 2)
-    sprintf(&buffer[nidx],"%02X",opt->data[i]);
-    
-  assert(newlen == strlen(buffer));
-  
   write_uint16(&data->packet,opt->code);
   write_uint16(&data->packet,newlen);
-  memcpy(data->packet.ptr,buffer,newlen);
+
+  for (i = nidx = 0 ; i < opt->len ; i++ , nidx += 2)
+    sprintf((char *)&data->packet.ptr[nidx],"%02X",opt->data[i]);
+    
   data->packet.ptr  += newlen;
   data->packet.size -= newlen;
   return RCODE_OKAY;
@@ -1676,7 +1672,19 @@ static dns_rcode_t dloc_double(
   if (len > data->parse.size - 1)
     return RCODE_FORMAT_ERROR;
     
-  char buffer[len + 1];
+  /*-----------------------------------------------------------------------
+  ; Microsoft C compilers don't support VLAs.  So I'm picking an arbitrary
+  ; limit that hopefully won't break things.  I'm not sure what the actual
+  ; length limit is for a double value (as a string to be parsed), so I
+  ; checked some C code, found a 36 digit double number, then doubled that.
+  ; Hopefully this is good enough.
+  ;------------------------------------------------------------------------*/
+
+  char buffer[72];
+  
+  if (len >= sizeof(buffer))
+    return RCODE_FORMAT_ERROR;
+    
   memcpy(buffer,&data->parse.ptr[1],len);
   buffer[len++] = '\0';
   
