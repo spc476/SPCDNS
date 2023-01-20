@@ -53,7 +53,7 @@
 #include <stdint.h>
 #if defined(_WIN32)
 #  include <winsock2.h>
-#  include <wspiapi.h>
+#  include <ws2tcpip.h>
    typedef uint32_t in_addr_t;
 #else
 #   include <arpa/inet.h>
