@@ -295,6 +295,7 @@ typedef struct dns_question_t   /* RFC-1035 */
   char const  *name;
   dns_type_t   type;
   dns_class_t  class;
+  bool         qu;
 } dns_question_t;
 
 typedef struct dns_generic_t    /* RFC-1035 */

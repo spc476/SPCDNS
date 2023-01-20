@@ -377,7 +377,7 @@ static dns_rcode_t encode_question(
     return RCODE_NO_MEMORY;
     
   write_uint16(&data->packet,pquestion->type);
-  write_uint16(&data->packet,pquestion->class);
+  write_uint16(&data->packet,pquestion->class | (pquestion->qu ? 0x8000 : 0));
   
   return RCODE_OKAY;
 }
