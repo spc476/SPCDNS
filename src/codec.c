@@ -1558,15 +1558,17 @@ static inline dns_rcode_t decode_rr_txt(
     if (data->parse.size < slen)
       return RCODE_FORMAT_ERROR;
       
-    if (data->dest.size < slen)
+    if (data->dest.size < slen + 2)
       return RCODE_NO_MEMORY;
       
-    memcpy(data->dest.ptr,data->parse.ptr,slen);
+    *data->dest.ptr = '<';
+    memcpy(data->dest.ptr + 1,data->parse.ptr,slen);
+    *(data->dest.ptr + 1 + slen) = '>';
     assert(slen <= len);
     
-    ptxt->len        += slen;
-    data->dest.ptr   += slen;
-    data->dest.size  -= slen;
+    ptxt->len        += slen + 2;
+    data->dest.ptr   += slen + 2;
+    data->dest.size  -= slen + 2;
     data->parse.ptr  += slen;
     data->parse.size -= slen;
     len              -= slen;
