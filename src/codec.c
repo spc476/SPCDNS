@@ -338,7 +338,7 @@ static dns_rcode_t encode_string(
   if (size > 255)                   return RCODE_BAD_STRING;
   if (data->packet.size < size + 1) return RCODE_NO_MEMORY;
   
-  *data->packet.ptr++ = size;
+  *data->packet.ptr++ = (uint8_t)size;
   memcpy(data->packet.ptr,text,size);
   data->packet.ptr += size;
   data->packet.size -= (size + 1);
@@ -540,10 +540,10 @@ static uint8_t eloc_scale(unsigned long long scale,unsigned long def)
   if (scale == 0)
     scale = def;
     
-  modf(log10(scale),&ip);
+  modf(log10((double)scale),&ip);
   rs   = pow(10.0,ip);
-  smul = (double)scale / rs;
-  spow = ip;
+  smul = (int)((double)scale / rs);
+  spow = (int)ip;
   
   assert(smul >= 0);
   assert(smul <= 9);
@@ -638,7 +638,7 @@ static inline dns_rcode_t encode_edns0rr_nsid(
     return RCODE_NO_MEMORY;
     
   write_uint16(&data->packet,opt->code);
-  write_uint16(&data->packet,newlen);
+  write_uint16(&data->packet,(uint16_t)newlen);
 
   for (i = nidx = 0 ; i < opt->len ; i++ , nidx += 2)
     sprintf((char *)&data->packet.ptr[nidx],"%02X",opt->data[i]);
@@ -664,7 +664,7 @@ static inline dns_rcode_t encode_edns0rr_raw(
     return RCODE_NO_MEMORY;
     
   write_uint16(&data->packet,opt->code);
-  write_uint16(&data->packet,opt->len);
+  write_uint16(&data->packet,(uint16_t)opt->len);
   memcpy(data->packet.ptr,opt->data,opt->len);
   data->packet.ptr  += opt->len;
   data->packet.size -= opt->len;
@@ -870,7 +870,7 @@ static dns_rcode_t encode_answer(
   
   if (answer->generic.type == RR_OPT)
   {
-    answer->opt.class = answer->opt.udp_payload;
+    answer->opt.class = (dns_class_t)answer->opt.udp_payload;
     answer->opt.ttl   = ((data->rcode >> 4)  & 0xFF)    << 24
                       | (answer->opt.version & 0xFF)    << 16
                       | (answer->opt.fdo ? 0x80 : 0x00) <<  8
@@ -978,10 +978,10 @@ dns_rcode_t dns_encode(dns_packet_t *dest,size_t *plen,dns_query_t const *query)
   header->id      = htons(query->id);
   header->opcode  = (query->opcode & 0x0F) << 3;
   header->rcode   = (query->rcode  & 0x0F);
-  header->qdcount = htons(query->qdcount);
-  header->ancount = htons(query->ancount);
-  header->nscount = htons(query->nscount);
-  header->arcount = htons(query->arcount);
+  header->qdcount = htons((u_short)query->qdcount);
+  header->ancount = htons((u_short)query->ancount);
+  header->nscount = htons((u_short)query->nscount);
+  header->arcount = htons((u_short)query->arcount);
   
   /*-----------------------------------------------------------------------
   ; I'm not bothering with symbolic constants for the flags; they're only
@@ -1346,8 +1346,8 @@ static inline dns_rcode_t decode_edns0rr_nsid(
     assert(phexh != NULL);
     assert(phexl != NULL);
     
-    *data->dest.ptr = ((phexh - hexdigits) << 4)
-                    | ((phexl - hexdigits)     );
+    *data->dest.ptr = (uint8_t)(((phexh - hexdigits) << 4)
+                    |           ((phexl - hexdigits)     ));
     data->dest.ptr++;
     data->dest.size--;
   }
@@ -1707,10 +1707,10 @@ static void dgpos_angle(
 {
   double ip;
   
-  v = modf(v,&ip) *   60.0; pa->deg = ip;
-  v = modf(v,&ip) *   60.0; pa->min = ip;
-  v = modf(v,&ip) * 1000.0; pa->sec = ip;
-  pa->frac = v;
+  v = modf(v,&ip) *   60.0; pa->deg = (int)ip;
+  v = modf(v,&ip) *   60.0; pa->min = (int)ip;
+  v = modf(v,&ip) * 1000.0; pa->sec = (int)ip;
+  pa->frac = (int)v;
 }
 
 /*****************************************************************/
@@ -1793,12 +1793,12 @@ static void dloc_angle(
   assert(pa != NULL);
   
   partial  = ldiv(v,1000L);
-  pa->frac = partial.rem;
+  pa->frac = (int)partial.rem;
   partial  = ldiv(partial.quot,60L);
-  pa->sec  = partial.rem;
+  pa->sec  = (int)partial.rem;
   partial  = ldiv(partial.quot,60L);
-  pa->min  = partial.rem;
-  pa->deg  = partial.quot;
+  pa->min  = (int)partial.rem;
+  pa->deg  = (int)partial.quot;
 }
 
 /*************************************************************/
