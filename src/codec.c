@@ -66,14 +66,12 @@
 
 #include "dns.h"
 
-#ifdef __cplusplus
-#  if defined(__clang__)
-#    pragma clang diagnostic ignored "-Wshorten-64-to-32"
-#    pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#  elif defined(_MSC_VER)
-#    pragma warning(disable:4244)
-#    pragma warning(disable:4267)
-#  endif
+#if defined(__clang__)
+#  pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#  pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#  pragma warning(disable:4244)
+#  pragma warning(disable:4267)
 #endif
 
 /*----------------------------------------------------------------------------
