@@ -69,8 +69,8 @@
 #if defined(__clang__)
 #  pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #elif defined(_MSC_VER)
-#  pragma warning(disable:4244)
-#  pragma warning(disable:4267)
+#  pragma warning(disable:4244) /* ignore float to integer type conversion */
+#  pragma warning(disable:4267) /* ignore size_t to smaller type conversion */
 #endif
 
 /*----------------------------------------------------------------------------
