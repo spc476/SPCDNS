@@ -66,6 +66,13 @@
 
 #include "dns.h"
 
+#if defined(__clang__)
+#  pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#elif defined(_MSC_VER)
+#  pragma warning(disable:4244) /* ignore float to integer type conversion */
+#  pragma warning(disable:4267) /* ignore size_t to smaller type conversion */
+#endif
+
 /*----------------------------------------------------------------------------
 ; The folowing are used for memory allocation.  dns_decoded_t should be fine
 ; for alignment size, as it's good enough for alignment.  If some odd-ball
