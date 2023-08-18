@@ -64,6 +64,8 @@
   #include <machine/endian.h>
   #define htons(_x)    __htons(_x)
   #define ntohs(_x)     __ntohs(_x)
+#elif defined(__BIONIC__)
+  #include <sys/endian.h>
 #else
   #error No implementation of htons found
 #endif
