@@ -57,17 +57,17 @@
 #define _GNU_SOURCE
 
 #if defined(_WIN32)
-  #include <winsock.h>
+#  include <winsock.h>
 #elif defined(__unix__)
-  #include <arpa/inet.h>
+#  include <arpa/inet.h>
 #elif defined(__NEWLIB__)
-  #include <machine/endian.h>
-  #define htons(_x)    __htons(_x)
-  #define ntohs(_x)     __ntohs(_x)
+#  include <machine/endian.h>
+#  define htons(_x)    __htons(_x)
+#  define ntohs(_x)     __ntohs(_x)
 #elif defined(__BIONIC__)
-  #include <sys/endian.h>
+#  include <sys/endian.h>
 #else
-  #error No implementation of htons found
+#  error No implementation of htons found
 #endif
 
 #include <stdio.h>
