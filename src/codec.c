@@ -60,7 +60,7 @@
   #include <winsock.h>
 #elif defined(__unix__)
   #include <arpa/inet.h>
-#elif __has_include (<machine/endian.h>)
+#elif defined(__NEWLIB__)
   #include <machine/endian.h>
   #define htons(_x)    __htons(_x)
   #define ntohs(_x)     __ntohs(_x)
