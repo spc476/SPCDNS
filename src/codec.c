@@ -56,6 +56,14 @@
 
 #define _GNU_SOURCE
 
+#if defined(__NEWLIB__)
+#  include <machine/endian.h>
+#  define htons(_x)    __htons(_x)
+#  define ntohs(_x)     __ntohs(_x)
+#elif defined(__BIONIC__)
+#  include <sys/endian.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
