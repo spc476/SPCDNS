@@ -59,7 +59,7 @@
 #    include <wspiapi.h>
 #  endif
    typedef uint32_t in_addr_t;
-#elif defined(__unix__)
+#elif defined(__unix__) || defined (__APPLE__)
 #   include <arpa/inet.h>
 #else
    // No platform implementation of in6_addr so we'll provide a simple one
