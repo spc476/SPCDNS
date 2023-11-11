@@ -957,7 +957,13 @@ static dns_rcode_t encode_answer(
     
     case RR_NULL: rc = encode_rr_x(data,&answer->x); break;
     
-    default: rc = RCODE_NOT_IMPLEMENTED; break;
+    default:
+      if ((answer->generic.type >= RR_PRIVATE) && (answer->generic.type < RR_UNKNOWN))
+      {
+        rc = encode_rr_x(data,&answer->x);
+        break;
+      }
+      rc = RCODE_NOT_IMPLEMENTED; break;
   }
   
   if (rc != RCODE_OKAY)
