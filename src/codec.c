@@ -2187,13 +2187,6 @@ dns_rcode_t dns_decode(dns_decoded_t *presponse,size_t *prsize,dns_packet_t cons
       return rc;
   }
   
-  /*-------------------------------------------------------------
-  ; RR OPT can only appear once, and only in the additional info
-  ; section.  Check that we haven't seen one before.
-  ;-------------------------------------------------------------*/
-  
-  if (context.edns) return RCODE_FORMAT_ERROR;
-  
   for (size_t i = 0 ; i < response->arcount ; i++)
   {
     rc = decode_answer(&context,&response->additional[i]);
