@@ -957,7 +957,13 @@ static dns_rcode_t encode_answer(
     
     case RR_NULL: rc = encode_rr_x(data,&answer->x); break;
     
-    default: rc = RCODE_NOT_IMPLEMENTED; break;
+    default:
+      if ((answer->generic.type >= RR_PRIVATE) && (answer->generic.type < RR_UNKNOWN))
+      {
+        rc = encode_rr_x(data,&answer->x);
+        break;
+      }
+      rc = RCODE_NOT_IMPLEMENTED; break;
   }
   
   if (rc != RCODE_OKAY)
@@ -2186,13 +2192,6 @@ dns_rcode_t dns_decode(dns_decoded_t *presponse,size_t *prsize,dns_packet_t cons
     if (rc != RCODE_OKAY)
       return rc;
   }
-  
-  /*-------------------------------------------------------------
-  ; RR OPT can only appear once, and only in the additional info
-  ; section.  Check that we haven't seen one before.
-  ;-------------------------------------------------------------*/
-  
-  if (context.edns) return RCODE_FORMAT_ERROR;
   
   for (size_t i = 0 ; i < response->arcount ; i++)
   {
