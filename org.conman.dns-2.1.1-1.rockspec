@@ -1,8 +1,8 @@
 package = "org.conman.dns"
-version = "2.1.0-1"
+version = "2.1.1-1"
 source = {
-   url = "git+https://github.com/spc476/SPCDNS.git",
-   tag = "v2.1.0"
+   url = "https://github.com/spc476/SPCDNS.git",
+   tag = "v2.1.1"
 }
 description = {
    summary = "A Lua module to encode DNS queries and decode DNS answers.",
