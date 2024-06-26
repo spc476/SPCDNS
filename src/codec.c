@@ -96,12 +96,13 @@
 /*---------------------------------------------------------------------------
 ; This is the maximum number of domain labels to encode.  The domain
 ; "example.com" contains two domain labels.  "1.0.0.127.in-addr.arpa" has
-; six domain labels.  This value is an arbitrary limit to avoid doing any
-; memory allocations but I feel it's sufficiently large enough to avoid any
-; limits.  I hope.
+; six domain labels.  This value is calculated was calculated by Tony Finch
+; [1] based upon the maximum domain name length, and minimum segment length.
+;
+; [1] https://lobste.rs/s/tukocy/network_protocols_sans_i_o_2016#c_495uaz
 ;----------------------------------------------------------------------------*/
 
-#define MAXSEG  100
+#define MAXSEG  128
 
 /*---------------------------------------------------------------------------
 ; You really, no, I mean it, *REALLY* need to read RFC-1876 to understand
